@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin
+package com.kolammaster.app
 
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
@@ -11,6 +11,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +20,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -31,9 +34,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -66,7 +73,7 @@ import kotlin.math.sin
 
 internal val KolamBackground = Color(0xFF2F343A)
 private val Gold = Color(0xFF8F6F38)
-private val LandingHeaderColor = Color(0xFF383428)
+private val KolamMasterHeaderColor = Color(0xFF496B6B)
 
 internal enum class LandingDestination(val title: String) {
     Browse("Learn Kolam"),
@@ -85,54 +92,89 @@ internal val supportedLanguages = listOf(
 )
 
 @Composable
-internal fun LanguageSelectionScreen(onSelected: (String) -> Unit) {
+internal fun LanguageSelectionScreen(
+    onSelected: (String) -> Unit,
+    onBack: () -> Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(KolamBackground)
-            .padding(horizontal = 28.dp, vertical = 32.dp),
+            .padding(horizontal = 28.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(
-            text = "Choose Your Language",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+        Image(
+            bitmap = rememberAssetImage("kolam-logo.png"),
+            contentDescription = "Kolam logo",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .size(LanguageLogoSize)
+                .offset(y = LanguageLogoVerticalOffset)
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "You can change this later from My Folders.",
-            color = Color.White.copy(alpha = 0.82f),
-            fontSize = 16.sp,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(28.dp))
-        supportedLanguages.forEach { (languageId, displayName) ->
-            Button(
-                onClick = { onSelected(languageId) },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Gold)
-            ) {
-                Text(displayName, color = Color.White, fontSize = 18.sp)
+        Spacer(Modifier.height(LanguageLogoToSectionSpacing))
+        Column(
+            modifier = Modifier.offset(y = LanguageSectionVerticalOffset),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Choose Your Language",
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(12.dp))
+            Text(
+                text = "You can change this later from My Folders.",
+                color = Color.White.copy(alpha = 0.82f),
+                fontSize = 16.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(20.dp))
+            supportedLanguages.forEach { (languageId, displayName) ->
+                Button(
+                    onClick = { onSelected(languageId) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Gold)
+                ) {
+                    Text(displayName, color = Color.White, fontSize = 18.sp)
+                }
             }
+            Spacer(Modifier.height(12.dp))
+            Button(
+                onClick = onBack,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            ) { Text("Back", color = Color.White, fontSize = 16.sp) }
         }
     }
 }
 
 @Composable
-internal fun SignInInvitationScreen(onSkip: () -> Unit) {
+internal fun SignInInvitationScreen(
+    onGoogleSignIn: () -> Unit,
+    onSkip: () -> Unit,
+    isLoading: Boolean
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(KolamBackground)
-            .padding(horizontal = 32.dp, vertical = 40.dp),
+            .padding(horizontal = 32.dp, vertical = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        Image(
+            bitmap = rememberAssetImage("kolam-logo.png"),
+            contentDescription = "Kolam logo",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier
+                .size(SignInLogoSize)
+                .offset(y = SignInLogoVerticalOffset)
+        )
+        Spacer(Modifier.height(SignInLogoToContentSpacing))
         Text(
             text = "Sign in with Google",
             color = Color.White,
@@ -140,51 +182,133 @@ internal fun SignInInvitationScreen(onSkip: () -> Unit) {
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(28.dp))
-        listOf(
-            "Save your kolams",
-            "Keep your creations organized",
-            "Join the Kolam community"
-        ).forEach { benefit ->
-            Text(
-                text = "•  $benefit",
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                color = Color.White,
-                fontSize = 18.sp
+        Spacer(Modifier.height(SignInTitleToBenefitsSpacing))
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = SignInBenefitsVerticalOffset),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.White.copy(alpha = 0.08f),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                Color.White.copy(alpha = 0.18f)
             )
+        ) {
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                listOf(
+                    "Save your kolams",
+                    "Keep your creations organized",
+                    "Join the Kolam community",
+                    "Publish your kolams to the Kolam community"
+                ).forEach { benefit ->
+                    Text(
+                        text = "•  $benefit",
+                        modifier = Modifier.fillMaxWidth(),
+                        color = Color.White,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(28.dp))
-        Text(
-            text = "Google sign-in is not configured in this proof of concept.",
-            color = Color.White.copy(alpha = 0.72f),
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(SignInBenefitsToGoogleSpacing))
         Button(
-            onClick = {},
-            enabled = false,
+            onClick = onGoogleSignIn,
+            enabled = !isLoading,
+            modifier = Modifier.offset(y = SignInGoogleButtonVerticalOffset),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Gold,
-                disabledContainerColor = Gold.copy(alpha = 0.55f),
+                disabledContainerColor = Gold,
                 disabledContentColor = Color.White
             )
         ) {
             Text(
-                "Sign in with Google",
+                "Continue with Google",
                 color = Color.White,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
         }
-        Spacer(Modifier.height(8.dp))
-        Button(onClick = onSkip, colors = ButtonDefaults.buttonColors(containerColor = Gold)) {
-            Text("Skip", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(SignInGoogleToSkipSpacing))
+        Button(
+            onClick = onSkip,
+            enabled = !isLoading,
+            modifier = Modifier.offset(y = SignInSkipButtonVerticalOffset),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Gold,
+                disabledContainerColor = Gold,
+                disabledContentColor = Color.White
+            )
+        ) {
+            Text("Skip for now", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
         }
     }
 }
+
+private val LanguageLogoSize = 200.dp
+private val LanguageLogoVerticalOffset = 0.dp
+private val LanguageLogoToSectionSpacing = 12.dp
+private val LanguageSectionVerticalOffset = 0.dp
+private val SignInLogoSize = 310.dp
+private val SignInLogoVerticalOffset = 0.dp
+private val SignInLogoToContentSpacing = 12.dp
+private val SignInTitleToBenefitsSpacing = 16.dp
+private val SignInBenefitsVerticalOffset = 0.dp
+private val SignInBenefitsToGoogleSpacing = 16.dp
+private val SignInGoogleToSkipSpacing = 8.dp
+private val SignInGoogleButtonVerticalOffset = 0.dp
+private val SignInSkipButtonVerticalOffset = 0.dp
+
+@Composable
+internal fun AuthLoadingOverlay(message: String?) {
+    if (message == null) return
+
+    Dialog(
+        onDismissRequest = {},
+        properties = DialogProperties(
+            dismissOnBackPress = false,
+            dismissOnClickOutside = false
+        )
+    ) {
+        Surface(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF34393F),
+            tonalElevation = 12.dp,
+            shadowElevation = 20.dp
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(30.dp),
+                    color = Gold,
+                    trackColor = Color.White.copy(alpha = 0.16f),
+                    strokeWidth = 3.dp
+                )
+                Spacer(Modifier.width(18.dp))
+                Text(
+                    modifier = Modifier.weight(1f),
+                    text = message,
+                    color = Color.White,
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
+}
+
+private val OpeningScreenLogoSize = 230.dp
+private val OpeningScreenLogoVerticalOffset = 0.dp
 
 @Composable
 internal fun OpeningScreen(onBegin: () -> Unit) {
@@ -194,7 +318,6 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
     val logoScale = remember { Animatable(0.04f) }
     val historyAlpha = remember { Animatable(0f) }
     val beginAlpha = remember { Animatable(0f) }
-    var animationComplete by remember { mutableStateOf(false) }
     val cubicOut = remember { CubicBezierEasing(0f, 0f, 0.58f, 1f) }
     val cubicInOut = remember { CubicBezierEasing(0.42f, 0f, 0.58f, 1f) }
     val logo = rememberAssetImage("kolam-logo.png")
@@ -209,7 +332,6 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
         }
         historyAlpha.animateTo(1f, tween(920, easing = cubicInOut))
         beginAlpha.animateTo(1f, tween(940, easing = cubicInOut))
-        animationComplete = true
     }
 
     Column(
@@ -245,7 +367,8 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
                     contentDescription = "Kolam Master logo",
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
-                        .size(280.dp)
+                        .size(OpeningScreenLogoSize)
+                        .offset(y = OpeningScreenLogoVerticalOffset)
                         .graphicsLayer {
                             alpha = logoAlpha.value
                             scaleX = logoScale.value
@@ -270,7 +393,6 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
 
         Button(
             onClick = onBegin,
-            enabled = animationComplete,
             modifier = Modifier
                 .defaultMinSize(minWidth = 166.dp, minHeight = 50.dp)
                 .graphicsLayer { alpha = beginAlpha.value },
@@ -317,10 +439,26 @@ internal fun LandingScreen(
     onDestination: (LandingDestination) -> Unit,
     onMenuAction: (DrawerAction) -> Unit
 ) {
+    LandingPageFrame(onMenuAction = onMenuAction) {
+        Spacer(Modifier.height(18.dp))
+        LandingBubbles(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)
+                .padding(start = 8.dp, end = 8.dp, bottom = 20.dp),
+            onDestination = onDestination
+        )
+    }
+}
+
+@Composable
+internal fun LandingPageFrame(
+    onMenuAction: (DrawerAction) -> Unit,
+    content: @Composable ColumnScope.() -> Unit
+) {
     var drawerOpen by remember { mutableStateOf(false) }
     var settingsExpanded by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
     Box(
         modifier = Modifier
@@ -350,14 +488,7 @@ internal fun LandingScreen(
                             .padding(top = 6.dp)
                             .size(width = 300.dp, height = 50.dp)
                     )
-                    Spacer(Modifier.height(18.dp))
-                    LandingBubbles(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                            .padding(start = 8.dp, end = 8.dp, bottom = 20.dp),
-                        onDestination = onDestination
-                    )
+                    content()
                 }
             }
         }
@@ -378,12 +509,111 @@ internal fun LandingScreen(
 }
 
 @Composable
+internal fun LandingArtworkFrame(
+    showBrandArtwork: Boolean = true,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KolamBackground)
+    ) {
+        LandingDecoration(
+            Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+            mirrored = false
+        )
+        LandingDecoration(
+            Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+            mirrored = true
+        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 58.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            if (showBrandArtwork) {
+                Image(
+                    bitmap = rememberAssetImage("landing-page-image.png"),
+                    contentDescription = "Kolam Master",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .padding(top = 6.dp)
+                        .fillMaxWidth()
+                        .widthIn(max = 300.dp)
+                        .height(50.dp)
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+internal fun AppNavigationHeader(
+    onBack: () -> Unit,
+    onHome: () -> Unit,
+    onOpenDrawer: () -> Unit,
+    showNavigationControls: Boolean = true
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(64.dp)
+            .background(KolamMasterHeaderColor)
+    ) {
+        if (showNavigationControls) {
+            Text(
+                text = "←",
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .size(width = 56.dp, height = 64.dp)
+                    .clickable(onClick = onBack)
+                    .wrapContentSize(Alignment.Center),
+                color = Color.White,
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Text(
+            text = "Kolam Master",
+            modifier = Modifier
+                .align(Alignment.Center)
+                .clickable(onClick = onHome),
+            color = Color.White,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold
+        )
+        if (showNavigationControls) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .size(width = 56.dp, height = 64.dp)
+                    .clickable(onClick = onOpenDrawer),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    repeat(3) {
+                        Box(
+                            Modifier
+                                .width(22.dp)
+                                .height(2.dp)
+                                .background(Color.White)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun LandingHeader(onOpenDrawer: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(64.dp)
-            .background(LandingHeaderColor)
+            .background(KolamMasterHeaderColor)
     ) {
         Text(
             text = "Kolam Master",
@@ -566,7 +796,7 @@ private fun GoldActionButton(text: String, onClick: () -> Unit) {
 }
 
 @Composable
-private fun rememberAssetImage(name: String): androidx.compose.ui.graphics.ImageBitmap {
+internal fun rememberAssetImage(name: String): androidx.compose.ui.graphics.ImageBitmap {
     val context = LocalContext.current
     return remember(context, name) {
         val bitmap = context.assets.open(name).use(BitmapFactory::decodeStream)

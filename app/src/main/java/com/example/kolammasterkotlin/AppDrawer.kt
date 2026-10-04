@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin
+package com.kolammaster.app
 
 import android.Manifest
 import android.content.ActivityNotFoundException
@@ -14,6 +14,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,25 +27,31 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -55,9 +62,12 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 internal enum class DrawerAction {
     Home,
@@ -315,36 +325,68 @@ internal fun LanguageSettingsScreen(
     onSelect: (String) -> Unit,
     onBack: () -> Unit
 ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(KolamBackground)
-            .padding(horizontal = 24.dp, vertical = 28.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
+    LandingArtworkFrame {
+        Spacer(Modifier.height(18.dp))
         Text(
-            text = "Language",
+            text = "Choose Your Language",
+            modifier = Modifier.offset(y = LanguageMenuSectionVerticalOffset),
             color = Color.White,
-            fontSize = 28.sp,
+            fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
-        Spacer(Modifier.height(20.dp))
-        supportedLanguages.forEach { (identifier, nativeName) ->
-            DrawerMenuRow(
-                label = if (identifier == activeLanguage) "$nativeName  ✓" else nativeName,
-                onClick = { onSelect(identifier) }
-            )
+        Spacer(Modifier.height(22.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .offset(y = LanguageMenuLanguageOptionsVerticalOffset),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            supportedLanguages.forEach { (identifier, nativeName) ->
+                Button(
+                    onClick = { onSelect(identifier) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                ) {
+                    Text(
+                        text = if (identifier == activeLanguage) "$nativeName  ✓" else nativeName,
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
         }
-        Spacer(Modifier.height(20.dp))
-        Button(onClick = onBack) { Text("Back") }
+        Spacer(Modifier.height(LanguageMenuLanguageOptionsToImmediateTextSpacing))
+        Text(
+            text = "Language changes apply immediately.",
+            modifier = Modifier.offset(y = LanguageMenuImmediateTextVerticalOffset),
+            color = Color.White.copy(alpha = 0.72f),
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(LanguageMenuImmediateTextToBackSpacing))
+        Button(
+            onClick = onBack,
+            modifier = Modifier.offset(y = LanguageMenuBackButtonVerticalOffset),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+        ) { Text("Back") }
+        Spacer(Modifier.height(12.dp))
     }
 }
+
+private val LanguageMenuSectionVerticalOffset = 0.dp
+private val LanguageMenuLanguageOptionsVerticalOffset = 0.dp
+private val LanguageMenuLanguageOptionsToImmediateTextSpacing = 16.dp
+private val LanguageMenuImmediateTextVerticalOffset = 0.dp
+private val LanguageMenuImmediateTextToBackSpacing = 8.dp
+private val LanguageMenuBackButtonVerticalOffset = 0.dp
 
 internal data class AccountProfile(
     val name: String,
     val email: String,
-    val photo: ImageBitmap? = null
+    val avatarUrl: String? = null
 )
 
 @Composable
@@ -354,27 +396,75 @@ internal fun ProfileDestination(
     account: AccountProfile? = null,
     onSignOut: () -> Unit = {}
 ) {
-    DestinationScaffold(title = "Profile", onBack = onBack) {
-        if (account == null) {
-            GuestSignInPrompt(
-                message = "You are currently using Kolam Master as a Guest.",
-                onSignIn = onSignIn
-            )
-        } else {
-            account.photo?.let { photo ->
-                androidx.compose.foundation.Image(
-                    bitmap = photo,
-                    contentDescription = "Profile photo",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.size(88.dp)
+    LandingArtworkFrame {
+        Spacer(Modifier.height(18.dp))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text("Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(if (account == null) 25.dp else 18.dp))
+            if (account == null) {
+                GuestSignInPrompt(
+                    message = "You’re currently using Kolam Master as a Guest.",
+                    onSignIn = onSignIn,
+                    enabled = true
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(16.dp))
+                Button(
+                    onClick = onBack,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                ) { Text("Back") }
+            } else {
+                val photo by produceState<ImageBitmap?>(
+                    initialValue = null,
+                    account.avatarUrl
+                ) {
+                    value = account.avatarUrl
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { url -> withContext(Dispatchers.IO) { loadThumbnail(url) } }
+                }
+                photo?.let { image ->
+                    Image(
+                        bitmap = image,
+                        contentDescription = "Profile photo",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(88.dp)
+                            .clip(androidx.compose.foundation.shape.CircleShape)
+                    )
+                    Spacer(Modifier.height(12.dp))
+                }
+                Text(account.name, color = Color.White, fontSize = 20.sp)
+                Text(account.email, color = drawerMuted, fontSize = 16.sp)
+                Spacer(Modifier.height(16.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    Button(
+                        onClick = onBack,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                    ) { Text("Back") }
+                    Button(
+                        onClick = onSignOut,
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                    ) { Text("Sign Out") }
+                }
             }
-            Text(account.name, color = Color.White, fontSize = 20.sp)
-            Text(account.email, color = drawerMuted, fontSize = 16.sp)
-            Spacer(Modifier.height(18.dp))
-            Button(onClick = onSignOut) { Text("Sign Out") }
+            Image(
+                bitmap = rememberAssetImage("kolam-logo.png"),
+                contentDescription = "Kolam logo",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .padding(top = ProfileLogoTopPadding)
+                    .size(ProfileLogoSize)
+                    .offset(y = ProfileLogoVerticalOffset)
+            )
         }
+        Spacer(Modifier.weight(1f))
     }
 }
 
@@ -384,18 +474,108 @@ internal fun MyFoldersDestination(
     onCancel: () -> Unit,
     signedIn: Boolean = false
 ) {
-    DestinationScaffold(title = "My Folders", onBack = onCancel) {
-        if (signedIn) {
-            Text("Your folders will appear here.", color = Color.White, fontSize = 18.sp)
-        } else {
-            Text("Sign in to view your folders.", color = Color.White, fontSize = 18.sp)
-            Spacer(Modifier.height(18.dp))
-            Button(onClick = onSignIn, enabled = false) { Text("Sign in with Google") }
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = onCancel) { Text("Cancel") }
+    LandingArtworkFrame {
+        Spacer(Modifier.height(18.dp))
+        Text("My Folders", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(Modifier.weight(1f))
+            if (signedIn) {
+                Text("Your folders will appear here.", color = Color.White, fontSize = 18.sp)
+                Spacer(Modifier.height(18.dp))
+                Button(
+                    onClick = onCancel,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                ) { Text("Back") }
+            } else {
+                Column(
+                    modifier = Modifier.offset(y = FolderSignedOutGroupVerticalOffset),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .offset(y = FolderSignedOutBenefitsVerticalOffset),
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.White.copy(alpha = 0.08f),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            Color.White.copy(alpha = 0.18f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(
+                                horizontal = FolderBenefitsHorizontalPadding,
+                                vertical = FolderBenefitsVerticalPadding
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(FolderBenefitSpacing)
+                        ) {
+                            Text(
+                                "Sign in to create folders",
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                            FolderBenefit("Bookmark your favorite kolams to your folders")
+                            FolderBenefit("Organize your saved kolams")
+                            FolderBenefit("Keep your favorite lessons easy to find")
+                        }
+                    }
+                    Spacer(Modifier.height(FolderSignedOutBenefitsToGoogleSpacing))
+                    Button(
+                        onClick = onSignIn,
+                        enabled = false,
+                        modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset)
+                    ) {
+                        Text("Sign in with Google")
+                    }
+                    Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
+                    Button(
+                        onClick = onCancel,
+                        modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                    ) { Text("Back") }
+                }
+            }
+            Spacer(Modifier.weight(1f))
         }
     }
 }
+
+@Composable
+private fun FolderBenefit(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text("•", color = Color(0xFFC9A86A), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = text,
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 14.sp,
+            lineHeight = 20.sp
+        )
+    }
+}
+
+private val ProfileLogoSize = 270.dp
+private val ProfileLogoTopPadding = 18.dp
+private val ProfileLogoVerticalOffset = 0.dp
+private val FolderBenefitsHorizontalPadding = 14.dp
+private val FolderBenefitsVerticalPadding = 14.dp
+private val FolderBenefitSpacing = 8.dp
+private val FolderSignedOutGroupVerticalOffset = (-120).dp
+private val FolderSignedOutBenefitsVerticalOffset = 0.dp
+private val FolderSignedOutGoogleButtonVerticalOffset = 0.dp
+private val FolderSignedOutBackButtonVerticalOffset = 0.dp
+private val FolderSignedOutBenefitsToGoogleSpacing = 16.dp
+private val FolderSignedOutGoogleToBackSpacing = 8.dp
 
 @Composable
 internal fun ContactUsDestination(
@@ -421,10 +601,21 @@ internal fun ContactUsDestination(
 }
 
 @Composable
-private fun GuestSignInPrompt(message: String, onSignIn: () -> Unit) {
-    Text(message, color = Color.White, fontSize = 18.sp)
+private fun GuestSignInPrompt(
+    message: String,
+    onSignIn: () -> Unit,
+    enabled: Boolean = false
+) {
+    Text(
+        text = message,
+        modifier = Modifier.fillMaxWidth(),
+        color = Color.White,
+        fontSize = 16.sp,
+        lineHeight = 23.sp,
+        textAlign = TextAlign.Center
+    )
     Spacer(Modifier.height(18.dp))
-    Button(onClick = onSignIn, enabled = false) { Text("Sign in with Google") }
+    Button(onClick = onSignIn, enabled = enabled) { Text("Sign in with Google") }
 }
 
 @Composable
@@ -442,6 +633,7 @@ internal fun AnnouncementsDestination(onBack: () -> Unit) {
 private fun DestinationScaffold(
     title: String,
     onBack: () -> Unit,
+    prominentBackButton: Boolean = false,
     content: @Composable () -> Unit
 ) {
     Column(
@@ -456,7 +648,14 @@ private fun DestinationScaffold(
         Spacer(Modifier.height(24.dp))
         content()
         Spacer(Modifier.height(24.dp))
-        TextButton(onClick = onBack) { Text("Back") }
+        if (prominentBackButton) {
+            Button(
+                onClick = onBack,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+            ) { Text("Back") }
+        } else {
+            TextButton(onClick = onBack) { Text("Back") }
+        }
     }
 }
 

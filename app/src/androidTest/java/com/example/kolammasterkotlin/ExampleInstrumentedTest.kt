@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin
+package com.kolammaster.app
 
 import java.io.File
 import androidx.test.platform.app.InstrumentationRegistry
@@ -20,7 +20,7 @@ class ExampleInstrumentedTest {
     fun useAppContext() {
         // Context of the app under test.
         val appContext = InstrumentationRegistry.getInstrumentation().targetContext
-        assertEquals("com.example.kolammasterkotlin", appContext.packageName)
+        assertEquals("com.kolammaster.app", appContext.packageName)
     }
 
     @Test

@@ -1,16 +1,31 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
 
+val localProperties = Properties().apply {
+    val localPropertiesFile = rootProject.file("local.properties")
+    if (localPropertiesFile.isFile) {
+        localPropertiesFile.inputStream().use { load(it) }
+    }
+}
+val supabasePublishableKey = localProperties.getProperty("supabase.publishableKey")
+    ?.trim()
+    ?.takeIf { it.isNotEmpty() }
+    ?: throw GradleException(
+        "Missing supabase.publishableKey in local.properties. Add the project's Publishable key locally."
+    )
+
 android {
-    namespace = "com.example.kolammasterkotlin"
+    namespace = "com.kolammaster.app"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.example.kolammasterkotlin"
+        applicationId = "com.kolammaster.app"
         minSdk = 24
         targetSdk = 37
         versionCode = 1
@@ -33,7 +48,16 @@ android {
     }
     buildFeatures {
         compose = true
-        buildConfig = false
+        buildConfig = true
+    }
+    defaultConfig {
+        buildConfigField("String", "SUPABASE_URL", "\"https://myhjakiptwafudgaoura.supabase.co\"")
+        buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"$supabasePublishableKey\"")
+        buildConfigField(
+            "String",
+            "GOOGLE_WEB_CLIENT_ID",
+            "\"350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com\""
+        )
     }
 }
 
@@ -46,6 +70,9 @@ dependencies {
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.supabase.auth)
+    implementation(libs.ktor.client.android)
+    implementation(libs.play.services.auth)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)

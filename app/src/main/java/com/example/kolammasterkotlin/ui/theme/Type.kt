@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin.ui.theme
+package com.kolammaster.app.ui.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle

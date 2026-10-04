@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin.ui.theme
+package com.kolammaster.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 

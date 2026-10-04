@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin
+package com.kolammaster.app
 
 import android.graphics.Canvas as AndroidCanvas
 import android.graphics.Color

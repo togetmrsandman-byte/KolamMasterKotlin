@@ -1,4 +1,4 @@
-package com.example.kolammasterkotlin
+package com.kolammaster.app
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
