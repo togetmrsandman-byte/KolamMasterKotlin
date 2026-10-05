@@ -44,7 +44,10 @@ internal class LessonCatalogueRepository(context: Context) {
             connection.setRequestProperty("Accept", "application/json")
             val status = connection.responseCode
             if (status !in 200..299) {
-                throw IOException("Catalogue request failed with HTTP $status")
+                throw HttpStatusFailureException(
+                    statusCode = status,
+                    message = "Catalogue request failed with HTTP $status"
+                )
             }
             return connection.inputStream.bufferedReader(Charsets.UTF_8).use { it.readText() }
         } finally {

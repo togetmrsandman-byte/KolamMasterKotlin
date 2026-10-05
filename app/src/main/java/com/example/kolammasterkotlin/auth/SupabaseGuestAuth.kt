@@ -1,6 +1,7 @@
 package com.kolammaster.app.auth
 
 import com.kolammaster.app.BuildConfig
+import com.kolammaster.app.HttpStatusFailureException
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
@@ -50,6 +51,19 @@ object SupabaseGuestAuth {
         val auth = supabase.auth
         auth.awaitInitialization()
         return auth.currentUserOrNull()?.let(::accountFor)
+    }
+
+    suspend fun accessTokenFor(expectedUserId: String): String {
+        val auth = supabase.auth
+        auth.awaitInitialization()
+        val session = auth.currentSessionOrNull()
+            ?: error("There is no authenticated Supabase session.")
+        val sessionUserId = session.user?.id
+            ?: auth.retrieveUserForCurrentSession().id
+        check(sessionUserId == expectedUserId) {
+            "The active Supabase account changed before lesson unlock sync."
+        }
+        return session.accessToken
     }
 
     suspend fun mergeGuestWithGoogleIdToken(idToken: String): SupabaseAccount =
@@ -157,10 +171,18 @@ object SupabaseGuestAuth {
                     connection.errorStream
                 })?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
                 val response = JSONObject(responseBody)
-                if (statusCode !in 200..299 || !response.optBoolean("success")) {
+                if (statusCode !in 200..299) {
+                    throw HttpStatusFailureException(
+                        statusCode = statusCode,
+                        message = response.optString("error").ifBlank {
+                            "Guest merge request failed with HTTP $statusCode."
+                        }
+                    )
+                }
+                if (!response.optBoolean("success")) {
                     throw IOException(
                         response.optString("error").ifBlank {
-                            "Guest merge request failed with HTTP $statusCode."
+                            "Guest merge request was rejected."
                         }
                     )
                 }

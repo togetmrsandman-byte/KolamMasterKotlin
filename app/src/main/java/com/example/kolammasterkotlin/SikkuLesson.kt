@@ -38,7 +38,8 @@ internal data class SikkuLesson(
         fun load(directory: File): SikkuLesson {
             val preview = decodeImage(File(directory, "preview.webp"))
             val dots = decodeImage(File(directory, "dots.webp"))
-            val tinted = decodeImage(File(directory, "tinted.webp"))
+            val tintedFile = File(directory, "tinted.webp")
+            val tinted = if (tintedFile.isFile) decodeImage(tintedFile) else preview
             if (preview.width != dots.width || preview.height != dots.height ||
                 preview.width != tinted.width || preview.height != tinted.height
             ) {

@@ -4,6 +4,7 @@ import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
 import org.json.JSONTokener
+import java.util.Locale
 
 internal enum class CatalogueAccess {
     UNRESOLVED,
@@ -41,6 +42,11 @@ internal data class LessonCatalogueEntry(
     val access: CatalogueAccess = CatalogueAccess.UNRESOLVED,
     internal val sourceJson: String
 ) {
+    val requiredRewardedAdCount: Int
+        get() = difficulty.rewardedAdCount()
+            ?: category.rewardedAdCount()
+            ?: 2
+
     val normalizedDifficulty: String?
         get() = when (category?.trim()?.lowercase()) {
             "beginner" -> "Easy"
@@ -59,6 +65,28 @@ internal data class LessonCatalogueEntry(
 
     val firstThumbnailUrl: String?
         get() = thumbnailUrls.firstOrNull()
+}
+
+private fun lessonId(category: String?, lessonName: String): String {
+    val categoryId = when (category?.trim()?.lowercase(Locale.ROOT)) {
+        "beginner", "easy" -> "easy"
+        "intermediate" -> "intermediate"
+        "expert" -> "expert"
+        else -> category?.normalizedIdPart()?.takeIf(String::isNotEmpty) ?: "unknown"
+    }
+    return "$categoryId-${lessonName.normalizedIdPart()}"
+}
+
+private fun String.normalizedIdPart(): String =
+    lowercase(Locale.ROOT)
+        .trim()
+        .replace(Regex("[^\\p{L}\\p{N}]+"), "-")
+        .trim('-')
+
+private fun String?.rewardedAdCount(): Int? = when (this?.trim()?.lowercase(Locale.ROOT)) {
+    "easy", "beginner" -> 1
+    "intermediate", "expert" -> 2
+    else -> null
 }
 
 internal fun parseCatalogueJson(json: String): List<LessonCatalogueEntry> {
@@ -85,10 +113,10 @@ internal fun parseCatalogueJson(json: String): List<LessonCatalogueEntry> {
             add(
                 LessonCatalogueEntry(
                     id = record.stringValue("id")?.takeIf(String::isNotBlank)
-                        ?: "$lessonName-$index",
+                        ?: lessonId(category, lessonName),
                     lessonName = lessonName,
                     category = category,
-                    difficulty = category?.toDifficulty(),
+                    difficulty = record.stringValue("difficulty") ?: category?.toDifficulty(),
                     kolamType = record.stringValue("kolamType"),
                     lessonType = record.stringValue("lessonType"),
                     gridType = record.stringValue("gridType"),

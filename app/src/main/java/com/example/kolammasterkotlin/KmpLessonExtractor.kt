@@ -24,9 +24,16 @@ internal object KmpLessonExtractor {
         sharedSecret: String,
         destination: File
     ): List<String> {
-        require(sharedSecret.isNotEmpty()) { "SHARED_SECRET is not configured" }
-
         val encryptedPackage = context.assets.open(assetName).use { it.readBytes() }
+        return extractPackage(encryptedPackage, sharedSecret, destination)
+    }
+
+    fun extractPackage(
+        encryptedPackage: ByteArray,
+        sharedSecret: String,
+        destination: File
+    ): List<String> {
+        require(sharedSecret.isNotEmpty()) { "SHARED_SECRET is not configured" }
         require(encryptedPackage.size >= HEADER_SIZE + IV_SIZE + GCM_TAG_SIZE) {
             "KMP package is too short"
         }

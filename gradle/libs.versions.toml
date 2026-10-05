@@ -11,6 +11,7 @@ composeBom = "2026.02.01"
 supabaseKotlin = "3.2.2"
 ktor = "3.2.2"
 playServicesAuth = "21.4.0"
+playServicesAds = "25.5.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -30,6 +31,7 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt", version.ref = "supabaseKotlin" }
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
+play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -14,6 +14,36 @@ import kotlinx.coroutines.runBlocking
 @RunWith(AndroidJUnit4::class)
 class LessonCatalogueInstrumentedTest {
     @Test
+    fun storesLessonUnlockMapSeparatelyForEachSupabaseAccount() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val repository = LessonUnlockRepository(context)
+        val localPreferences = context.getSharedPreferences(
+            "kolam-master-local-lesson-unlocks",
+            android.content.Context.MODE_PRIVATE
+        )
+        val firstUser = "unlock-test-user-a"
+        val secondUser = "unlock-test-user-b"
+
+        try {
+            repository.saveLocal(firstUser, setOf("lesson-a", "lesson-b"))
+            repository.saveLocal(secondUser, setOf("lesson-c"))
+
+            assertEquals(setOf("lesson-a", "lesson-b"), repository.loadLocal(firstUser))
+            assertEquals(setOf("lesson-c"), repository.loadLocal(secondUser))
+            val storedMap = org.json.JSONObject(
+                localPreferences.getString("user:$firstUser", null).orEmpty()
+            )
+            assertTrue(storedMap.optBoolean("lesson-a"))
+            assertTrue(storedMap.optBoolean("lesson-b"))
+        } finally {
+            localPreferences.edit()
+                .remove("user:$firstUser")
+                .remove("user:$secondUser")
+                .commit()
+        }
+    }
+
+    @Test
     fun parsesRootArrayPreservingOrderAndNormalizingDifficultyAndType() {
         val lessons = parseCatalogueJson(
             """
@@ -32,6 +62,39 @@ class LessonCatalogueInstrumentedTest {
         assertEquals("https://example.test/first.webp", lessons.first().firstThumbnailUrl)
         assertEquals("Intermediate", lessons.last().normalizedDifficulty)
         assertEquals("Rangoli", lessons.last().normalizedType)
+    }
+
+    @Test
+    fun generatesLegacyLessonIdsIndependentOfCataloguePosition() {
+        val expectedIds = mapOf(
+            "Feet 01" to "easy-feet-01",
+            "Heart 02" to "easy-heart-02",
+            "Shiva 02" to "easy-shiva-02",
+            "Flower 03" to "easy-flower-03",
+            "Peacock 02" to "easy-peacock-02"
+        )
+        val records = expectedIds.keys.joinToString(",") { lessonName ->
+            """{"lessonName":"$lessonName","category":"Beginner"}"""
+        }
+        val reorderedRecords = expectedIds.keys.reversed().joinToString(",") { lessonName ->
+            """{"lessonName":"$lessonName","category":"Beginner"}"""
+        }
+
+        val lessons = parseCatalogueJson("[$records]").associate { it.lessonName to it.id }
+        val reorderedLessons =
+            parseCatalogueJson("[$reorderedRecords]").associate { it.lessonName to it.id }
+
+        assertEquals(expectedIds, lessons)
+        assertEquals(expectedIds, reorderedLessons)
+    }
+
+    @Test
+    fun keepsExplicitCatalogueIdUnchanged() {
+        val lesson = parseCatalogueJson(
+            """[{"id":"  explicit-ID  ","lessonName":"Feet 01","category":"Beginner"}]"""
+        ).single()
+
+        assertEquals("  explicit-ID  ", lesson.id)
     }
 
     @Test

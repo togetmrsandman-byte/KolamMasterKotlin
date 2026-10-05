@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -85,6 +86,14 @@ private val drawerMuted = Color(0xFFD9D2C6)
 private val drawerSwitchOffTrack = Color(0xFF454A50)
 private val drawerSwitchOnThumb = Color(0xFFC9A86A)
 private val unreadColor = Color(0xFFFF6B6B)
+private val FolderBenefitsHorizontalPadding = 14.dp
+private val FolderBenefitsVerticalPadding = 14.dp
+private val FolderBenefitSpacing = 8.dp
+private val FolderSignedOutGroupVerticalOffset = (-120).dp
+private val FolderSignedOutGoogleButtonVerticalOffset = 0.dp
+private val FolderSignedOutBackButtonVerticalOffset = 0.dp
+private val FolderSignedOutBenefitsToGoogleSpacing = 16.dp
+private val FolderSignedOutGoogleToBackSpacing = 8.dp
 
 @Composable
 internal fun DrawerOverlay(
@@ -468,114 +477,9 @@ internal fun ProfileDestination(
     }
 }
 
-@Composable
-internal fun MyFoldersDestination(
-    onSignIn: () -> Unit,
-    onCancel: () -> Unit,
-    signedIn: Boolean = false
-) {
-    LandingArtworkFrame {
-        Spacer(Modifier.height(18.dp))
-        Text("My Folders", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Spacer(Modifier.weight(1f))
-            if (signedIn) {
-                Text("Your folders will appear here.", color = Color.White, fontSize = 18.sp)
-                Spacer(Modifier.height(18.dp))
-                Button(
-                    onClick = onCancel,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
-                ) { Text("Back") }
-            } else {
-                Column(
-                    modifier = Modifier.offset(y = FolderSignedOutGroupVerticalOffset),
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .offset(y = FolderSignedOutBenefitsVerticalOffset),
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color.White.copy(alpha = 0.08f),
-                        border = androidx.compose.foundation.BorderStroke(
-                            1.dp,
-                            Color.White.copy(alpha = 0.18f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(
-                                horizontal = FolderBenefitsHorizontalPadding,
-                                vertical = FolderBenefitsVerticalPadding
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(FolderBenefitSpacing)
-                        ) {
-                            Text(
-                                "Sign in to create folders",
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            FolderBenefit("Bookmark your favorite kolams to your folders")
-                            FolderBenefit("Organize your saved kolams")
-                            FolderBenefit("Keep your favorite lessons easy to find")
-                        }
-                    }
-                    Spacer(Modifier.height(FolderSignedOutBenefitsToGoogleSpacing))
-                    Button(
-                        onClick = onSignIn,
-                        enabled = false,
-                        modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset)
-                    ) {
-                        Text("Sign in with Google")
-                    }
-                    Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
-                    Button(
-                        onClick = onCancel,
-                        modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
-                    ) { Text("Back") }
-                }
-            }
-            Spacer(Modifier.weight(1f))
-        }
-    }
-}
-
-@Composable
-private fun FolderBenefit(text: String) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.Top
-    ) {
-        Text("•", color = Color(0xFFC9A86A), fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        Spacer(Modifier.size(8.dp))
-        Text(
-            text = text,
-            color = Color.White.copy(alpha = 0.9f),
-            fontSize = 14.sp,
-            lineHeight = 20.sp
-        )
-    }
-}
-
 private val ProfileLogoSize = 270.dp
 private val ProfileLogoTopPadding = 18.dp
 private val ProfileLogoVerticalOffset = 0.dp
-private val FolderBenefitsHorizontalPadding = 14.dp
-private val FolderBenefitsVerticalPadding = 14.dp
-private val FolderBenefitSpacing = 8.dp
-private val FolderSignedOutGroupVerticalOffset = (-120).dp
-private val FolderSignedOutBenefitsVerticalOffset = 0.dp
-private val FolderSignedOutGoogleButtonVerticalOffset = 0.dp
-private val FolderSignedOutBackButtonVerticalOffset = 0.dp
-private val FolderSignedOutBenefitsToGoogleSpacing = 16.dp
-private val FolderSignedOutGoogleToBackSpacing = 8.dp
 
 @Composable
 internal fun ContactUsDestination(
@@ -597,6 +501,88 @@ internal fun ContactUsDestination(
                 onSignIn = onSignIn
             )
         }
+    }
+}
+
+@Composable
+internal fun ColumnScope.MyFoldersGuestContent(
+    onSignIn: () -> Unit,
+    onBack: () -> Unit,
+    isSignInProcessing: Boolean
+) {
+    Column(
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(Modifier.weight(1f))
+        Column(
+            modifier = Modifier.offset(y = FolderSignedOutGroupVerticalOffset),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset(y = 0.dp),
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.08f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Color.White.copy(alpha = 0.18f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(
+                        horizontal = FolderBenefitsHorizontalPadding,
+                        vertical = FolderBenefitsVerticalPadding
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(FolderBenefitSpacing)
+                ) {
+                    Text(
+                        "Sign in to create folders",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    FolderBenefit("Bookmark your favorite kolams to your folders")
+                    FolderBenefit("Organize your saved kolams")
+                    FolderBenefit("Keep your favorite lessons easy to find")
+                }
+            }
+            Spacer(Modifier.height(FolderSignedOutBenefitsToGoogleSpacing))
+            Button(
+                onClick = onSignIn,
+                enabled = !isSignInProcessing,
+                modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+            ) { Text("Sign in with Google") }
+            Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
+            Button(
+                onClick = onBack,
+                modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+            ) { Text("Back") }
+        }
+        Spacer(Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun FolderBenefit(text: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        Text("•", color = Color(0xFFC9A86A), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.size(8.dp))
+        Text(
+            text = text,
+            color = Color.White.copy(alpha = 0.9f),
+            fontSize = 14.sp,
+            lineHeight = 20.sp
+        )
     }
 }
 

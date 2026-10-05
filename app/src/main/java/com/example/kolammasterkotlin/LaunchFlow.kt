@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -511,6 +512,8 @@ internal fun LandingPageFrame(
 @Composable
 internal fun LandingArtworkFrame(
     showBrandArtwork: Boolean = true,
+    showDecorations: Boolean = true,
+    horizontalPadding: Dp = 58.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Box(
@@ -518,18 +521,20 @@ internal fun LandingArtworkFrame(
             .fillMaxSize()
             .background(KolamBackground)
     ) {
-        LandingDecoration(
-            Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
-            mirrored = false
-        )
-        LandingDecoration(
-            Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
-            mirrored = true
-        )
+        if (showDecorations) {
+            LandingDecoration(
+                Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
+                mirrored = false
+            )
+            LandingDecoration(
+                Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
+                mirrored = true
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 58.dp),
+                .padding(horizontal = horizontalPadding),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             if (showBrandArtwork) {
