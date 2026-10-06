@@ -59,6 +59,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -438,9 +440,13 @@ private fun RevealingBorder(width: Float, image: androidx.compose.ui.graphics.Im
 @Composable
 internal fun LandingScreen(
     onDestination: (LandingDestination) -> Unit,
-    onMenuAction: (DrawerAction) -> Unit
+    onMenuAction: (DrawerAction) -> Unit,
+    unreadSupport: Boolean = false
 ) {
-    LandingPageFrame(onMenuAction = onMenuAction) {
+    LandingPageFrame(
+        onMenuAction = onMenuAction,
+        unreadSupport = unreadSupport
+    ) {
         Spacer(Modifier.height(18.dp))
         LandingBubbles(
             modifier = Modifier
@@ -455,6 +461,7 @@ internal fun LandingScreen(
 @Composable
 internal fun LandingPageFrame(
     onMenuAction: (DrawerAction) -> Unit,
+    unreadSupport: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
@@ -467,7 +474,7 @@ internal fun LandingPageFrame(
             .background(KolamBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            LandingHeader { drawerOpen = true }
+                LandingHeader(unreadSupport) { drawerOpen = true }
             Box(modifier = Modifier.fillMaxSize()) {
                 LandingDecoration(
                     Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
@@ -504,7 +511,8 @@ internal fun LandingPageFrame(
                     delay(260)
                     onMenuAction(action)
                 }
-            }
+            },
+            unreadContactUs = unreadSupport
         )
     }
 }
@@ -559,7 +567,8 @@ internal fun AppNavigationHeader(
     onBack: () -> Unit,
     onHome: () -> Unit,
     onOpenDrawer: () -> Unit,
-    showNavigationControls: Boolean = true
+    showNavigationControls: Boolean = true,
+    unreadSupport: Boolean = false
 ) {
     Box(
         modifier = Modifier
@@ -594,6 +603,7 @@ internal fun AppNavigationHeader(
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .size(width = 56.dp, height = 64.dp)
+                    .semantics { contentDescription = "Open navigation menu" }
                     .clickable(onClick = onOpenDrawer),
                 contentAlignment = Alignment.Center
             ) {
@@ -607,13 +617,20 @@ internal fun AppNavigationHeader(
                         )
                     }
                 }
+                if (unreadSupport) {
+                    SupportUnreadIndicator(
+                        Modifier
+                            .align(Alignment.Center)
+                            .offset(x = 13.dp, y = (-8).dp)
+                    )
+                }
             }
         }
     }
 }
 
 @Composable
-private fun LandingHeader(onOpenDrawer: () -> Unit) {
+private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -631,6 +648,7 @@ private fun LandingHeader(onOpenDrawer: () -> Unit) {
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .size(width = 56.dp, height = 64.dp)
+                .semantics { contentDescription = "Open navigation menu" }
                 .clickable(onClick = onOpenDrawer),
             contentAlignment = Alignment.Center
         ) {
@@ -643,6 +661,13 @@ private fun LandingHeader(onOpenDrawer: () -> Unit) {
                             .background(Color.White)
                     )
                 }
+            }
+            if (unreadSupport) {
+                SupportUnreadIndicator(
+                    Modifier
+                        .align(Alignment.Center)
+                        .offset(x = 13.dp, y = (-8).dp)
+                )
             }
         }
     }

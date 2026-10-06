@@ -1,7 +1,11 @@
 package com.kolammaster.app
 
+import android.Manifest
 import android.app.Activity
+import android.content.Intent
 import android.content.pm.ActivityInfo
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -17,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -29,14 +34,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import com.kolammaster.app.ui.theme.KolamMasterKotlinTheme
 import com.kolammaster.app.auth.SupabaseAccount
 import com.kolammaster.app.auth.SupabaseGuestAuth
+import com.kolammaster.app.notifications.PushTokenRepository
+import com.kolammaster.app.notifications.SupportForegroundAlertDialog
+import com.kolammaster.app.notifications.SupportNotificationChannel
+import com.kolammaster.app.notifications.SupportUnreadStore
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.ads.MobileAds
+import com.google.firebase.messaging.FirebaseMessaging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -53,6 +64,10 @@ import javax.net.ssl.HttpsURLConnection
 
 private const val PREFERENCES_NAME = "kolam_master_preferences"
 private const val LANGUAGE_KEY = "language"
+private const val NOTIFICATIONS_PERMISSION_REQUESTED_KEY =
+    "notifications_permission_requested"
+private const val ONBOARDING_PERMISSION_PENDING_STATE_KEY =
+    "onboarding_permission_pending"
 
 private sealed interface AppScreen {
     data object ChooseLanguage : AppScreen
@@ -73,6 +88,38 @@ private sealed interface AppScreen {
     data class Failed(val message: String) : AppScreen
 }
 
+internal data class ContactSupportNotification(
+    val conversationId: String?,
+    val messageId: String?
+)
+
+internal fun shouldRequestNotificationPermission(
+    sdkInt: Int,
+    permissionGranted: Boolean,
+    permissionPreviouslyRequested: Boolean
+): Boolean =
+    sdkInt >= 33 &&
+        !permissionGranted &&
+        !permissionPreviouslyRequested
+
+internal class OnboardingPermissionFlow(
+    waitingForPermissionResult: Boolean = false
+) {
+    var isWaitingForPermissionResult: Boolean = waitingForPermissionResult
+        private set
+
+    fun completeSetup(permissionRequestLaunched: Boolean): Boolean {
+        isWaitingForPermissionResult = permissionRequestLaunched
+        return !permissionRequestLaunched
+    }
+
+    fun onPermissionRequestFinished(): Boolean {
+        if (!isWaitingForPermissionResult) return false
+        isWaitingForPermissionResult = false
+        return true
+    }
+}
+
 class MainActivity : ComponentActivity() {
     private var screenState by mutableStateOf<AppScreen>(AppScreen.ChooseLanguage)
     private var activeLanguage by mutableStateOf("English")
@@ -89,6 +136,18 @@ class MainActivity : ComponentActivity() {
     private var unlockRestoreGeneration = 0
     private var googleChooserTimeoutJob: Job? = null
     private var googleSignInAwaitingResult = false
+    private var onboardingPermissionFlow = OnboardingPermissionFlow()
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) {
+            if (onboardingPermissionFlow.onPermissionRequestFinished()) {
+                screenState = AppScreen.Opening
+            }
+        }
+    private var pendingContactSupportNotification by
+        mutableStateOf<ContactSupportNotification?>(null)
+    private var pendingAnnouncementNotification by mutableStateOf(false)
+    private var contactForegroundRefreshKey by mutableIntStateOf(0)
+    private var supportMessageVersion by mutableStateOf(0L)
 
     private val googleSignInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -136,6 +195,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        supportMessageVersion = SupportUnreadStore.messageVersion(this)
+        onboardingPermissionFlow = OnboardingPermissionFlow(
+            savedInstanceState?.getBoolean(ONBOARDING_PERMISSION_PENDING_STATE_KEY) == true
+        )
+        pendingContactSupportNotification = intent.toContactSupportNotification()
+        pendingAnnouncementNotification = intent.isAnnouncementNotification()
+        SupportNotificationChannel.create(this)
         MobileAds.initialize(this)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         enableEdgeToEdge()
@@ -149,7 +215,11 @@ class MainActivity : ComponentActivity() {
             ?.takeIf { it in supportedLanguageNames }
         activeLanguage = savedLanguage ?: "English"
         lessonUnlockRepository = LessonUnlockRepository(this)
-        screenState = if (savedLanguage == null) AppScreen.ChooseLanguage else AppScreen.Opening
+        screenState = when {
+            onboardingPermissionFlow.isWaitingForPermissionResult -> AppScreen.SignInInvitation
+            savedLanguage == null -> AppScreen.ChooseLanguage
+            else -> AppScreen.Opening
+        }
         googleSignInClient = GoogleSignIn.getClient(
             this,
             GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
@@ -165,6 +235,7 @@ class MainActivity : ComponentActivity() {
                 }
                 accountState = SupabaseGuestAuth.currentAccount()
                 accountState?.let(::restoreLessonUnlocks)
+                accountState?.let(::registerFcmToken)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -204,12 +275,48 @@ class MainActivity : ComponentActivity() {
                         screenState = AppScreen.SignInInvitation
                     },
                     onLanguageBack = { finish() },
-                    onLoadLesson = ::loadLesson
+                    onLoadLesson = ::loadLesson,
+                    supportNotification = pendingContactSupportNotification,
+                    onSupportNotificationHandled = {
+                        pendingContactSupportNotification = null
+                    },
+                    onForegroundSupportAlertOpen = { alert ->
+                        pendingContactSupportNotification = ContactSupportNotification(
+                            conversationId = alert.conversationId,
+                            messageId = alert.messageId
+                        )
+                    },
+                    announcementNotification = pendingAnnouncementNotification,
+                    onAnnouncementNotificationHandled = {
+                        pendingAnnouncementNotification = false
+                    },
+                    contactForegroundRefreshKey = contactForegroundRefreshKey,
+                    supportMessageVersion = supportMessageVersion
                 )
             }
         }
 
         refreshLessonCatalogue()
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        outState.putBoolean(
+            ONBOARDING_PERMISSION_PENDING_STATE_KEY,
+            onboardingPermissionFlow.isWaitingForPermissionResult
+        )
+        super.onSaveInstanceState(outState)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingContactSupportNotification = intent.toContactSupportNotification()
+        pendingAnnouncementNotification = intent.isAnnouncementNotification()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (screenState == AppScreen.ContactUs) contactForegroundRefreshKey++
     }
 
     private fun beginGoogleSignIn() {
@@ -227,7 +334,7 @@ class MainActivity : ComponentActivity() {
                     accountState = currentAccount
                     restoreLessonUnlocks(currentAccount)
                     if (screenState == AppScreen.SignInInvitation) {
-                        screenState = AppScreen.Opening
+                        continueOnboardingAfterPermission()
                     }
                     isAuthProcessing = false
                     authLoadingMessage = null
@@ -280,9 +387,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 accountState = newAccount
+                registerFcmToken(newAccount)
                 restoreLessonUnlocks(newAccount)
                 if (screenState == AppScreen.SignInInvitation) {
-                    screenState = AppScreen.Opening
+                    continueOnboardingAfterPermission()
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -307,8 +415,8 @@ class MainActivity : ComponentActivity() {
                     }
                     accountState = SupabaseGuestAuth.currentAccount()
                     accountState?.let(::restoreLessonUnlocks)
-                    screenState = AppScreen.Opening
                 }
+                continueOnboardingAfterPermission()
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
@@ -319,6 +427,31 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun continueOnboardingAfterPermission() {
+        val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
+        val permissionGranted =
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+        val shouldRequest = shouldRequestNotificationPermission(
+                sdkInt = Build.VERSION.SDK_INT,
+                permissionGranted = permissionGranted,
+                permissionPreviouslyRequested = preferences.getBoolean(
+                    NOTIFICATIONS_PERMISSION_REQUESTED_KEY,
+                    false
+                )
+            )
+        if (onboardingPermissionFlow.completeSetup(shouldRequest)) {
+            screenState = AppScreen.Opening
+            return
+        }
+
+        preferences.edit()
+            .putBoolean(NOTIFICATIONS_PERMISSION_REQUESTED_KEY, true)
+            .commit()
+        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
     private fun signOutToGuest() {
         if (isAuthProcessing) return
         isAuthProcessing = true
@@ -327,6 +460,15 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 googleSignInClient.signOut()
+                try {
+                    runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
+                        PushTokenRepository(applicationContext).unregisterCurrentUserToken()
+                    }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.e("PushNotifications", "Could not unregister the current FCM token.", exception)
+                }
                 runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     SupabaseGuestAuth.signOutAndCreateGuest()
                     accountState = SupabaseGuestAuth.currentAccount()
@@ -427,6 +569,28 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private fun registerFcmToken(account: SupabaseAccount) {
+        if (account.isGuest) return
+        FirebaseMessaging.getInstance().token
+            .addOnSuccessListener { token ->
+                lifecycleScope.launch {
+                    try {
+                        val current = SupabaseGuestAuth.currentAccount()
+                        if (current != null && !current.isGuest && current.id == account.id) {
+                            PushTokenRepository(applicationContext).registerCurrentToken(token)
+                        }
+                    } catch (exception: CancellationException) {
+                        throw exception
+                    } catch (exception: Exception) {
+                        Log.e("PushNotifications", "Could not register the FCM token.", exception)
+                    }
+                }
+            }
+            .addOnFailureListener { exception ->
+                Log.e("PushNotifications", "Could not obtain an FCM registration token.", exception)
+            }
     }
 
     private fun recordLessonUnlock(lessonId: String) {
@@ -676,6 +840,29 @@ private fun ByteArray.sha256Hex(): String =
         .digest(this)
         .joinToString("") { byte -> "%02x".format(byte) }
 
+internal fun Intent.toContactSupportNotification(): ContactSupportNotification? {
+    if (!getStringExtra("type").equals("support_message", ignoreCase = true) ||
+        !getStringExtra("sender").equals("ADMIN", ignoreCase = true)
+    ) return null
+    val conversationId = sequenceOf(
+        getStringExtra("conversationId"),
+        getStringExtra("conversation_id")
+    ).firstOrNull { !it.isNullOrBlank() }
+    val messageId = sequenceOf(
+        getStringExtra("messageId"),
+        getStringExtra("message_id"),
+        getStringExtra("id")
+    ).firstOrNull { !it.isNullOrBlank() }
+    return ContactSupportNotification(
+        conversationId = conversationId?.takeIf(String::isNotBlank),
+        messageId = messageId?.takeIf(String::isNotBlank)
+    )
+}
+
+private fun Intent.isAnnouncementNotification(): Boolean =
+    getStringExtra("type").equals("announcement", ignoreCase = true) ||
+        getStringExtra("type").equals("announcement_message", ignoreCase = true)
+
 @Composable
 private fun KolamMasterApp(
     screen: AppScreen,
@@ -699,24 +886,191 @@ private fun KolamMasterApp(
     onLanguageChange: (String) -> Unit,
     onLanguageSelected: (String) -> Unit,
     onLanguageBack: () -> Unit,
-    onLoadLesson: (LessonCatalogueEntry) -> Unit
+    onLoadLesson: (LessonCatalogueEntry) -> Unit,
+    supportNotification: ContactSupportNotification?,
+    onSupportNotificationHandled: () -> Unit,
+    onForegroundSupportAlertOpen: (SupportUnreadStore.ForegroundAlert) -> Unit,
+    announcementNotification: Boolean,
+    onAnnouncementNotificationHandled: () -> Unit,
+    contactForegroundRefreshKey: Int,
+    supportMessageVersion: Long
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     var storeDialog by remember { mutableStateOf<String?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var settingsExpanded by remember { mutableStateOf(false) }
+    var contactConversations by remember {
+        mutableStateOf<List<ContactConversation>>(emptyList())
+    }
+    var isContactLoading by remember { mutableStateOf(false) }
+    var contactLoadError by remember { mutableStateOf<String?>(null) }
+    var contactSignInRequired by remember { mutableStateOf(false) }
+    var contactRefreshKey by remember { mutableIntStateOf(0) }
+    var isNewContactConversation by remember { mutableStateOf(false) }
+    var selectedContactConversationId by remember { mutableStateOf<String?>(null) }
+    var contactDetailRefreshKey by remember { mutableIntStateOf(0) }
+    var observedSupportMessageVersion by remember {
+        mutableStateOf(supportMessageVersion)
+    }
+    val contactRepository = remember { ContactRepository() }
+    val contactAccountId = account?.takeUnless { it.isGuest }?.id
+    LaunchedEffect(
+        screen,
+        contactAccountId,
+        contactRefreshKey,
+        contactForegroundRefreshKey,
+        observedSupportMessageVersion
+    ) {
+        if (screen != AppScreen.ContactUs || contactAccountId == null) {
+            if (contactAccountId == null) {
+                contactConversations = emptyList()
+                contactLoadError = null
+                contactSignInRequired = false
+            }
+            isContactLoading = false
+            return@LaunchedEffect
+        }
+
+        isContactLoading = true
+        contactLoadError = null
+        contactSignInRequired = false
+        try {
+            contactConversations = contactRepository.getCurrentUserContactConversations()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            contactConversations = emptyList()
+            if (exception is ContactSignInRequiredException) {
+                contactSignInRequired = true
+            } else {
+                contactLoadError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    NetworkErrors.DISPLAY_TEXT
+                } else {
+                    "Could not load conversations. Please try again."
+                }
+            }
+        } finally {
+            isContactLoading = false
+        }
+    }
+    var unreadContactConversationIds by remember {
+        mutableStateOf(SupportUnreadStore.unreadConversationIds(context))
+    }
+    var hasUnreadSupportNotifications by remember {
+        mutableStateOf(SupportUnreadStore.hasUnread(context))
+    }
+    var foregroundSupportAlert by remember {
+        mutableStateOf(SupportUnreadStore.foregroundAlert(context))
+    }
+    DisposableEffect(context, screen, selectedContactConversationId) {
+        val preferences = context.getSharedPreferences(
+            "kolam_master_support_notifications",
+            android.content.Context.MODE_PRIVATE
+        )
+        val listener =
+            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            val updatedUnreadConversationIds =
+                SupportUnreadStore.unreadConversationIds(context)
+            unreadContactConversationIds = updatedUnreadConversationIds
+            val updatedMessageVersion = SupportUnreadStore.messageVersion(context)
+            observedSupportMessageVersion = updatedMessageVersion
+            hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
+            foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
+            val activeConversationId = selectedContactConversationId
+            if (screen == AppScreen.ContactUs &&
+                activeConversationId != null &&
+                key == SupportUnreadStore.conversationRefreshPreferenceKey(
+                    activeConversationId
+                )
+            ) {
+                contactDetailRefreshKey++
+            }
+        }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        unreadContactConversationIds = SupportUnreadStore.unreadConversationIds(context)
+        observedSupportMessageVersion = SupportUnreadStore.messageVersion(context)
+        hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
+        foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    var supportNotificationError by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(supportNotification, contactAccountId) {
+        val reference = supportNotification ?: return@LaunchedEffect
+        if (contactAccountId == null) {
+            onNavigate(AppScreen.ContactUs)
+            return@LaunchedEffect
+        }
+        try {
+            val conversationId = reference.conversationId ?: reference.messageId?.let {
+                contactRepository.getContactConversationIdForMessage(it)
+            }
+            if (conversationId == null) {
+                onNavigate(AppScreen.ContactUs)
+                onSupportNotificationHandled()
+                return@LaunchedEffect
+            }
+            if (reference.conversationId != null) {
+                contactRepository.getContactConversation(conversationId)
+            }
+            selectedContactConversationId = conversationId
+            contactDetailRefreshKey++
+            SupportUnreadStore.clearConversation(context, conversationId, reference.messageId)
+            unreadContactConversationIds =
+                SupportUnreadStore.unreadConversationIds(context)
+            isNewContactConversation = false
+            onNavigate(AppScreen.ContactUs)
+            onSupportNotificationHandled()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            supportNotificationError = if (NetworkErrors.isNetworkFailure(exception)) {
+                NetworkErrors.MESSAGE
+            } else {
+                "This support conversation could not be opened."
+            }
+            onNavigate(AppScreen.ContactUs)
+            onSupportNotificationHandled()
+        }
+    }
+    LaunchedEffect(announcementNotification) {
+        if (announcementNotification) {
+            onNavigate(AppScreen.Announcements)
+            onAnnouncementNotificationHandled()
+        }
+    }
+    LaunchedEffect(screen, selectedContactConversationId) {
+        SupportUnreadStore.setActiveConversation(
+            selectedContactConversationId.takeIf { screen == AppScreen.ContactUs }
+        )
+    }
+    LaunchedEffect(screen, contactAccountId) {
+        if (contactAccountId == null) {
+            isNewContactConversation = false
+            selectedContactConversationId = null
+        } else if (screen != AppScreen.ContactUs) {
+            isNewContactConversation = false
+        }
+    }
     val myFoldersSelectedFolderId = remember(account?.takeUnless { it.isGuest }?.id) {
         mutableStateOf<String?>(null)
     }
     LaunchedEffect(screen) {
         if (screen != AppScreen.MyKolams) myFoldersSelectedFolderId.value = null
     }
-    val handleScreenBack = {
-        if (screen == AppScreen.MyKolams && myFoldersSelectedFolderId.value != null) {
-            myFoldersSelectedFolderId.value = null
-        } else {
-            onGoBack()
+    val handleScreenBack: () -> Unit = {
+        when {
+            screen == AppScreen.ContactUs && selectedContactConversationId != null -> {
+                selectedContactConversationId = null
+                contactRefreshKey++
+            }
+            screen == AppScreen.ContactUs && isNewContactConversation -> {
+                isNewContactConversation = false
+            }
+            screen == AppScreen.MyKolams && myFoldersSelectedFolderId.value != null -> {
+                myFoldersSelectedFolderId.value = null
+            }
+            else -> onGoBack()
         }
     }
     val rootAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
@@ -726,7 +1080,12 @@ private fun KolamMasterApp(
             DrawerAction.Profile -> onNavigate(AppScreen.Profile)
             DrawerAction.MyFolders -> onNavigate(AppScreen.MyKolams)
             DrawerAction.Language -> onNavigate(AppScreen.Language)
-            DrawerAction.ContactUs -> onNavigate(AppScreen.ContactUs)
+            DrawerAction.ContactUs -> {
+                selectedContactConversationId = null
+                isNewContactConversation = false
+                contactRefreshKey++
+                onNavigate(AppScreen.ContactUs)
+            }
             DrawerAction.Announcements -> onNavigate(AppScreen.Announcements)
             DrawerAction.UpdateApp -> openStoreFlow(context, { storeDialog = it }, "Update App")
             DrawerAction.RateApp -> openStoreFlow(context, { storeDialog = it }, "Rate App")
@@ -763,7 +1122,8 @@ private fun KolamMasterApp(
                         onHome = onHome,
                         onOpenDrawer = { drawerOpen = true },
                         showNavigationControls = screen != AppScreen.ChooseLanguage &&
-                            screen != AppScreen.SignInInvitation
+                            screen != AppScreen.SignInInvitation,
+                        unreadSupport = hasUnreadSupportNotifications
                     )
                 }
                 Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -786,7 +1146,46 @@ private fun KolamMasterApp(
                         onLanguageSelected = onLanguageSelected,
                         onLanguageBack = onLanguageBack,
                         onLoadLesson = onLoadLesson,
+                        contactForegroundRefreshKey = contactForegroundRefreshKey,
+                        supportMessageVersion = supportMessageVersion,
+                        contactDetailRefreshKey = contactDetailRefreshKey,
+                        unreadSupport = hasUnreadSupportNotifications,
                         selectedMyFolderId = myFoldersSelectedFolderId,
+                        contactConversations = contactConversations,
+                        isContactLoading = isContactLoading,
+                        contactLoadError = contactLoadError,
+                        isContactSignedIn = contactAccountId != null &&
+                            !contactSignInRequired,
+                        onRetryContactLoad = { contactRefreshKey++ },
+                        isNewContactConversation = isNewContactConversation,
+                        selectedContactConversationId = selectedContactConversationId,
+                        onContactConversationSelected = {
+                            selectedContactConversationId = it
+                            SupportUnreadStore.clearConversation(context, it)
+                            unreadContactConversationIds =
+                                SupportUnreadStore.unreadConversationIds(context)
+                        },
+                        onLoadContactMessages = contactRepository::getContactMessages,
+                        onLoadContactConversation = contactRepository::getContactConversation,
+                        onSendContactMessage = contactRepository::sendContactMessage,
+                        onUploadContactImage = contactRepository::uploadContactImage,
+                        unreadContactConversationIds = unreadContactConversationIds,
+                        onNewContactConversation = {
+                            if (contactAccountId != null) {
+                                isNewContactConversation = true
+                            }
+                        },
+                        onCreateContactConversation = { phone, subject, initialMessage ->
+                            createContactConversationForAccount(
+                                repository = contactRepository,
+                                account = account,
+                                subject = subject.trim(),
+                                initialMessage = initialMessage.trim(),
+                                phone = phone.trim()
+                            )
+                            isNewContactConversation = false
+                            contactRefreshKey++
+                        },
                         onBegin = {
                             scope.launch {
                                 rootAlpha.animateTo(
@@ -823,7 +1222,8 @@ private fun KolamMasterApp(
                             kotlinx.coroutines.delay(260)
                             onMenuAction(action)
                         }
-                    }
+                    },
+                    unreadContactUs = hasUnreadSupportNotifications
                 )
             }
         }
@@ -834,6 +1234,32 @@ private fun KolamMasterApp(
         message = "Connect to the internet to continue.",
         onDismiss = { storeDialog = null }
     )
+    supportNotificationError?.let { message ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { supportNotificationError = null },
+            title = { androidx.compose.material3.Text("Contact Us") },
+            text = { androidx.compose.material3.Text(message) },
+            confirmButton = {
+                androidx.compose.material3.TextButton(
+                    onClick = { supportNotificationError = null }
+                ) { androidx.compose.material3.Text("OK") }
+            }
+        )
+    }
+    foregroundSupportAlert?.let { alert ->
+        SupportForegroundAlertDialog(
+            alert = alert,
+            onOpen = {
+                SupportUnreadStore.dismissForegroundAlert(context, alert.messageId)
+                foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
+                onForegroundSupportAlertOpen(alert)
+            },
+            onLater = {
+                SupportUnreadStore.dismissForegroundAlert(context, alert.messageId)
+                foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
+            }
+        )
+    }
     AuthLoadingOverlay(message = authLoadingMessage)
     authError?.let { message ->
         androidx.compose.material3.AlertDialog(
@@ -856,6 +1282,7 @@ private fun KolamMasterApp(
         when (screen) {
             AppScreen.SignInInvitation -> onScreenChange(AppScreen.ChooseLanguage)
             AppScreen.MyKolams -> handleScreenBack()
+            AppScreen.ContactUs -> handleScreenBack()
             else -> onGoBack()
         }
     }
@@ -881,7 +1308,26 @@ private fun AppScreenContent(
     onLanguageSelected: (String) -> Unit,
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
+    contactForegroundRefreshKey: Int,
+    supportMessageVersion: Long,
+    contactDetailRefreshKey: Int,
+    unreadSupport: Boolean,
     selectedMyFolderId: androidx.compose.runtime.MutableState<String?>,
+    contactConversations: List<ContactConversation>,
+    isContactLoading: Boolean,
+    contactLoadError: String?,
+    isContactSignedIn: Boolean,
+    onRetryContactLoad: () -> Unit,
+    isNewContactConversation: Boolean,
+    selectedContactConversationId: String?,
+    onContactConversationSelected: (String) -> Unit,
+    onLoadContactMessages: suspend (String) -> List<ContactMessage>,
+    onLoadContactConversation: suspend (String) -> ContactConversation,
+    onSendContactMessage: suspend (String, String, String?) -> ContactMessage,
+    onUploadContactImage: suspend (ByteArray) -> String,
+    unreadContactConversationIds: Set<String>,
+    onNewContactConversation: () -> Unit,
+    onCreateContactConversation: suspend (String, String, String) -> Unit,
     onBegin: () -> Unit,
     onMenuAction: (DrawerAction) -> Unit
 ) {
@@ -904,7 +1350,8 @@ private fun AppScreenContent(
                     }
                 )
             },
-            onMenuAction = onMenuAction
+            onMenuAction = onMenuAction,
+            unreadSupport = unreadSupport
         )
         AppScreen.Browse -> BrowseLessonScreen(
             catalogue = catalogue,
@@ -945,11 +1392,36 @@ private fun AppScreenContent(
             onSelect = onLanguageChange,
             onBack = onGoBack
         )
-        AppScreen.ContactUs -> ContactUsDestination(
-            onSignIn = {},
-            onBack = onGoBack,
-            signedIn = false
-        )
+        AppScreen.ContactUs -> {
+            if (isContactSignedIn && selectedContactConversationId != null) {
+                ContactConversationDetailDestination(
+                    conversationId = selectedContactConversationId,
+                    onLoadConversation = onLoadContactConversation,
+                    onLoadMessages = onLoadContactMessages,
+                    onSendMessage = onSendContactMessage,
+                    onUploadImage = onUploadContactImage,
+                    foregroundRefreshKey = contactForegroundRefreshKey,
+                    externalRefreshKey = contactDetailRefreshKey
+                )
+            } else if (isContactSignedIn && isNewContactConversation) {
+                ContactNewConversationDestination(
+                    onCreate = onCreateContactConversation
+                )
+            } else {
+                ContactUsDestination(
+                    onSignIn = onGoogleSignIn,
+                    onBack = onGoBack,
+                    signedIn = isContactSignedIn,
+                    conversations = contactConversations,
+                    isLoading = isContactLoading,
+                    errorMessage = contactLoadError,
+                    onRetry = onRetryContactLoad,
+                    onNewConversation = onNewContactConversation,
+                    onConversationSelected = onContactConversationSelected,
+                    unreadConversationIds = unreadContactConversationIds
+                )
+            }
+        }
         AppScreen.Announcements -> AnnouncementsDestination(onGoBack)
         AppScreen.Community -> PlaceholderDestination("Community", onGoBack)
         AppScreen.History -> PlaceholderDestination("Kolam History", onGoBack)

@@ -12,6 +12,8 @@ supabaseKotlin = "3.2.2"
 ktor = "3.2.2"
 playServicesAuth = "21.4.0"
 playServicesAds = "25.5.0"
+googleServices = "4.5.0"
+firebaseBom = "34.19.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -32,7 +34,10 @@ supabase-auth = { group = "io.github.jan-tennert.supabase", name = "auth-kt", ve
 ktor-client-android = { group = "io.ktor", name = "ktor-client-android", version.ref = "ktor" }
 play-services-auth = { group = "com.google.android.gms", name = "play-services-auth", version.ref = "playServicesAuth" }
 play-services-ads = { group = "com.google.android.gms", name = "play-services-ads", version.ref = "playServicesAds" }
+firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
+firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+google-services = { id = "com.google.gms.google-services", version.ref = "googleServices" }

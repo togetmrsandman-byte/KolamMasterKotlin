@@ -8,7 +8,10 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.content.pm.PackageManager
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -32,19 +35,29 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -61,12 +74,21 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import androidx.core.app.NotificationManagerCompat
+import com.kolammaster.app.notifications.SupportUnreadStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -94,6 +116,16 @@ private val FolderSignedOutGoogleButtonVerticalOffset = 0.dp
 private val FolderSignedOutBackButtonVerticalOffset = 0.dp
 private val FolderSignedOutBenefitsToGoogleSpacing = 16.dp
 private val FolderSignedOutGoogleToBackSpacing = 8.dp
+
+@Composable
+internal fun SupportUnreadIndicator(modifier: Modifier = Modifier) {
+    Box(
+        modifier
+            .size(8.dp)
+            .semantics { contentDescription = "Unread Support messages" }
+            .background(unreadColor, androidx.compose.foundation.shape.CircleShape)
+    )
+}
 
 @Composable
 internal fun DrawerOverlay(
@@ -213,11 +245,7 @@ private fun DrawerMenuRow(
             fontWeight = FontWeight.SemiBold
         )
         if (unread) {
-            Box(
-                Modifier
-                    .size(8.dp)
-                    .background(unreadColor, androidx.compose.foundation.shape.CircleShape)
-            )
+            SupportUnreadIndicator()
         }
     }
 }
@@ -277,14 +305,26 @@ private fun Chevron(up: Boolean) {
 @Composable
 private fun SettingsNotifications() {
     val context = LocalContext.current
-    val permissionGranted = remember {
-        Build.VERSION.SDK_INT < 33 ||
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.POST_NOTIFICATIONS
-            ) == PackageManager.PERMISSION_GRANTED
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var permissionGranted by remember { mutableStateOf(notificationsAllowed(context)) }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        permissionGranted = granted && NotificationManagerCompat.from(context).areNotificationsEnabled()
+        context.getSharedPreferences("kolam_master_preferences", android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean("notifications_permission_requested", true)
+            .apply()
     }
-    var contactNotifications by remember { mutableStateOf(false) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                permissionGranted = notificationsAllowed(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = "Notifications",
@@ -307,16 +347,36 @@ private fun SettingsNotifications() {
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = if (permissionGranted && contactNotifications) "ON" else "OFF",
+                text = if (permissionGranted) "ON" else "OFF",
                 modifier = Modifier.padding(end = 6.dp),
                 color = Color.White,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
             Switch(
-                checked = permissionGranted && contactNotifications,
-                onCheckedChange = { contactNotifications = it },
-                enabled = permissionGranted,
+                checked = permissionGranted,
+                onCheckedChange = { enabled ->
+                    if (enabled && Build.VERSION.SDK_INT >= 33 && !permissionGranted) {
+                        val preferences = context.getSharedPreferences(
+                            "kolam_master_preferences",
+                            android.content.Context.MODE_PRIVATE
+                        )
+                        if (preferences.getBoolean("notifications_permission_requested", false)) {
+                            context.startActivity(
+                                Intent(
+                                    Settings.ACTION_APP_NOTIFICATION_SETTINGS
+                                ).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                            )
+                        } else {
+                            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    } else if (!enabled) {
+                        context.startActivity(
+                            Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                                .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                        )
+                    }
+                },
                 colors = SwitchDefaults.colors(
                     uncheckedTrackColor = drawerSwitchOffTrack,
                     checkedTrackColor = Color(0xFF8F6F38),
@@ -327,6 +387,14 @@ private fun SettingsNotifications() {
         }
     }
 }
+
+private fun notificationsAllowed(context: android.content.Context): Boolean =
+    (Build.VERSION.SDK_INT < 33 ||
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) == PackageManager.PERMISSION_GRANTED) &&
+        NotificationManagerCompat.from(context).areNotificationsEnabled()
 
 @Composable
 internal fun LanguageSettingsScreen(
@@ -481,25 +549,148 @@ private val ProfileLogoSize = 270.dp
 private val ProfileLogoTopPadding = 18.dp
 private val ProfileLogoVerticalOffset = 0.dp
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ContactUsDestination(
     onSignIn: () -> Unit,
     onBack: () -> Unit,
-    signedIn: Boolean = false,
-    conversations: List<String> = emptyList(),
-    onNewConversation: () -> Unit = {}
+    signedIn: Boolean,
+    conversations: List<ContactConversation>,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit,
+    onNewConversation: () -> Unit = {},
+    onConversationSelected: (String) -> Unit = {},
+    unreadConversationIds: Set<String> = emptySet()
 ) {
-    DestinationScaffold(title = "Contact Us", onBack = onBack) {
-        conversations.forEach { conversation ->
-            Text(conversation, color = Color.White, fontSize = 16.sp)
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val listState = rememberLazyListState()
+    val orderedConversations =
+        orderContactConversations(conversations, unreadConversationIds)
+    val orderedConversationIds = orderedConversations.map(ContactConversation::id)
+    var previousConversationOrder by remember {
+        mutableStateOf<List<String>?>(null)
+    }
+    val nearTopThresholdPx = with(density) { 48.dp.roundToPx() }
+    LaunchedEffect(orderedConversationIds) {
+        val previousOrder = previousConversationOrder
+        previousConversationOrder = orderedConversationIds
+        if (shouldRevealContactConversationPromotion(previousOrder, orderedConversationIds) &&
+            (listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > nearTopThresholdPx)
+        ) {
+            listState.animateScrollToItem(0)
         }
-        if (signedIn) {
-            Button(onClick = onNewConversation) { Text("New Conversation") }
-        } else if (conversations.isEmpty()) {
+    }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KolamBackground)
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text("Contact Us", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(20.dp))
+        if (!signedIn) {
             GuestSignInPrompt(
                 message = "Sign in to start a new conversation.",
-                onSignIn = onSignIn
+                onSignIn = onSignIn,
+                enabled = true
             )
+        } else {
+            Button(onClick = onNewConversation) { Text("New Conversation") }
+            Spacer(Modifier.height(12.dp))
+            PullToRefreshBox(
+                isRefreshing = isLoading && conversations.isNotEmpty(),
+                onRefresh = onRetry,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            ) {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .testTag("contact-conversation-list"),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    when {
+                        isLoading && conversations.isEmpty() -> item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                CircularProgressIndicator(color = Color(0xFFC9A86A))
+                                Spacer(Modifier.height(12.dp))
+                                Text("Loading conversations...", color = Color.White)
+                            }
+                        }
+                        errorMessage != null -> item {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    errorMessage,
+                                    color = Color.White,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                                TextButton(onClick = onRetry) { Text("Retry") }
+                            }
+                        }
+                        conversations.isEmpty() -> item {
+                            Text(
+                                "No conversations yet.",
+                                modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                color = Color.White,
+                                fontSize = 16.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
+                    items(orderedConversations, key = ContactConversation::id) { conversation ->
+                        Card(
+                            onClick = { onConversationSelected(conversation.id) },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = Color(0xFF34393F)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        conversation.subject,
+                                        color = Color.White,
+                                        fontSize = 16.sp,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                }
+                                if (SupportUnreadStore.hasUnread(context, conversation.id)) {
+                                    Box(
+                                        Modifier
+                                            .size(9.dp)
+                                            .semantics {
+                                                contentDescription =
+                                                    "Unread Support messages for ${conversation.subject}"
+                                            }
+                                            .background(
+                                                unreadColor,
+                                                androidx.compose.foundation.shape.CircleShape
+                                            )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 package com.kolammaster.app
 
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -22,7 +22,7 @@ import java.net.SocketTimeoutException
 @RunWith(AndroidJUnit4::class)
 class MyFoldersScreenInstrumentedTest {
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<ContactComposeTestActivity>()
 
     @Test
     fun guestSeesSignInGateAndCanRequestExistingGoogleSignIn() {
