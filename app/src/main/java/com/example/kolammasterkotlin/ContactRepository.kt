@@ -154,7 +154,9 @@ internal class ContactRepository(
         val trimmedMessage = initialMessage.trim()
         require(trimmedSubject.isNotEmpty()) { "Contact subject must not be empty." }
         require(trimmedMessage.isNotEmpty()) { "Initial contact message must not be empty." }
-        require(isValidContactPhone(phone)) { "Contact phone number is invalid." }
+        require(isValidContactPhoneForSubmission(phone)) {
+            "Contact phone number is invalid."
+        }
 
         val account = requireSignedInAccount()
         val token = auth.accessTokenFor(account.id)

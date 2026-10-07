@@ -9,24 +9,34 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imeNestedScroll
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -34,8 +44,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -58,6 +66,9 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -68,6 +79,7 @@ import androidx.core.content.FileProvider
 import com.kolammaster.app.notifications.sendSupportReplyAndClearUnread
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -91,7 +103,13 @@ private data class ContactThreadMessage(
     val delivery: ContactMessageDelivery
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+private sealed interface ContactMessageImageState {
+    data object Loading : ContactMessageImageState
+    data class Loaded(val bitmap: ImageBitmap) : ContactMessageImageState
+    data object Unavailable : ContactMessageImageState
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun ContactConversationDetailDestination(
     conversationId: String,
@@ -123,6 +141,7 @@ internal fun ContactConversationDetailDestination(
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     var imageViewerUrl by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
+    val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
     LaunchedEffect(conversationId, retryKey, foregroundRefreshKey, externalRefreshKey) {
         isLoading = true
@@ -148,8 +167,9 @@ internal fun ContactConversationDetailDestination(
         }
     }
 
-    LaunchedEffect(messages.size, isLoading) {
+    LaunchedEffect(messages.size, isLoading, isImeVisible) {
         if (!isLoading && messages.isNotEmpty()) {
+            if (isImeVisible) delay(300)
             listState.animateScrollToItem(messages.lastIndex)
         }
     }
@@ -366,7 +386,10 @@ internal fun ContactConversationDetailDestination(
         modifier = Modifier
             .fillMaxSize()
             .background(KolamBackground)
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .consumeWindowInsets(WindowInsets.systemBars)
+            .imePadding()
+            .padding(horizontal = 16.dp)
+            .padding(top = 12.dp, bottom = if (isImeVisible) 4.dp else 12.dp)
     ) {
         Text(
             text = conversation?.subject ?: "Conversation",
@@ -416,7 +439,9 @@ internal fun ContactConversationDetailDestination(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .imeNestedScroll(),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(messages, key = ContactThreadMessage::localId) { item ->
@@ -438,46 +463,66 @@ internal fun ContactConversationDetailDestination(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.Bottom,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Color(0xFF34393F),
+                        RoundedCornerShape(28.dp)
+                    )
+                    .border(
+                        BorderStroke(1.dp, Color(0xFFB8B8B8)),
+                        RoundedCornerShape(28.dp)
+                    )
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 TextButton(
                     onClick = { showAttachmentOptions = true },
                     enabled = !isSending && !isImageBatchActive,
-                    modifier = Modifier.size(48.dp)
-                ) { Text("+", fontSize = 26.sp, color = Color.White) }
-                OutlinedTextField(
-                    value = messageText,
-                    onValueChange = { messageText = it },
-                    enabled = !isSending && !isImageBatchActive,
-                    modifier = Modifier.weight(1f),
-                    placeholder = { Text("Message", color = Color(0xFFE0E0E0)) },
-                    maxLines = 5,
-                    keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Sentences
-                    ),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedTextColor = Color.White,
-                        unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color(0xFF34393F),
-                        unfocusedContainerColor = Color(0xFF34393F),
-                        focusedBorderColor = Color(0xFFC9A86A),
-                        unfocusedBorderColor = Color(0xFFB8B8B8),
-                        cursorColor = Color.White
+                    modifier = Modifier.size(44.dp)
+                ) {
+                    Text("+", fontSize = 26.sp, color = Color.White)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 8.dp, vertical = 10.dp)
+                ) {
+                    if (messageText.isEmpty()) {
+                        Text("Type a message...", color = Color(0xFFE0E0E0))
+                    }
+                    BasicTextField(
+                        value = messageText,
+                        onValueChange = { messageText = it },
+                        enabled = !isSending && !isImageBatchActive,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .semantics { contentDescription = "Message input" },
+                        textStyle = androidx.compose.ui.text.TextStyle(
+                            color = Color.White,
+                            fontSize = 16.sp
+                        ),
+                        maxLines = 5,
+                        keyboardOptions = KeyboardOptions(
+                            capitalization = KeyboardCapitalization.Sentences
+                        )
                     )
-                )
-                Button(
+                }
+                TextButton(
                     onClick = { scope.launch { sendTextMessage() } },
-                    enabled = !isSending && !isImageBatchActive && messageText.isNotBlank()
+                    enabled = !isSending && !isImageBatchActive && messageText.isNotBlank(),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .semantics { contentDescription = "Send message" }
                 ) {
                     if (isSending && uploadProgress == null) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = Color(0xFFC9A86A)
                         )
                     } else {
-                        Text("Send")
+                        Text("➤", fontSize = 20.sp, color = Color(0xFFC9A86A))
                     }
                 }
             }
@@ -488,22 +533,29 @@ internal fun ContactConversationDetailDestination(
         AlertDialog(
             onDismissRequest = { showAttachmentOptions = false },
             title = { Text("Add attachment") },
-            text = { Text("Choose how to add an image.") },
-            confirmButton = {
-                TextButton(onClick = {
-                    showAttachmentOptions = false
-                    cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                }) { Text("Camera") }
-            },
-            dismissButton = {
-                Row {
-                    TextButton(onClick = {
-                        showAttachmentOptions = false
-                        galleryLauncher.launch("image/*")
-                    }) { Text("Photo Gallery") }
-                    TextButton(onClick = { showAttachmentOptions = false }) { Text("Cancel") }
+            text = {
+                Column {
+                    Text("Choose how to add an image.")
+                    TextButton(
+                        onClick = {
+                            showAttachmentOptions = false
+                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Camera") }
+                    TextButton(
+                        onClick = {
+                            showAttachmentOptions = false
+                            galleryLauncher.launch("image/*")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Photo Gallery") }
                 }
-            }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAttachmentOptions = false }) { Text("Cancel") }
+            },
+            dismissButton = null
         )
     }
 
@@ -543,7 +595,7 @@ private fun ContactMessageBubble(
             modifier = Modifier.fillMaxWidth(0.88f),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isUserMessage) Color(0xFF3B4148) else Color(0xFF4A4132)
+                containerColor = if (isUserMessage) Color(0xFF285B5B) else Color(0xFF4A4132)
             )
         ) {
             Column(
@@ -552,7 +604,7 @@ private fun ContactMessageBubble(
             ) {
                 Text(
                     text = if (isUserMessage) "You" else "Support",
-                    color = if (isUserMessage) Color(0xFFD9E7F2) else Color(0xFFFFD48A),
+                    color = if (isUserMessage) Color(0xFFC8E8DD) else Color(0xFFFFD48A),
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
@@ -595,11 +647,20 @@ private fun ContactMessageBubble(
 }
 
 @Composable
-private fun ContactMessageImage(url: String, onClick: () -> Unit) {
-    val image by produceState<ImageBitmap?>(initialValue = null, url) {
-        value = withContext(Dispatchers.IO) { loadThumbnail(url) }
+internal fun ContactMessageImage(
+    url: String,
+    onClick: () -> Unit,
+    loadImage: suspend (String) -> ImageBitmap? = { imageUrl ->
+        withContext(Dispatchers.IO) { loadThumbnail(imageUrl) }
     }
-    val loadedImage = image
+) {
+    val imageState by produceState<ContactMessageImageState>(
+        initialValue = ContactMessageImageState.Loading,
+        url
+    ) {
+        value = loadImage(url)?.let(ContactMessageImageState::Loaded)
+            ?: ContactMessageImageState.Unavailable
+    }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -610,15 +671,18 @@ private fun ContactMessageImage(url: String, onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        if (loadedImage == null) {
-            Text("Image unavailable", color = Color.White.copy(alpha = 0.75f))
-        } else {
-            Image(
-                bitmap = loadedImage,
-                contentDescription = "Contact conversation image",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize()
-            )
+        when (val state = imageState) {
+            ContactMessageImageState.Loading ->
+                Text("Image loading…", color = Color.White.copy(alpha = 0.75f))
+            is ContactMessageImageState.Loaded ->
+                Image(
+                    bitmap = state.bitmap,
+                    contentDescription = "Contact conversation image",
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize()
+                )
+            ContactMessageImageState.Unavailable ->
+                Text("Image not available", color = Color.White.copy(alpha = 0.75f))
         }
     }
 }

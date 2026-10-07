@@ -1,6 +1,9 @@
 package com.kolammaster.app
 
+import android.graphics.Bitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -98,8 +101,11 @@ class ContactConversationDetailInstrumentedTest {
             composeRule.onAllNodesWithText("No messages in this conversation yet.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Message").performTextInput("  Please help  ")
-        composeRule.onNodeWithText("Send").performClick()
+        composeRule.onNodeWithContentDescription("Message input")
+            .performTextInput("  Please help  ")
+        composeRule.onNodeWithContentDescription("Send message").assertExists()
+        composeRule.onNodeWithText("+").assertExists()
+        composeRule.onNodeWithContentDescription("Send message").performClick()
         composeRule.waitUntil(5_000) { sendStarted.isCompleted }
         composeRule.onNodeWithText("Please help").assertExists()
         composeRule.onNodeWithText("Sending").assertExists()
@@ -129,8 +135,9 @@ class ContactConversationDetailInstrumentedTest {
             composeRule.onAllNodesWithText("No messages in this conversation yet.")
                 .fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Message").performTextInput("Don't lose this")
-        composeRule.onNodeWithText("Send").performClick()
+        composeRule.onNodeWithContentDescription("Message input")
+            .performTextInput("Don't lose this")
+        composeRule.onNodeWithContentDescription("Send message").performClick()
         composeRule.waitUntil(5_000) {
             composeRule.onAllNodesWithText("Not sent").fetchSemanticsNodes().isNotEmpty()
         }
@@ -155,9 +162,84 @@ class ContactConversationDetailInstrumentedTest {
                 "This conversation has been closed. If you still need assistance, please start a new conversation."
             ).fetchSemanticsNodes().isNotEmpty()
         }
-        composeRule.onNodeWithText("Message").assertDoesNotExist()
+        composeRule.onNodeWithText("Type a message...").assertDoesNotExist()
         composeRule.onNodeWithText("+").assertDoesNotExist()
         composeRule.runOnIdle { assertTrue(true) }
+    }
+
+    @Test
+    fun integratedAttachmentButtonOpensExistingAttachmentOptions() {
+        composeRule.setContent {
+            ContactConversationDetailDestination(
+                conversationId = "conversation-id",
+                onLoadConversation = { conversation(it) },
+                onLoadMessages = { emptyList() },
+                onSendMessage = { _, _, _ -> error("Not expected") },
+                onUploadImage = { error("Not expected") }
+            )
+        }
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("No messages in this conversation yet.")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("+").performClick()
+        composeRule.onNodeWithText("Add attachment").assertExists()
+        val camera = composeRule.onNodeWithText("Camera").fetchSemanticsNode().boundsInRoot
+        val gallery = composeRule.onNodeWithText("Photo Gallery").fetchSemanticsNode().boundsInRoot
+        val cancel = composeRule.onNodeWithText("Cancel").fetchSemanticsNode().boundsInRoot
+        assertTrue(camera.top < gallery.top)
+        assertTrue(gallery.top < cancel.top)
+    }
+
+    @Test
+    fun contactImageShowsLoadingThenDisplaysLoadedImage() {
+        val image = CompletableDeferred<androidx.compose.ui.graphics.ImageBitmap?>()
+        val loadStarted = CompletableDeferred<Unit>()
+        composeRule.setContent {
+            ContactMessageImage(
+                url = "test-image",
+                onClick = {},
+                loadImage = {
+                    loadStarted.complete(Unit)
+                    image.await()
+                }
+            )
+        }
+
+        composeRule.waitUntil(5_000) { loadStarted.isCompleted }
+        composeRule.onNodeWithText("Image loading…").assertExists()
+
+        image.complete(Bitmap.createBitmap(2, 2, Bitmap.Config.ARGB_8888).asImageBitmap())
+        composeRule.onNodeWithContentDescription("Contact conversation image").assertExists()
+        composeRule.onNodeWithText("Image loading…").assertDoesNotExist()
+        composeRule.onNodeWithText("Image not available").assertDoesNotExist()
+    }
+
+    @Test
+    fun contactImageShowsUnavailableOnlyAfterLoadFails() {
+        val image = CompletableDeferred<androidx.compose.ui.graphics.ImageBitmap?>()
+        val loadStarted = CompletableDeferred<Unit>()
+        composeRule.setContent {
+            ContactMessageImage(
+                url = "unavailable-image",
+                onClick = {},
+                loadImage = {
+                    loadStarted.complete(Unit)
+                    image.await()
+                }
+            )
+        }
+
+        composeRule.waitUntil(5_000) { loadStarted.isCompleted }
+        composeRule.onNodeWithText("Image loading…").assertExists()
+        image.complete(null)
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Image not available")
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithText("Image not available").assertExists()
+        composeRule.onNodeWithText("Image loading…").assertDoesNotExist()
     }
 
     private fun conversation(id: String, status: String = "OPEN") = ContactConversation(
