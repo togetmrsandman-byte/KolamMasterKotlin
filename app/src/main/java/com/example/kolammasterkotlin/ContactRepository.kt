@@ -148,7 +148,8 @@ internal class ContactRepository(
         email: String?,
         phone: String,
         subject: String,
-        initialMessage: String
+        initialMessage: String,
+        initialImageBytes: ByteArray? = null
     ): ContactConversation = withContext(Dispatchers.IO) {
         val trimmedSubject = subject.trim()
         val trimmedMessage = initialMessage.trim()
@@ -183,11 +184,16 @@ internal class ContactRepository(
             throw ContactDataException("Supabase returned a conversation for another user.")
         }
 
+        val initialImageUrl = initialImageBytes?.let { uploadContactImage(it) }
         request(
             "POST",
             "$supabaseUrl/rest/v1/contact_messages",
             token,
-            ContactJson.encodeInitialMessage(decodedConversation.id, trimmedMessage),
+            ContactJson.encodeInitialMessage(
+                decodedConversation.id,
+                trimmedMessage,
+                initialImageUrl
+            ),
             prefer = "return=minimal"
         )
         decodedConversation
@@ -375,7 +381,8 @@ internal suspend fun createContactConversationForAccount(
     account: SupabaseAccount?,
     subject: String,
     initialMessage: String,
-    phone: String = ""
+    phone: String = "",
+    initialImageBytes: ByteArray? = null
 ): ContactConversation {
     val authenticatedAccount = account?.takeUnless { it.isGuest }
         ?: throw ContactSignInRequiredException()
@@ -383,7 +390,8 @@ internal suspend fun createContactConversationForAccount(
         email = authenticatedAccount.email,
         phone = phone,
         subject = subject.trim(),
-        initialMessage = initialMessage.trim()
+        initialMessage = initialMessage.trim(),
+        initialImageBytes = initialImageBytes
     )
 }
 

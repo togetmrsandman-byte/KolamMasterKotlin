@@ -61,10 +61,17 @@ internal object ContactJson {
         .put("subject", subject)
         .toString()
 
-    fun encodeInitialMessage(conversationId: String, message: String): String = JSONObject()
+    fun encodeInitialMessage(
+        conversationId: String,
+        message: String,
+        imageUrl: String? = null
+    ): String = JSONObject()
         .put("conversation_id", conversationId)
         .put("sender", "USER")
         .put("message", message)
+        .apply {
+            if (imageUrl != null) put("image_url", imageUrl)
+        }
         .toString()
 
     fun encodeUserMessage(

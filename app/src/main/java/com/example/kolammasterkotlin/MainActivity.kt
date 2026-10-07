@@ -1175,14 +1175,16 @@ private fun KolamMasterApp(
                                 isNewContactConversation = true
                             }
                         },
-                        onCreateContactConversation = { phone, subject, initialMessage ->
-                            createContactConversationForAccount(
+                        onCreateContactConversation = { phone, subject, initialMessage, imageBytes ->
+                            val createdConversation = createContactConversationForAccount(
                                 repository = contactRepository,
                                 account = account,
                                 subject = subject.trim(),
                                 initialMessage = initialMessage.trim(),
-                                phone = phone.trim()
+                                phone = phone.trim(),
+                                initialImageBytes = imageBytes
                             )
+                            selectedContactConversationId = createdConversation.id
                             isNewContactConversation = false
                             contactRefreshKey++
                         },
@@ -1327,7 +1329,7 @@ private fun AppScreenContent(
     onUploadContactImage: suspend (ByteArray) -> String,
     unreadContactConversationIds: Set<String>,
     onNewContactConversation: () -> Unit,
-    onCreateContactConversation: suspend (String, String, String) -> Unit,
+    onCreateContactConversation: suspend (String, String, String, ByteArray?) -> Unit,
     onBegin: () -> Unit,
     onMenuAction: (DrawerAction) -> Unit
 ) {

@@ -180,6 +180,54 @@ class ContactRepositoryInstrumentedTest {
     }
 
     @Test
+    fun createsConversationUploadsImageThenStoresImageUrlOnInitialMessage() = runBlocking {
+        val auth = FakeContactAuth()
+        val transport = FakeContactHttp(
+            ContactHttpResponse(
+                201,
+                """[{"id":"c1","user_id":"${auth.account.id}","email":"user@example.com",""" +
+                    """"phone":"+15551234567","subject":"Help","status":"OPEN",""" +
+                    """"created_at":"created","updated_at":"updated"}]"""
+            ),
+            ContactHttpResponse(
+                200,
+                """{"success":true,"imageUrl":"https://images.test/first-message.webp"}"""
+            ),
+            ContactHttpResponse(201, "")
+        )
+
+        val created = ContactRepository(auth, transport).createContactConversation(
+            email = "user@example.com",
+            phone = "+15551234567",
+            subject = "Help",
+            initialMessage = "See attached",
+            initialImageBytes = byteArrayOf(1, 2, 3)
+        )
+
+        val initialMessage = JSONObject(
+            transport.requests[2].body!!.toString(Charsets.UTF_8)
+        )
+        assertEquals("c1", created.id)
+        assertTrue(transport.requests[0].url.contains("/rest/v1/contact_conversations"))
+        assertEquals(
+            "https://kolam-master-backend.togetmrsandman.workers.dev/chat/upload-image",
+            transport.requests[1].url
+        )
+        assertEquals("POST", transport.requests[1].method)
+        assertTrue(transport.requests[1].contentType!!.startsWith("multipart/form-data;"))
+        assertTrue(transport.requests[1].body!!.toString(Charsets.ISO_8859_1)
+            .contains("Content-Type: image/webp"))
+        assertTrue(transport.requests[2].url.contains("/rest/v1/contact_messages"))
+        assertEquals("c1", initialMessage.getString("conversation_id"))
+        assertEquals("USER", initialMessage.getString("sender"))
+        assertEquals("See attached", initialMessage.getString("message"))
+        assertEquals(
+            "https://images.test/first-message.webp",
+            initialMessage.getString("image_url")
+        )
+    }
+
+    @Test
     fun verifiesConversationOwnershipAndStoresImageUrlInUserMessage() = runBlocking {
         val auth = FakeContactAuth()
         val transport = FakeContactHttp(

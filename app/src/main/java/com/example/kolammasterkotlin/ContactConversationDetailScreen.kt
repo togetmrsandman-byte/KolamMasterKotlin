@@ -89,7 +89,7 @@ import java.net.URL
 import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 
-private const val MAX_CONTACT_IMAGE_BYTES = 10 * 1024 * 1024
+internal const val MAX_CONTACT_IMAGE_BYTES = 10 * 1024 * 1024
 
 private enum class ContactMessageDelivery {
     Sending,
@@ -530,32 +530,16 @@ internal fun ContactConversationDetailDestination(
     }
 
     if (showAttachmentOptions) {
-        AlertDialog(
-            onDismissRequest = { showAttachmentOptions = false },
-            title = { Text("Add attachment") },
-            text = {
-                Column {
-                    Text("Choose how to add an image.")
-                    TextButton(
-                        onClick = {
-                            showAttachmentOptions = false
-                            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Camera") }
-                    TextButton(
-                        onClick = {
-                            showAttachmentOptions = false
-                            galleryLauncher.launch("image/*")
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Photo Gallery") }
-                }
+        ContactImageAttachmentOptionsDialog(
+            onCamera = {
+                showAttachmentOptions = false
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             },
-            confirmButton = {
-                TextButton(onClick = { showAttachmentOptions = false }) { Text("Cancel") }
+            onGallery = {
+                showAttachmentOptions = false
+                galleryLauncher.launch("image/*")
             },
-            dismissButton = null
+            onDismiss = { showAttachmentOptions = false }
         )
     }
 
@@ -751,13 +735,13 @@ private fun showContactLoadError(
     }
 }
 
-private suspend fun Context.decodeContactImage(uri: Uri): Bitmap =
+internal suspend fun Context.decodeContactImage(uri: Uri): Bitmap =
     withContext(Dispatchers.IO) {
         contentResolver.openInputStream(uri)?.use(BitmapFactory::decodeStream)
             ?: throw IOException("Could not read the selected image.")
     }
 
-private fun Bitmap.toContactWebp(): ByteArray {
+internal fun Bitmap.toContactWebp(): ByteArray {
     val output = ByteArrayOutputStream()
     val format = if (android.os.Build.VERSION.SDK_INT >= 30) {
         Bitmap.CompressFormat.WEBP_LOSSY
@@ -767,4 +751,33 @@ private fun Bitmap.toContactWebp(): ByteArray {
     }
     check(compress(format, 86, output)) { "Could not convert the image to WebP." }
     return output.toByteArray()
+}
+
+@Composable
+internal fun ContactImageAttachmentOptionsDialog(
+    onCamera: () -> Unit,
+    onGallery: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add attachment") },
+        text = {
+            Column {
+                Text("Choose how to add an image.")
+                TextButton(
+                    onClick = onCamera,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Camera") }
+                TextButton(
+                    onClick = onGallery,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Photo Gallery") }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Cancel") }
+        },
+        dismissButton = null
+    )
 }

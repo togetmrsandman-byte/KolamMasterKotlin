@@ -1,6 +1,8 @@
 package com.kolammaster.app
 
+import android.Manifest
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -30,9 +32,10 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,16 +55,23 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.io.IOException
 
 @Composable
 internal fun ContactNewConversationDestination(
-    onCreate: suspend (phone: String, subject: String, initialMessage: String) -> Unit
+    onCreate: suspend (
+        phone: String,
+        subject: String,
+        initialMessage: String,
+        imageBytes: ByteArray?
+    ) -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -75,25 +85,74 @@ internal fun ContactNewConversationDestination(
     var errorTitle by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var selectedAttachment by remember { mutableStateOf<ContactNewConversationImage?>(null) }
-    val imagePickerLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.GetContent()
-    ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                try {
-                    selectedAttachment = withContext(Dispatchers.IO) {
-                        context.readContactNewConversationImage(uri)
-                    }
-                    errorTitle = null
-                    errorMessage = null
-                } catch (exception: CancellationException) {
-                    throw exception
-                } catch (exception: Exception) {
-                    errorTitle = "Contact Us"
-                    errorMessage = exception.message
-                        ?: "The selected image could not be read."
+    var showAttachmentOptions by remember { mutableStateOf(false) }
+    var cameraUri by remember { mutableStateOf<Uri?>(null) }
+
+    fun loadSelectedImage(uri: Uri, deleteAfterRead: Boolean = false) {
+        scope.launch {
+            try {
+                selectedAttachment = withContext(Dispatchers.IO) {
+                    context.readContactNewConversationImage(uri)
+                }
+                errorTitle = null
+                errorMessage = null
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                errorTitle = "Contact Us"
+                errorMessage = exception.message
+                    ?: "The selected image could not be read."
+            } finally {
+                if (deleteAfterRead) {
+                    context.contentResolver.delete(uri, null, null)
                 }
             }
+        }
+    }
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) loadSelectedImage(uri)
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicture()
+    ) { captured ->
+        val uri = cameraUri
+        cameraUri = null
+        if (uri != null) {
+            if (captured) {
+                loadSelectedImage(uri, deleteAfterRead = true)
+            } else {
+                context.contentResolver.delete(uri, null, null)
+            }
+        }
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            try {
+                val imageDirectory = File(context.cacheDir, "contact-images")
+                if (!imageDirectory.exists() && !imageDirectory.mkdirs()) {
+                    throw IOException("Could not prepare the camera image file.")
+                }
+                val imageFile = File.createTempFile("contact-", ".jpg", imageDirectory)
+                val uri = FileProvider.getUriForFile(
+                    context,
+                    "${context.packageName}.contact-uploads",
+                    imageFile
+                )
+                cameraUri = uri
+                cameraLauncher.launch(uri)
+            } catch (exception: Exception) {
+                cameraUri?.let { context.contentResolver.delete(it, null, null) }
+                cameraUri = null
+                errorTitle = "Contact Us"
+                errorMessage = exception.message ?: "The camera could not be opened."
+            }
+        } else {
+            errorTitle = "Camera permission"
+            errorMessage = "Allow camera access to take a Contact Us photo."
         }
     }
 
@@ -185,7 +244,7 @@ internal fun ContactNewConversationDestination(
                 enabled = !isSubmitting,
                 onPickImage = {
                     validationError = null
-                    imagePickerLauncher.launch("image/*")
+                    showAttachmentOptions = true
                 },
                 onRemoveImage = {
                     selectedAttachment = null
@@ -209,8 +268,6 @@ internal fun ContactNewConversationDestination(
                         trimmedMessage.isEmpty() -> "Please enter a message."
                         !isValidLocalContactPhone(phone) ->
                             "Please enter a valid phone number using digits only."
-                        selectedAttachment != null ->
-                            "Image attachments are not available yet. Remove the image to send this message without an attachment."
                         else -> null
                     }
                     if (validationError != null) return@Button
@@ -218,10 +275,20 @@ internal fun ContactNewConversationDestination(
                     isSubmitting = true
                     scope.launch {
                         try {
+                            val imageBytes = selectedAttachment?.bitmap?.let { bitmap ->
+                                withContext(Dispatchers.Default) {
+                                    bitmap.toContactWebp()
+                                }.also { bytes ->
+                                    require(bytes.size <= MAX_CONTACT_IMAGE_BYTES) {
+                                        "Image must be 10 MB or smaller after WebP conversion."
+                                    }
+                                }
+                            }
                             onCreate(
                                 internationalContactPhone(selectedCountry, phone),
                                 trimmedSubject,
-                                trimmedMessage
+                                trimmedMessage,
+                                imageBytes
                             )
                         } catch (exception: CancellationException) {
                             throw exception
@@ -253,6 +320,20 @@ internal fun ContactNewConversationDestination(
                 }
             }
         }
+    }
+
+    if (showAttachmentOptions) {
+        ContactImageAttachmentOptionsDialog(
+            onCamera = {
+                showAttachmentOptions = false
+                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            },
+            onGallery = {
+                showAttachmentOptions = false
+                galleryLauncher.launch("image/*")
+            },
+            onDismiss = { showAttachmentOptions = false }
+        )
     }
 
     if (isCountryPickerOpen) {
@@ -371,8 +452,16 @@ internal fun ContactNewConversationAttachment(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        TextButton(onClick = onPickImage, enabled = enabled) {
-            Text("Attach image")
+        Button(
+            onClick = onPickImage,
+            enabled = enabled,
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = Color.White
+            )
+        ) {
+            Text("Attach Image")
         }
         attachment?.let {
             Row(
@@ -391,8 +480,16 @@ internal fun ContactNewConversationAttachment(
                     color = Color.White,
                     modifier = Modifier.weight(1f)
                 )
-                TextButton(onClick = onRemoveImage, enabled = enabled) {
-                    Text("Remove image")
+                Button(
+                    onClick = onRemoveImage,
+                    enabled = enabled,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = Color.White
+                    )
+                ) {
+                    Text("Remove")
                 }
             }
         }
@@ -403,6 +500,7 @@ internal data class ContactNewConversationImage(
     val uri: Uri,
     val mimeType: String,
     val sizeBytes: Int,
+    val bitmap: Bitmap,
     val preview: androidx.compose.ui.graphics.ImageBitmap
 )
 
@@ -429,7 +527,13 @@ internal suspend fun Context.readContactNewConversationImage(
     } ?: throw IOException("The selected image could not be read.")
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
         ?: throw IOException("Choose a supported image file.")
-    return ContactNewConversationImage(uri, mimeType, bytes.size, bitmap.asImageBitmap())
+    return ContactNewConversationImage(
+        uri = uri,
+        mimeType = mimeType,
+        sizeBytes = bytes.size,
+        bitmap = bitmap,
+        preview = bitmap.asImageBitmap()
+    )
 }
 
 internal fun isSupportedContactImageMimeType(mimeType: String): Boolean =
