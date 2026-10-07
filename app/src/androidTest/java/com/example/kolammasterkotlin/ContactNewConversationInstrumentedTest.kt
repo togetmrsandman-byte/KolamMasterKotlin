@@ -5,11 +5,13 @@ import android.net.Uri
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.hasProgressBarRangeInfo
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -139,11 +141,12 @@ class ContactNewConversationInstrumentedTest {
     @Test
     fun attachmentPreviewCanBeShownAndRemoved() {
         val attachment = mutableStateOf<ContactNewConversationImage?>(null)
+        val enabled = mutableStateOf(true)
         var pickerRequested = false
         composeRule.setContent {
             ContactNewConversationAttachment(
                 attachment = attachment.value,
-                enabled = true,
+                enabled = enabled.value,
                 onPickImage = {
                     pickerRequested = true
                     attachment.value = ContactNewConversationImage(
@@ -163,6 +166,11 @@ class ContactNewConversationInstrumentedTest {
         composeRule.onNodeWithText("Image attached (2 KB)").assertExists()
         composeRule.runOnIdle { assertTrue(pickerRequested) }
 
+        composeRule.runOnIdle { enabled.value = false }
+        composeRule.onNodeWithContentDescription("Selected image preview").assertExists()
+        composeRule.onNodeWithText("Image attached (2 KB)").assertExists()
+
+        composeRule.runOnIdle { enabled.value = true }
         composeRule.onNodeWithText("Remove").performClick()
         composeRule.onNodeWithContentDescription("Selected image preview").assertDoesNotExist()
     }
@@ -228,7 +236,12 @@ class ContactNewConversationInstrumentedTest {
         composeRule.onNodeWithText("Send").performClick()
         composeRule.waitUntil(5_000) { requestStarted.isCompleted }
         composeRule.onNodeWithText("Sending...").assertExists()
+        composeRule.onAllNodes(hasProgressBarRangeInfo(ProgressBarRangeInfo.Indeterminate))
+            .assertCountEquals(1)
         composeRule.onNodeWithText("Send").assertDoesNotExist()
+        composeRule.onNodeWithText("9876543210").assertExists()
+        composeRule.onNodeWithText("Help").assertExists()
+        composeRule.onNodeWithText("Question").assertExists()
         composeRule.runOnIdle { assertEquals(1, createCalls) }
     }
 

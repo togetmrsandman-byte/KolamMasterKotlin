@@ -178,75 +178,81 @@ internal fun SignInInvitationScreen(
                 .offset(y = SignInLogoVerticalOffset)
         )
         Spacer(Modifier.height(SignInLogoToContentSpacing))
-        Text(
-            text = "Sign in with Google",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(SignInTitleToBenefitsSpacing))
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .offset(y = SignInBenefitsVerticalOffset),
-            shape = RoundedCornerShape(16.dp),
-            color = Color.White.copy(alpha = 0.08f),
-            border = androidx.compose.foundation.BorderStroke(
-                1.dp,
-                Color.White.copy(alpha = 0.18f)
-            )
-        ) {
-            Column(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                listOf(
-                    "Save your kolams",
-                    "Keep your creations organized",
-                    "Join the Kolam community",
-                    "Publish your kolams to the Kolam community"
-                ).forEach { benefit ->
-                    Text(
-                        text = "•  $benefit",
-                        modifier = Modifier.fillMaxWidth(),
-                        color = Color.White,
-                        fontSize = 15.sp,
-                        lineHeight = 20.sp
-                    )
-                }
-            }
-        }
-        Spacer(Modifier.height(SignInBenefitsToGoogleSpacing))
-        Button(
-            onClick = onGoogleSignIn,
-            enabled = !isLoading,
-            modifier = Modifier.offset(y = SignInGoogleButtonVerticalOffset),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Gold,
-                disabledContainerColor = Gold,
-                disabledContentColor = Color.White
-            )
+        Column(
+            modifier = Modifier.offset(y = SignInContentVerticalOffset),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                "Continue with Google",
+                text = "Sign in with Google",
                 color = Color.White,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center
             )
-        }
-        Spacer(Modifier.height(SignInGoogleToSkipSpacing))
-        Button(
-            onClick = onSkip,
-            enabled = !isLoading,
-            modifier = Modifier.offset(y = SignInSkipButtonVerticalOffset),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Gold,
-                disabledContainerColor = Gold,
-                disabledContentColor = Color.White
-            )
-        ) {
-            Text("Skip for now", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(SignInTitleToBenefitsSpacing))
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = Color.White.copy(alpha = 0.08f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    Color.White.copy(alpha = 0.18f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(
+                        "Save your kolams",
+                        "Keep your creations organized",
+                        "Join the Kolam community",
+                        "Publish your kolams to the Kolam community"
+                    ).forEach { benefit ->
+                        Text(
+                            text = "•  $benefit",
+                            modifier = Modifier.fillMaxWidth(),
+                            color = Color.White,
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp
+                        )
+                    }
+                }
+            }
+            Spacer(Modifier.height(SignInBenefitsToGoogleSpacing))
+            Button(
+                onClick = onGoogleSignIn,
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Gold,
+                    disabledContainerColor = Gold,
+                    disabledContentColor = Color.White
+                )
+            ) {
+                Text(
+                    "Continue with Google",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+            Spacer(Modifier.height(SignInGoogleToSkipSpacing))
+            Button(
+                onClick = onSkip,
+                enabled = !isLoading,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Gold,
+                    disabledContainerColor = Gold,
+                    disabledContentColor = Color.White
+                )
+            ) {
+                Text(
+                    "Skip for now",
+                    color = Color.White,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
         }
     }
 }
@@ -256,14 +262,12 @@ private val LanguageLogoVerticalOffset = 0.dp
 private val LanguageLogoToSectionSpacing = 12.dp
 private val LanguageSectionVerticalOffset = 0.dp
 private val SignInLogoSize = 310.dp
-private val SignInLogoVerticalOffset = 0.dp
-private val SignInLogoToContentSpacing = 12.dp
+private val SignInLogoVerticalOffset = (-50).dp
+private val SignInLogoToContentSpacing = 6.dp
+private val SignInContentVerticalOffset = (-55).dp
 private val SignInTitleToBenefitsSpacing = 16.dp
-private val SignInBenefitsVerticalOffset = 0.dp
 private val SignInBenefitsToGoogleSpacing = 16.dp
 private val SignInGoogleToSkipSpacing = 8.dp
-private val SignInGoogleButtonVerticalOffset = 0.dp
-private val SignInSkipButtonVerticalOffset = 0.dp
 
 @Composable
 internal fun AuthLoadingOverlay(message: String?) {

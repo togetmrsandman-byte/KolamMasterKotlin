@@ -179,7 +179,8 @@ internal fun ContactNewConversationDestination(
                     phone = digitsOnlyLocalContactPhoneInput(it)
                     validationError = null
                 },
-                enabled = !isSubmitting,
+                readOnly = isSubmitting,
+                enabled = true,
                 label = { Text("Phone number", color = Color(0xFFE8E8E8)) },
                 leadingIcon = {
                     Row(
@@ -221,7 +222,8 @@ internal fun ContactNewConversationDestination(
                     subject = it
                     validationError = null
                 },
-                enabled = !isSubmitting,
+                readOnly = isSubmitting,
+                enabled = true,
                 label = { Text("Subject", color = Color(0xFFE8E8E8)) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
@@ -233,7 +235,8 @@ internal fun ContactNewConversationDestination(
                     message = it
                     validationError = null
                 },
-                enabled = !isSubmitting,
+                readOnly = isSubmitting,
+                enabled = true,
                 label = { Text("Message", color = Color(0xFFE8E8E8)) },
                 minLines = 4,
                 colors = contactTextFieldColors(),
@@ -306,11 +309,17 @@ internal fun ContactNewConversationDestination(
                         }
                     }
                 },
-                enabled = !isSubmitting
+                enabled = !isSubmitting,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.primary,
+                    disabledContentColor = Color.White
+                )
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
-                        modifier = Modifier.height(18.dp),
+                        modifier = Modifier.size(18.dp),
+                        color = Color(0xFF8F6F38),
+                        trackColor = Color.White.copy(alpha = 0.16f),
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(6.dp))
@@ -458,7 +467,9 @@ internal fun ContactNewConversationAttachment(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White
+                contentColor = Color.White,
+                disabledContainerColor = MaterialTheme.colorScheme.primary,
+                disabledContentColor = Color.White
             )
         ) {
             Text("Attach Image")
@@ -486,7 +497,9 @@ internal fun ContactNewConversationAttachment(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White
+                        contentColor = Color.White,
+                        disabledContainerColor = MaterialTheme.colorScheme.primary,
+                        disabledContentColor = Color.White
                     )
                 ) {
                     Text("Remove")
@@ -553,11 +566,15 @@ internal fun isValidContactPhone(phone: String): Boolean {
 private fun contactTextFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedTextColor = Color.White,
     unfocusedTextColor = Color.White,
+    disabledTextColor = Color.White,
     focusedLabelColor = Color(0xFFE8E8E8),
     unfocusedLabelColor = Color(0xFFE8E8E8),
+    disabledLabelColor = Color(0xFFE8E8E8),
     cursorColor = Color.White,
     focusedBorderColor = Color(0xFFC9A86A),
     unfocusedBorderColor = Color(0xFFB8B8B8),
+    disabledBorderColor = Color(0xFFB8B8B8),
     focusedContainerColor = Color(0xFF34393F),
-    unfocusedContainerColor = Color(0xFF34393F)
+    unfocusedContainerColor = Color(0xFF34393F),
+    disabledContainerColor = Color(0xFF34393F)
 )
