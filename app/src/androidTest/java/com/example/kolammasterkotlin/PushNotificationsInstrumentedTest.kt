@@ -1,7 +1,11 @@
 package com.kolammaster.app.notifications
 
+import android.app.NotificationManager
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.kolammaster.app.R
 import com.kolammaster.app.ContactHttpResponse
 import com.kolammaster.app.ContactHttpTransport
 import com.kolammaster.app.auth.SupabaseAccount
@@ -10,6 +14,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.junit.Assert.assertThrows
@@ -57,6 +62,77 @@ class PushNotificationsInstrumentedTest {
         assertEquals(setOf(second), SupportUnreadStore.unreadConversationIds(context))
         assertFalse(SupportUnreadStore.isActiveConversation(second))
         SupportUnreadStore.clearConversation(context, second, "push-test-message-2")
+    }
+
+    @Test
+    fun pushWithoutMessageIdDoesNotCreateAnUnreadConversationAndPendingIdsStillCount() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val conversationId = "push-test-empty-${UUID.randomUUID()}"
+        SupportUnreadStore.clearConversation(context, conversationId)
+
+        assertTrue(
+            SupportUnreadStore.recordSupportMessage(context, conversationId, null)
+        )
+        assertFalse(SupportUnreadStore.hasUnread(context))
+        assertFalse(conversationId in SupportUnreadStore.unreadConversationIds(context))
+
+        val pendingMessageId = "push-test-pending-${UUID.randomUUID()}"
+        SupportUnreadStore.recordSupportMessage(context, null, pendingMessageId)
+        assertEquals(1, SupportUnreadStore.unreadMessageCount(context))
+        SupportUnreadStore.clearPendingMessage(context, pendingMessageId)
+        assertFalse(SupportUnreadStore.hasUnread(context))
+    }
+
+    @Test
+    fun zeroCountCancelsOnlyTheStableBadgeNotification() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val manager = NotificationManagerCompat.from(context)
+        val notificationManager = context.getSystemService(NotificationManager::class.java)
+        assumeTrue(manager.areNotificationsEnabled())
+        SupportNotificationChannel.create(context)
+        val unrelatedTag = "push-test-unrelated-${UUID.randomUUID()}"
+        val unrelatedId = 73105
+        try {
+            LauncherBadgeHelper.postActualNotification(
+                context,
+                NotificationCompat.Builder(context, SupportNotificationChannel.CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_stat_support)
+                    .setContentTitle("Support")
+                    .setContentText("A real test notification"),
+                unreadCount = 3
+            )
+            manager.notify(
+                unrelatedTag,
+                unrelatedId,
+                NotificationCompat.Builder(context, SupportNotificationChannel.CHANNEL_ID)
+                    .setSmallIcon(R.drawable.ic_stat_support)
+                    .setContentTitle("Unrelated")
+                    .setContentText("Keep this notification")
+                    .build()
+            )
+            assertEquals(
+                3,
+                notificationManager.activeNotifications
+                    .single { it.tag == LauncherBadgeHelper.TAG }
+                    .notification.number
+            )
+
+            LauncherBadgeHelper.updateExistingNotification(context, 0)
+
+            assertTrue(
+                notificationManager.activeNotifications.none {
+                    it.tag == LauncherBadgeHelper.TAG
+                }
+            )
+            assertTrue(
+                notificationManager.activeNotifications.any {
+                    it.tag == unrelatedTag && it.id == unrelatedId
+                }
+            )
+        } finally {
+            LauncherBadgeHelper.clear(context)
+            manager.cancel(unrelatedTag, unrelatedId)
+        }
     }
 
     @Test

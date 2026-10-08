@@ -84,6 +84,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -91,6 +92,11 @@ import androidx.core.app.NotificationManagerCompat
 import com.kolammaster.app.notifications.SupportUnreadStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import kotlin.time.Instant
 
 internal enum class DrawerAction {
     Home,
@@ -118,11 +124,14 @@ private val FolderSignedOutBenefitsToGoogleSpacing = 16.dp
 private val FolderSignedOutGoogleToBackSpacing = 8.dp
 
 @Composable
-internal fun SupportUnreadIndicator(modifier: Modifier = Modifier) {
+internal fun SupportUnreadIndicator(
+    modifier: Modifier = Modifier,
+    description: String = "Unread Support messages"
+) {
     Box(
         modifier
             .size(8.dp)
-            .semantics { contentDescription = "Unread Support messages" }
+            .semantics { contentDescription = description }
             .background(unreadColor, androidx.compose.foundation.shape.CircleShape)
     )
 }
@@ -199,7 +208,11 @@ internal fun DrawerOverlay(
                 DrawerMenuRow("Contact Us", unread = unreadContactUs) {
                     onSelect(DrawerAction.ContactUs)
                 }
-                DrawerMenuRow("Announcements", unread = unreadAnnouncements) {
+                DrawerMenuRow(
+                    "Announcements",
+                    unread = unreadAnnouncements,
+                    unreadDescription = "Unread announcements"
+                ) {
                     onSelect(DrawerAction.Announcements)
                 }
                 DrawerSettingsRow(settingsExpanded) {
@@ -219,6 +232,7 @@ internal fun DrawerOverlay(
 private fun DrawerMenuRow(
     label: String,
     unread: Boolean = false,
+    unreadDescription: String = "Unread Support messages",
     onClick: () -> Unit
 ) {
     Row(
@@ -245,7 +259,7 @@ private fun DrawerMenuRow(
             fontWeight = FontWeight.SemiBold
         )
         if (unread) {
-            SupportUnreadIndicator()
+            SupportUnreadIndicator(description = unreadDescription)
         }
     }
 }
@@ -590,7 +604,13 @@ internal fun ContactUsDestination(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Contact Us", color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Contact Us",
+            color = Color.White,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
         Spacer(Modifier.height(20.dp))
         if (!signedIn) {
             GuestSignInPrompt(
@@ -655,7 +675,7 @@ internal fun ContactUsDestination(
                             onClick = { onConversationSelected(conversation.id) },
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF34393F)
+                                containerColor = Color(0xFF3F6668)
                             )
                         ) {
                             Row(
@@ -668,8 +688,31 @@ internal fun ContactUsDestination(
                                     Text(
                                         conversation.subject,
                                         color = Color.White,
-                                        fontSize = 16.sp,
-                                        fontWeight = FontWeight.SemiBold
+                                        fontSize = 17.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    val activityAt = conversation.latestMessageCreatedAt
+                                        ?.takeIf(String::isNotBlank)
+                                        ?: conversation.updatedAt.takeIf(String::isNotBlank)
+                                        ?: conversation.createdAt
+                                    Text(
+                                        text = formatContactConversationTimestamp(activityAt),
+                                        color = Color(0xFFD9D2C6),
+                                        fontSize = 12.sp,
+                                        modifier = Modifier.padding(top = 5.dp)
+                                    )
+                                    Text(
+                                        text = conversation.latestMessagePreview
+                                            ?.takeIf(String::isNotBlank)
+                                            ?: "No messages yet.",
+                                        color = Color.White.copy(alpha = 0.86f),
+                                        fontSize = 14.sp,
+                                        lineHeight = 20.sp,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.padding(top = 8.dp)
                                     )
                                 }
                                 if (SupportUnreadStore.hasUnread(context, conversation.id)) {
@@ -693,6 +736,18 @@ internal fun ContactUsDestination(
             }
         }
     }
+}
+
+@OptIn(kotlin.time.ExperimentalTime::class)
+private fun formatContactConversationTimestamp(value: String): String {
+    val instant = try {
+        Instant.parse(value)
+    } catch (_: IllegalArgumentException) {
+        return value
+    }
+    return SimpleDateFormat("MMM d, yyyy, h:mm a", Locale.getDefault()).apply {
+        timeZone = TimeZone.getDefault()
+    }.format(Date(instant.toEpochMilliseconds()))
 }
 
 @Composable
@@ -793,17 +848,6 @@ private fun GuestSignInPrompt(
     )
     Spacer(Modifier.height(18.dp))
     Button(onClick = onSignIn, enabled = enabled) { Text("Sign in with Google") }
-}
-
-@Composable
-internal fun AnnouncementsDestination(onBack: () -> Unit) {
-    DestinationScaffold(title = "Announcements", onBack = onBack) {
-        Text(
-            text = "Announcements will be available here.",
-            color = Color.White,
-            fontSize = 18.sp
-        )
-    }
 }
 
 @Composable

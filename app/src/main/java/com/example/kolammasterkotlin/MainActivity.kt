@@ -39,9 +39,13 @@ import com.kolammaster.app.ui.theme.KolamMasterKotlinTheme
 import com.kolammaster.app.auth.SupabaseAccount
 import com.kolammaster.app.auth.SupabaseGuestAuth
 import com.kolammaster.app.notifications.PushTokenRepository
+import com.kolammaster.app.notifications.LauncherBadgeHelper
+import com.kolammaster.app.notifications.AnnouncementForegroundAlertDialog
+import com.kolammaster.app.notifications.ForegroundAnnouncementAlertStore
 import com.kolammaster.app.notifications.SupportForegroundAlertDialog
 import com.kolammaster.app.notifications.SupportNotificationChannel
 import com.kolammaster.app.notifications.SupportUnreadStore
+import com.kolammaster.app.notifications.PendingAnnouncementStore
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.auth.api.signin.GoogleSignInStatusCodes
@@ -92,6 +96,8 @@ internal data class ContactSupportNotification(
     val conversationId: String?,
     val messageId: String?
 )
+
+internal class AnnouncementNotification(val announcementId: String?)
 
 internal fun shouldRequestNotificationPermission(
     sdkInt: Int,
@@ -145,7 +151,8 @@ class MainActivity : ComponentActivity() {
         }
     private var pendingContactSupportNotification by
         mutableStateOf<ContactSupportNotification?>(null)
-    private var pendingAnnouncementNotification by mutableStateOf(false)
+    private var pendingAnnouncementNotification by
+        mutableStateOf<AnnouncementNotification?>(null)
     private var contactForegroundRefreshKey by mutableIntStateOf(0)
     private var supportMessageVersion by mutableStateOf(0L)
 
@@ -200,7 +207,7 @@ class MainActivity : ComponentActivity() {
             savedInstanceState?.getBoolean(ONBOARDING_PERMISSION_PENDING_STATE_KEY) == true
         )
         pendingContactSupportNotification = intent.toContactSupportNotification()
-        pendingAnnouncementNotification = intent.isAnnouncementNotification()
+        pendingAnnouncementNotification = intent.toAnnouncementNotification()
         SupportNotificationChannel.create(this)
         MobileAds.initialize(this)
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
@@ -230,11 +237,14 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             try {
-                if (savedLanguage != null) {
+                if (savedLanguage != null || pendingAnnouncementNotification != null) {
                     SupabaseGuestAuth.getOrCreateGuestUserId()
                 }
                 accountState = SupabaseGuestAuth.currentAccount()
-                accountState?.let(::restoreLessonUnlocks)
+                accountState?.let {
+                    restoreLessonUnlocks(it)
+                    registerFcmToken(it)
+                }
                 accountState?.let(::registerFcmToken)
             } catch (exception: CancellationException) {
                 throw exception
@@ -288,7 +298,11 @@ class MainActivity : ComponentActivity() {
                     },
                     announcementNotification = pendingAnnouncementNotification,
                     onAnnouncementNotificationHandled = {
-                        pendingAnnouncementNotification = false
+                        pendingAnnouncementNotification = null
+                    },
+                    onOpenForegroundAnnouncement = { announcementId ->
+                        pendingAnnouncementNotification =
+                            AnnouncementNotification(announcementId)
                     },
                     contactForegroundRefreshKey = contactForegroundRefreshKey,
                     supportMessageVersion = supportMessageVersion
@@ -311,12 +325,46 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         pendingContactSupportNotification = intent.toContactSupportNotification()
-        pendingAnnouncementNotification = intent.isAnnouncementNotification()
+        pendingAnnouncementNotification = intent.toAnnouncementNotification()
     }
 
     override fun onResume() {
         super.onResume()
         if (screenState == AppScreen.ContactUs) contactForegroundRefreshKey++
+        AnnouncementRepository.requestRefresh(this)
+        refreshLauncherBadgeFromCache()
+    }
+
+    private fun refreshLauncherBadgeFromCache() {
+        lifecycleScope.launch {
+            try {
+                val account = SupabaseGuestAuth.currentAccount()
+                if (account == null) {
+                    LauncherBadgeHelper.updateExistingNotification(
+                        this@MainActivity,
+                        PendingAnnouncementStore.count(this@MainActivity) +
+                            SupportUnreadStore.unreadMessageCount(this@MainActivity)
+                    )
+                    return@launch
+                }
+                SupportUnreadStore.useAccount(this@MainActivity, account.id)
+                val announcements = AnnouncementRepository(this@MainActivity).loadCached(account)
+                val announcementUnreadCount = PendingAnnouncementStore.reconcile(
+                    this@MainActivity,
+                    announcements.count { !it.isRead },
+                    announcements.map(Announcement::id).toSet()
+                )
+                LauncherBadgeHelper.updateExistingNotification(
+                    this@MainActivity,
+                    announcementUnreadCount +
+                        SupportUnreadStore.unreadMessageCount(this@MainActivity)
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e("LauncherBadge", "Could not recalculate the launcher badge count.", exception)
+            }
+        }
     }
 
     private fun beginGoogleSignIn() {
@@ -472,7 +520,10 @@ class MainActivity : ComponentActivity() {
                 runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     SupabaseGuestAuth.signOutAndCreateGuest()
                     accountState = SupabaseGuestAuth.currentAccount()
-                    accountState?.let(::restoreLessonUnlocks)
+                    accountState?.let {
+                        restoreLessonUnlocks(it)
+                        registerFcmToken(it)
+                    }
                 }
             } catch (exception: CancellationException) {
                 throw exception
@@ -572,13 +623,12 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun registerFcmToken(account: SupabaseAccount) {
-        if (account.isGuest) return
         FirebaseMessaging.getInstance().token
             .addOnSuccessListener { token ->
                 lifecycleScope.launch {
                     try {
                         val current = SupabaseGuestAuth.currentAccount()
-                        if (current != null && !current.isGuest && current.id == account.id) {
+                        if (current != null && current.id == account.id) {
                             PushTokenRepository(applicationContext).registerCurrentToken(token)
                         }
                     } catch (exception: CancellationException) {
@@ -859,9 +909,19 @@ internal fun Intent.toContactSupportNotification(): ContactSupportNotification? 
     )
 }
 
-private fun Intent.isAnnouncementNotification(): Boolean =
-    getStringExtra("type").equals("announcement", ignoreCase = true) ||
-        getStringExtra("type").equals("announcement_message", ignoreCase = true)
+private fun Intent.toAnnouncementNotification(): AnnouncementNotification? {
+    if (!getStringExtra("type").let {
+            it.equals("announcement", ignoreCase = true) ||
+                it.equals("announcement_message", ignoreCase = true)
+        }
+    ) return null
+    return AnnouncementNotification(
+        announcementId = sequenceOf(
+            getStringExtra("announcementId"),
+            getStringExtra("announcement_id")
+        ).firstOrNull { !it.isNullOrBlank() }
+    )
+}
 
 @Composable
 private fun KolamMasterApp(
@@ -890,8 +950,9 @@ private fun KolamMasterApp(
     supportNotification: ContactSupportNotification?,
     onSupportNotificationHandled: () -> Unit,
     onForegroundSupportAlertOpen: (SupportUnreadStore.ForegroundAlert) -> Unit,
-    announcementNotification: Boolean,
+    announcementNotification: AnnouncementNotification?,
     onAnnouncementNotificationHandled: () -> Unit,
+    onOpenForegroundAnnouncement: (String?) -> Unit,
     contactForegroundRefreshKey: Int,
     supportMessageVersion: Long
 ) {
@@ -913,7 +974,180 @@ private fun KolamMasterApp(
     var observedSupportMessageVersion by remember {
         mutableStateOf(supportMessageVersion)
     }
+    var observedSupportUnreadVersion by remember {
+        mutableStateOf(SupportUnreadStore.unreadVersion(context))
+    }
     val contactRepository = remember { ContactRepository() }
+    val announcementRepository = remember(context) { AnnouncementRepository(context) }
+    var announcementRefreshSignal by remember {
+        mutableStateOf(AnnouncementRepository.refreshSignal(context))
+    }
+    var announcementRefreshKey by remember { mutableIntStateOf(0) }
+    var announcements by remember(account?.id) {
+        mutableStateOf(account?.let(announcementRepository::loadCached).orEmpty())
+    }
+    var announcementUnread by remember(account?.id) { mutableStateOf(false) }
+    var announcementLoading by remember(account?.id) { mutableStateOf(account != null) }
+    var announcementError by remember(account?.id) { mutableStateOf<String?>(null) }
+    var announcementActionError by remember(account?.id) { mutableStateOf<String?>(null) }
+    var isMarkingAllAnnouncementsRead by remember(account?.id) { mutableStateOf(false) }
+    var selectedAnnouncementId by remember(account?.id) { mutableStateOf<String?>(null) }
+    var announcementDataLoaded by remember(account?.id) { mutableStateOf(false) }
+    var lastAnnouncementRefreshSignal by remember(account?.id) {
+        mutableStateOf<Long?>(null)
+    }
+    var lastAnnouncementRefreshKey by remember(account?.id) {
+        mutableIntStateOf(-1)
+    }
+    var wasAnnouncementsScreenVisible by remember(account?.id) { mutableStateOf(false) }
+
+    DisposableEffect(context) {
+        val preferences = context.getSharedPreferences(
+            "kolam_master_announcements",
+            android.content.Context.MODE_PRIVATE
+        )
+        val listener =
+            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                if (key == AnnouncementRepository.REFRESH_SIGNAL_KEY) {
+                    announcementRefreshSignal =
+                        AnnouncementRepository.refreshSignal(context)
+                }
+            }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    LaunchedEffect(account?.id, announcements, observedSupportUnreadVersion) {
+        val currentAccount = account
+        if (currentAccount == null) {
+            LauncherBadgeHelper.updateExistingNotification(
+                context,
+                PendingAnnouncementStore.count(context) +
+                    SupportUnreadStore.unreadMessageCount(context)
+            )
+            return@LaunchedEffect
+        }
+        SupportUnreadStore.useAccount(context, currentAccount.id)
+        val announcementUnreadCount = PendingAnnouncementStore.reconcile(
+            context,
+            announcements.count { !it.isRead },
+            announcements.map(Announcement::id).toSet()
+        )
+        LauncherBadgeHelper.updateExistingNotification(
+            context,
+            announcementUnreadCount + SupportUnreadStore.unreadMessageCount(context)
+        )
+    }
+
+    LaunchedEffect(
+        account?.id,
+        announcementRefreshSignal,
+        announcementRefreshKey,
+        screen == AppScreen.Announcements
+    ) {
+        val currentAccount = account
+        if (currentAccount == null) {
+            announcements = emptyList()
+            announcementUnread = false
+            announcementLoading = true
+            announcementDataLoaded = false
+            return@LaunchedEffect
+        }
+
+        val enteringAnnouncements = screen == AppScreen.Announcements &&
+            !wasAnnouncementsScreenVisible
+        wasAnnouncementsScreenVisible = screen == AppScreen.Announcements
+        val shouldRefresh = !announcementDataLoaded ||
+            lastAnnouncementRefreshSignal != announcementRefreshSignal ||
+            lastAnnouncementRefreshKey != announcementRefreshKey ||
+            enteringAnnouncements
+        if (!shouldRefresh) return@LaunchedEffect
+
+        if (!announcementDataLoaded) {
+            announcements = announcementRepository.loadCached(currentAccount)
+            announcementUnread = announcements.any { !it.isRead }
+            announcementLoading = announcements.isEmpty()
+        } else if (announcements.isEmpty()) {
+            announcementLoading = true
+        }
+        announcementError = null
+        try {
+            announcements = announcementRepository.refresh()
+            announcementUnread = announcements.any { !it.isRead }
+            announcementError = null
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            if (announcements.isEmpty()) {
+                announcementError = "Could not load announcements. Please try again."
+            }
+        } finally {
+            announcementLoading = false
+            announcementDataLoaded = true
+            lastAnnouncementRefreshSignal = announcementRefreshSignal
+            lastAnnouncementRefreshKey = announcementRefreshKey
+        }
+    }
+
+    LaunchedEffect(announcementNotification, account?.id) {
+        val request = announcementNotification ?: return@LaunchedEffect
+        onNavigate(AppScreen.Announcements)
+        val currentAccount = account ?: return@LaunchedEffect
+        val announcementId = request.announcementId
+        selectedAnnouncementId = null
+        if (announcementId.isNullOrBlank()) {
+            onAnnouncementNotificationHandled()
+            return@LaunchedEffect
+        }
+
+        val cached = announcementRepository.loadCached(currentAccount)
+        if (!announcementDataLoaded) {
+            announcements = cached
+            announcementUnread = cached.any { !it.isRead }
+        }
+        var matchingAnnouncement = announcements.firstOrNull { it.id == announcementId }
+            ?: cached.firstOrNull { it.id == announcementId }
+        if (matchingAnnouncement == null) {
+            if (announcements.isEmpty()) announcementLoading = true
+            try {
+                announcements = announcementRepository.refresh()
+                announcementUnread = announcements.any { !it.isRead }
+                announcementDataLoaded = true
+                matchingAnnouncement = announcements.firstOrNull { it.id == announcementId }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                if (announcements.isEmpty()) {
+                    announcementError = "Could not load announcements. Please try again."
+                }
+            } finally {
+                announcementLoading = false
+            }
+        }
+        if (matchingAnnouncement != null) {
+            selectedAnnouncementId = matchingAnnouncement?.id
+        }
+        onAnnouncementNotificationHandled()
+    }
+
+    LaunchedEffect(selectedAnnouncementId, account?.id) {
+        val currentAccount = account ?: return@LaunchedEffect
+        val selected = announcements.firstOrNull { it.id == selectedAnnouncementId }
+            ?: return@LaunchedEffect
+        if (selected.isRead) return@LaunchedEffect
+        try {
+            val readAt = announcementRepository.markAsRead(selected.id)
+            announcements = announcements.map { item ->
+                if (item.id == selected.id) item.copy(readAt = readAt) else item
+            }
+            announcementUnread = announcements.any { !it.isRead }
+            announcementError = null
+            announcementActionError = null
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            announcementActionError = "Could not mark this announcement as read."
+        }
+    }
     val contactAccountId = account?.takeUnless { it.isGuest }?.id
     LaunchedEffect(
         screen,
@@ -963,6 +1197,20 @@ private fun KolamMasterApp(
     var foregroundSupportAlert by remember {
         mutableStateOf(SupportUnreadStore.foregroundAlert(context))
     }
+    var foregroundAnnouncementAlert by remember {
+        mutableStateOf(ForegroundAnnouncementAlertStore.pending(context))
+    }
+    DisposableEffect(context) {
+        val preferences = ForegroundAnnouncementAlertStore.preferences(context)
+        val listener =
+            android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, _ ->
+                foregroundAnnouncementAlert =
+                    ForegroundAnnouncementAlertStore.pending(context)
+            }
+        preferences.registerOnSharedPreferenceChangeListener(listener)
+        foregroundAnnouncementAlert = ForegroundAnnouncementAlertStore.pending(context)
+        onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
     DisposableEffect(context, screen, selectedContactConversationId) {
         val preferences = context.getSharedPreferences(
             "kolam_master_support_notifications",
@@ -975,6 +1223,7 @@ private fun KolamMasterApp(
             unreadContactConversationIds = updatedUnreadConversationIds
             val updatedMessageVersion = SupportUnreadStore.messageVersion(context)
             observedSupportMessageVersion = updatedMessageVersion
+            observedSupportUnreadVersion = SupportUnreadStore.unreadVersion(context)
             hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
             foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
             val activeConversationId = selectedContactConversationId
@@ -990,6 +1239,7 @@ private fun KolamMasterApp(
         preferences.registerOnSharedPreferenceChangeListener(listener)
         unreadContactConversationIds = SupportUnreadStore.unreadConversationIds(context)
         observedSupportMessageVersion = SupportUnreadStore.messageVersion(context)
+        observedSupportUnreadVersion = SupportUnreadStore.unreadVersion(context)
         hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
         foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
         onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
@@ -1033,12 +1283,6 @@ private fun KolamMasterApp(
             onSupportNotificationHandled()
         }
     }
-    LaunchedEffect(announcementNotification) {
-        if (announcementNotification) {
-            onNavigate(AppScreen.Announcements)
-            onAnnouncementNotificationHandled()
-        }
-    }
     LaunchedEffect(screen, selectedContactConversationId) {
         SupportUnreadStore.setActiveConversation(
             selectedContactConversationId.takeIf { screen == AppScreen.ContactUs }
@@ -1055,11 +1299,15 @@ private fun KolamMasterApp(
     val myFoldersSelectedFolderId = remember(account?.takeUnless { it.isGuest }?.id) {
         mutableStateOf<String?>(null)
     }
+    val handleAnnouncementDetailBack: () -> Unit = { selectedAnnouncementId = null }
     LaunchedEffect(screen) {
         if (screen != AppScreen.MyKolams) myFoldersSelectedFolderId.value = null
     }
     val handleScreenBack: () -> Unit = {
         when {
+            screen == AppScreen.Announcements && selectedAnnouncementId != null -> {
+                selectedAnnouncementId = null
+            }
             screen == AppScreen.ContactUs && selectedContactConversationId != null -> {
                 selectedContactConversationId = null
                 contactRefreshKey++
@@ -1123,7 +1371,8 @@ private fun KolamMasterApp(
                         onOpenDrawer = { drawerOpen = true },
                         showNavigationControls = screen != AppScreen.ChooseLanguage &&
                             screen != AppScreen.SignInInvitation,
-                        unreadSupport = hasUnreadSupportNotifications
+                        unreadSupport = hasUnreadSupportNotifications,
+                        unreadAnnouncements = announcementUnread
                     )
                 }
                 Box(Modifier.fillMaxWidth().weight(1f)) {
@@ -1150,6 +1399,7 @@ private fun KolamMasterApp(
                         supportMessageVersion = supportMessageVersion,
                         contactDetailRefreshKey = contactDetailRefreshKey,
                         unreadSupport = hasUnreadSupportNotifications,
+                        unreadAnnouncements = announcementUnread,
                         selectedMyFolderId = myFoldersSelectedFolderId,
                         contactConversations = contactConversations,
                         isContactLoading = isContactLoading,
@@ -1170,6 +1420,47 @@ private fun KolamMasterApp(
                         onSendContactMessage = contactRepository::sendContactMessage,
                         onUploadContactImage = contactRepository::uploadContactImage,
                         unreadContactConversationIds = unreadContactConversationIds,
+                        announcements = announcements,
+                        announcementsLoading = announcementLoading,
+                        announcementsError = announcementError,
+                        announcementsActionError = announcementActionError,
+                        selectedAnnouncement = announcements.firstOrNull {
+                            it.id == selectedAnnouncementId
+                        },
+                        isMarkingAllAnnouncementsRead = isMarkingAllAnnouncementsRead,
+                        onRetryAnnouncements = { announcementRefreshKey++ },
+                        onAnnouncementSelected = { selectedAnnouncementId = it.id },
+                        onAnnouncementDetailBack = handleAnnouncementDetailBack,
+                        onMarkAllAnnouncementsRead = {
+                            val announcementIds = announcementIdsForMarkAll(announcements)
+                            if (announcementIds.isNotEmpty() && !isMarkingAllAnnouncementsRead) {
+                                scope.launch {
+                                    isMarkingAllAnnouncementsRead = true
+                                    try {
+                                        val readAt =
+                                            announcementRepository.markAllAsRead(announcementIds)
+                                        announcements = announcements.map { item ->
+                                            if (item.id in announcementIds) {
+                                                item.copy(readAt = readAt)
+                                            } else {
+                                                item
+                                            }
+                                        }
+                                        announcementUnread =
+                                            announcements.any { !it.isRead }
+                                        announcementError = null
+                                        announcementActionError = null
+                                    } catch (exception: CancellationException) {
+                                        throw exception
+                                    } catch (exception: Exception) {
+                                        announcementActionError =
+                                            "Could not mark announcements as read."
+                                    } finally {
+                                        isMarkingAllAnnouncementsRead = false
+                                    }
+                                }
+                            }
+                        },
                         onNewContactConversation = {
                             if (contactAccountId != null) {
                                 isNewContactConversation = true
@@ -1225,7 +1516,8 @@ private fun KolamMasterApp(
                             onMenuAction(action)
                         }
                     },
-                    unreadContactUs = hasUnreadSupportNotifications
+                    unreadContactUs = hasUnreadSupportNotifications,
+                    unreadAnnouncements = announcementUnread
                 )
             }
         }
@@ -1261,6 +1553,22 @@ private fun KolamMasterApp(
                 foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
             }
         )
+    }
+    if (foregroundSupportAlert == null) {
+        foregroundAnnouncementAlert?.let { alert ->
+            AnnouncementForegroundAlertDialog(
+                announcementId = alert.announcementId,
+                onOpen = { announcementId ->
+                    ForegroundAnnouncementAlertStore.dismiss(context, alert)
+                    foregroundAnnouncementAlert = null
+                    onOpenForegroundAnnouncement(announcementId)
+                },
+                onLater = {
+                    ForegroundAnnouncementAlertStore.dismiss(context, alert)
+                    foregroundAnnouncementAlert = null
+                }
+            )
+        }
     }
     AuthLoadingOverlay(message = authLoadingMessage)
     authError?.let { message ->
@@ -1314,6 +1622,7 @@ private fun AppScreenContent(
     supportMessageVersion: Long,
     contactDetailRefreshKey: Int,
     unreadSupport: Boolean,
+    unreadAnnouncements: Boolean,
     selectedMyFolderId: androidx.compose.runtime.MutableState<String?>,
     contactConversations: List<ContactConversation>,
     isContactLoading: Boolean,
@@ -1330,6 +1639,16 @@ private fun AppScreenContent(
     unreadContactConversationIds: Set<String>,
     onNewContactConversation: () -> Unit,
     onCreateContactConversation: suspend (String, String, String, ByteArray?) -> Unit,
+    announcements: List<Announcement>,
+    announcementsLoading: Boolean,
+    announcementsError: String?,
+    announcementsActionError: String?,
+    selectedAnnouncement: Announcement?,
+    isMarkingAllAnnouncementsRead: Boolean,
+    onRetryAnnouncements: () -> Unit,
+    onAnnouncementSelected: (Announcement) -> Unit,
+    onAnnouncementDetailBack: () -> Unit,
+    onMarkAllAnnouncementsRead: () -> Unit,
     onBegin: () -> Unit,
     onMenuAction: (DrawerAction) -> Unit
 ) {
@@ -1353,7 +1672,8 @@ private fun AppScreenContent(
                 )
             },
             onMenuAction = onMenuAction,
-            unreadSupport = unreadSupport
+            unreadSupport = unreadSupport,
+            unreadAnnouncements = unreadAnnouncements
         )
         AppScreen.Browse -> BrowseLessonScreen(
             catalogue = catalogue,
@@ -1424,7 +1744,18 @@ private fun AppScreenContent(
                 )
             }
         }
-        AppScreen.Announcements -> AnnouncementsDestination(onGoBack)
+        AppScreen.Announcements -> AnnouncementsDestination(
+            announcements = announcements,
+            isLoading = announcementsLoading,
+            errorMessage = announcementsError,
+            actionErrorMessage = announcementsActionError,
+            selectedAnnouncement = selectedAnnouncement,
+            isMarkingAllRead = isMarkingAllAnnouncementsRead,
+            onRetry = onRetryAnnouncements,
+            onAnnouncementSelected = onAnnouncementSelected,
+            onBackFromDetail = onAnnouncementDetailBack,
+            onMarkAllRead = onMarkAllAnnouncementsRead
+        )
         AppScreen.Community -> PlaceholderDestination("Community", onGoBack)
         AppScreen.History -> PlaceholderDestination("Kolam History", onGoBack)
         AppScreen.Loading -> androidx.compose.material3.Text(

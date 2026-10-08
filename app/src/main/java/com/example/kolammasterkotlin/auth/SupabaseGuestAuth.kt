@@ -22,7 +22,8 @@ data class SupabaseAccount(
     val isGuest: Boolean,
     val name: String,
     val email: String,
-    val avatarUrl: String?
+    val avatarUrl: String?,
+    val createdAt: String? = null
 )
 
 object SupabaseGuestAuth {
@@ -126,6 +127,7 @@ object SupabaseGuestAuth {
                 }
         }
 
+    @OptIn(kotlin.time.ExperimentalTime::class)
     private fun accountFor(user: UserInfo): SupabaseAccount {
         val userMetadata = user.userMetadata
         val hasGoogleIdentity = user.identities?.any { it.provider == "google" } == true
@@ -143,7 +145,8 @@ object SupabaseGuestAuth {
             isGuest = isGuest,
             name = name,
             email = user.email.orEmpty(),
-            avatarUrl = userMetadata?.get("avatar_url")?.jsonPrimitive?.contentOrNull
+            avatarUrl = userMetadata?.get("avatar_url")?.jsonPrimitive?.contentOrNull,
+            createdAt = user.createdAt?.toString()
         )
     }
 

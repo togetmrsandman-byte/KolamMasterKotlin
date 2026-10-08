@@ -445,11 +445,13 @@ private fun RevealingBorder(width: Float, image: androidx.compose.ui.graphics.Im
 internal fun LandingScreen(
     onDestination: (LandingDestination) -> Unit,
     onMenuAction: (DrawerAction) -> Unit,
-    unreadSupport: Boolean = false
+    unreadSupport: Boolean = false,
+    unreadAnnouncements: Boolean = false
 ) {
     LandingPageFrame(
         onMenuAction = onMenuAction,
-        unreadSupport = unreadSupport
+        unreadSupport = unreadSupport,
+        unreadAnnouncements = unreadAnnouncements
     ) {
         Spacer(Modifier.height(18.dp))
         LandingBubbles(
@@ -466,6 +468,7 @@ internal fun LandingScreen(
 internal fun LandingPageFrame(
     onMenuAction: (DrawerAction) -> Unit,
     unreadSupport: Boolean = false,
+    unreadAnnouncements: Boolean = false,
     content: @Composable ColumnScope.() -> Unit
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
@@ -478,7 +481,7 @@ internal fun LandingPageFrame(
             .background(KolamBackground)
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-                LandingHeader(unreadSupport) { drawerOpen = true }
+                LandingHeader(unreadSupport || unreadAnnouncements) { drawerOpen = true }
             Box(modifier = Modifier.fillMaxSize()) {
                 LandingDecoration(
                     Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
@@ -516,7 +519,8 @@ internal fun LandingPageFrame(
                     onMenuAction(action)
                 }
             },
-            unreadContactUs = unreadSupport
+            unreadContactUs = unreadSupport,
+            unreadAnnouncements = unreadAnnouncements
         )
     }
 }
@@ -572,7 +576,8 @@ internal fun AppNavigationHeader(
     onHome: () -> Unit,
     onOpenDrawer: () -> Unit,
     showNavigationControls: Boolean = true,
-    unreadSupport: Boolean = false
+    unreadSupport: Boolean = false,
+    unreadAnnouncements: Boolean = false
 ) {
     Box(
         modifier = Modifier
@@ -621,7 +626,7 @@ internal fun AppNavigationHeader(
                         )
                     }
                 }
-                if (unreadSupport) {
+                if (unreadSupport || unreadAnnouncements) {
                     SupportUnreadIndicator(
                         Modifier
                             .align(Alignment.Center)

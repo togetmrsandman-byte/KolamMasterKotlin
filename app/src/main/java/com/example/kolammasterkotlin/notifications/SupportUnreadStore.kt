@@ -14,12 +14,14 @@ internal object SupportUnreadStore {
     private const val FOREGROUND_ALERTS_KEY = "foreground_support_alerts"
     private const val REFRESH_SIGNAL_PREFIX = "support_refresh_signal_"
     private const val MESSAGE_VERSION_KEY = "support_message_version"
+    private const val UNREAD_VERSION_KEY = "support_unread_version"
+    private const val CURRENT_USER_ID_KEY = "support_unread_user_id"
     @Volatile
     private var activeConversationId: String? = null
 
     @Synchronized
     fun unreadConversationIds(context: Context): Set<String> =
-        readUnread(context).keys
+        readUnread(context).filterValues { it.isNotEmpty() }.keys
 
     @Synchronized
     fun unreadMessageIds(context: Context, conversationId: String): Set<String> =
@@ -33,8 +35,33 @@ internal object SupportUnreadStore {
     @Synchronized
     fun hasUnread(context: Context): Boolean {
         val preferences = preferences(context)
-        return readUnread(context).isNotEmpty() ||
-            preferences.getStringSet(PENDING_MESSAGE_IDS_KEY, emptySet()).orEmpty().isNotEmpty()
+        return readUnread(context).values.any { it.isNotEmpty() } ||
+            preferences.getStringSet(PENDING_MESSAGE_IDS_KEY, emptySet())
+                .orEmpty().any(String::isNotBlank)
+    }
+
+    @Synchronized
+    fun unreadMessageCount(context: Context): Int {
+        val pending = preferences(context).getStringSet(PENDING_MESSAGE_IDS_KEY, emptySet())
+            .orEmpty()
+        return countOutstandingSupportMessageIds(readUnread(context), pending)
+    }
+
+    @Synchronized
+    fun unreadVersion(context: Context): Long =
+        preferences(context).getLong(UNREAD_VERSION_KEY, 0L)
+
+    @Synchronized
+    fun useAccount(context: Context, userId: String) {
+        require(userId.isNotBlank()) { "Support unread state requires a user ID." }
+        val preferences = preferences(context)
+        if (preferences.getString(CURRENT_USER_ID_KEY, null) == userId) return
+        preferences.edit()
+            .putString(CURRENT_USER_ID_KEY, userId)
+            .putString(UNREAD_KEY, JSONObject().toString())
+            .putStringSet(PENDING_MESSAGE_IDS_KEY, emptySet())
+            .putLong(UNREAD_VERSION_KEY, preferences.getLong(UNREAD_VERSION_KEY, 0L) + 1L)
+            .commit()
     }
 
     @Synchronized
@@ -67,11 +94,12 @@ internal object SupportUnreadStore {
             editor.putString(SEEN_MESSAGE_IDS_KEY, JSONArray(updatedSeen).toString())
         }
         if (normalizedConversationId != null) {
-            val unread = readUnread(context).toMutableMap()
-            unread[normalizedConversationId] =
-                (unread[normalizedConversationId].orEmpty() + listOfNotNull(normalizedMessageId))
-                    .toSet()
-            editor.putString(UNREAD_KEY, unread.toJson())
+            if (normalizedMessageId != null) {
+                val unread = readUnread(context).toMutableMap()
+                unread[normalizedConversationId] =
+                    unread[normalizedConversationId].orEmpty() + normalizedMessageId
+                editor.putString(UNREAD_KEY, unread.toJson())
+            }
         } else if (normalizedMessageId != null) {
             val pending = preferences.getStringSet(PENDING_MESSAGE_IDS_KEY, emptySet())
                 .orEmpty().toMutableSet()
@@ -79,6 +107,7 @@ internal object SupportUnreadStore {
             editor.putStringSet(PENDING_MESSAGE_IDS_KEY, pending)
         }
         editor.putLong(MESSAGE_VERSION_KEY, preferences.getLong(MESSAGE_VERSION_KEY, 0L) + 1L)
+        editor.putLong(UNREAD_VERSION_KEY, preferences.getLong(UNREAD_VERSION_KEY, 0L) + 1L)
         editor.commit()
         return true
     }
@@ -151,6 +180,7 @@ internal object SupportUnreadStore {
         preferences.edit()
             .putString(UNREAD_KEY, unread.toJson())
             .putStringSet(PENDING_MESSAGE_IDS_KEY, pending)
+            .putLong(UNREAD_VERSION_KEY, preferences.getLong(UNREAD_VERSION_KEY, 0L) + 1L)
             .commit()
     }
 
@@ -165,7 +195,10 @@ internal object SupportUnreadStore {
         val pending = preferences.getStringSet(PENDING_MESSAGE_IDS_KEY, emptySet())
             .orEmpty().toMutableSet()
         if (pending.remove(messageId)) {
-            preferences.edit().putStringSet(PENDING_MESSAGE_IDS_KEY, pending).commit()
+            preferences.edit()
+                .putStringSet(PENDING_MESSAGE_IDS_KEY, pending)
+                .putLong(UNREAD_VERSION_KEY, preferences.getLong(UNREAD_VERSION_KEY, 0L) + 1L)
+                .commit()
         }
     }
 

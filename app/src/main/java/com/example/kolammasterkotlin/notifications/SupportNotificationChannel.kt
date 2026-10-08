@@ -19,6 +19,7 @@ internal object SupportNotificationChannel {
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
             description = "Support replies and app announcements"
+            setShowBadge(true)
             enableVibration(true)
             setSound(
                 RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION),

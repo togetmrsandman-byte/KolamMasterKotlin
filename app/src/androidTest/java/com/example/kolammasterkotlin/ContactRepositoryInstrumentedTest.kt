@@ -70,7 +70,7 @@ class ContactRepositoryInstrumentedTest {
                 """[{"id":"c1","user_id":"${auth.account.id}","email":"","phone":"+1",""" +
                     """"subject":"Help","status":"OPEN","created_at":"created",""" +
                     """"updated_at":"updated","contact_messages":[""" +
-                    """{"created_at":"2026-10-07T22:00:00Z"}]}]"""
+                    """{"created_at":"2026-10-07T22:00:00Z","message":"Latest preview"}]}]"""
             )
         )
 
@@ -79,10 +79,16 @@ class ContactRepositoryInstrumentedTest {
             .single()
 
         assertEquals("2026-10-07T22:00:00Z", conversation.latestMessageCreatedAt)
+        assertEquals("Latest preview", conversation.latestMessagePreview)
         assertTrue(
             transport.requests.single().url.contains("contact_messages.order=created_at.desc")
         )
         assertTrue(transport.requests.single().url.contains("contact_messages.limit=1"))
+        assertTrue(
+            transport.requests.single().url.contains(
+                "contact_messages(created_at,message,image_url)"
+            )
+        )
     }
 
     @Test

@@ -1,6 +1,5 @@
 package com.kolammaster.app
 
-import org.json.JSONException
 import org.json.JSONObject
 
 internal data class ContactConversation(
@@ -12,7 +11,8 @@ internal data class ContactConversation(
     val status: String,
     val createdAt: String,
     val updatedAt: String,
-    val latestMessageCreatedAt: String? = null
+    val latestMessageCreatedAt: String? = null,
+    val latestMessagePreview: String? = null
 )
 
 internal data class ContactMessage(
@@ -28,17 +28,26 @@ internal class ContactDataException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
 
 internal object ContactJson {
-    fun decodeConversation(value: JSONObject): ContactConversation = ContactConversation(
-        id = value.requiredString("id"),
-        userId = value.requiredString("user_id"),
-        email = value.optionalString("email"),
-        phone = value.optionalString("phone"),
-        subject = value.requiredString("subject"),
-        status = value.requiredString("status"),
-        createdAt = value.optionalString("created_at"),
-        updatedAt = value.optionalString("updated_at"),
-        latestMessageCreatedAt = value.latestContactMessageCreatedAt()
-    )
+    fun decodeConversation(value: JSONObject): ContactConversation {
+        val latestMessage = value.latestContactMessage()
+        return ContactConversation(
+            id = value.requiredString("id"),
+            userId = value.requiredString("user_id"),
+            email = value.optionalString("email"),
+            phone = value.optionalString("phone"),
+            subject = value.requiredString("subject"),
+            status = value.requiredString("status"),
+            createdAt = value.optionalString("created_at"),
+            updatedAt = value.optionalString("updated_at"),
+            latestMessageCreatedAt = latestMessage?.optString("created_at")
+                ?.takeIf(String::isNotBlank),
+            latestMessagePreview = latestMessage?.let { message ->
+                message.optString("message").trim().takeIf(String::isNotBlank)
+                    ?: (message.opt("image_url") as? String)?.takeIf(String::isNotBlank)
+                        ?.let { "Image attachment" }
+            }
+        )
+    }
 
     fun decodeMessage(value: JSONObject): ContactMessage = ContactMessage(
         id = value.requiredString("id"),
@@ -95,14 +104,12 @@ internal object ContactJson {
         else -> throw ContactDataException("Contact response field '$key' is not a string.")
     }
 
-    private fun JSONObject.latestContactMessageCreatedAt(): String? {
+    private fun JSONObject.latestContactMessage(): JSONObject? {
         val messages = optJSONArray("contact_messages") ?: return null
         return (0 until messages.length())
             .mapNotNull { index ->
-                messages.optJSONObject(index)?.let { message ->
-                    message.optString("created_at").takeIf(String::isNotBlank)
-                }
+                messages.optJSONObject(index)
             }
-            .maxOrNull()
+            .maxByOrNull { message -> message.optString("created_at") }
     }
 }

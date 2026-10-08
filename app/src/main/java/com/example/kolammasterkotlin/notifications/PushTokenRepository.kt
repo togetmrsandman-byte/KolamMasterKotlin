@@ -37,7 +37,7 @@ internal class PushTokenRepository(
 ) {
     suspend fun registerCurrentToken(token: String) = withContext(Dispatchers.IO) {
         require(token.isNotBlank()) { "Firebase returned an empty registration token." }
-        val account = auth.currentAccount()?.takeUnless(SupabaseAccount::isGuest)
+        val account = auth.currentAccount()
             ?: return@withContext
         val accessToken = auth.accessTokenFor(account.id)
         requireSameAuthenticatedAccount(account.id)
@@ -54,7 +54,7 @@ internal class PushTokenRepository(
         }
 
         val currentAccount = auth.currentAccount()
-        if (currentAccount == null || currentAccount.isGuest || currentAccount.id != account.id) {
+        if (currentAccount == null || currentAccount.id != account.id) {
             deleteTokenRow(account.id, token, accessToken)
             return@withContext
         }
@@ -78,7 +78,7 @@ internal class PushTokenRepository(
         val userId = preferences.getString(ASSOCIATED_USER_KEY, null) ?: return@withContext
         val token = preferences.getString(ASSOCIATED_TOKEN_KEY, null) ?: return@withContext
         val account = auth.currentAccount()
-        if (account == null || account.isGuest || account.id != userId) return@withContext
+        if (account == null || account.id != userId) return@withContext
         val accessToken = auth.accessTokenFor(userId)
         requireSameAuthenticatedAccount(userId)
         deleteTokenRow(userId, token, accessToken)
@@ -90,7 +90,7 @@ internal class PushTokenRepository(
 
     private suspend fun requireSameAuthenticatedAccount(userId: String) {
         val current = auth.currentAccount()
-        check(current != null && !current.isGuest && current.id == userId) {
+        check(current != null && current.id == userId) {
             "The authenticated account changed during push token registration."
         }
     }

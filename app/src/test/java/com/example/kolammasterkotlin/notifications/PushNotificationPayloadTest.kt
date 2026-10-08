@@ -56,12 +56,26 @@ class PushNotificationPayloadTest {
             mapOf(
                 "type" to "announcement",
                 "title" to "Notice",
-                "body" to "An update is ready."
+                "body" to "An update is ready.",
+                "announcementId" to "announcement-1"
             )
         ) as PushNotificationPayload.Announcement
 
         assertEquals("Notice", payload.title)
         assertEquals("An update is ready.", payload.body)
+        assertEquals("announcement-1", payload.announcementId)
+    }
+
+    @Test
+    fun preservesAnnouncementMessageCompatibilityAndSnakeCaseId() {
+        val payload = PushNotificationPayloadParser.parse(
+            mapOf(
+                "type" to "announcement_message",
+                "announcement_id" to "announcement-2"
+            )
+        ) as PushNotificationPayload.Announcement
+
+        assertEquals("announcement-2", payload.announcementId)
     }
 
     @Test

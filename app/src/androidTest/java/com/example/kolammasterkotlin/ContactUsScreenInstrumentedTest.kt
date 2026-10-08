@@ -40,7 +40,9 @@ class ContactUsScreenInstrumentedTest {
                         subject = "Help with my lesson",
                         status = "OPEN",
                         createdAt = "2026-10-01T00:00:00Z",
-                        updatedAt = "2026-10-02T00:00:00Z"
+                        updatedAt = "2026-10-02T00:00:00Z",
+                        latestMessageCreatedAt = "2026-10-02T00:00:00Z",
+                        latestMessagePreview = "I need help with this lesson."
                     )
                 ),
                 isLoading = false,
@@ -51,6 +53,7 @@ class ContactUsScreenInstrumentedTest {
         }
 
         composeRule.onNodeWithText("Help with my lesson").assertExists()
+        composeRule.onNodeWithText("I need help with this lesson.").assertExists()
         composeRule.onNodeWithText("OPEN · 2026-10-02T00:00:00Z").assertDoesNotExist()
         composeRule.onNodeWithText("Sign in to start a new conversation.")
             .assertDoesNotExist()

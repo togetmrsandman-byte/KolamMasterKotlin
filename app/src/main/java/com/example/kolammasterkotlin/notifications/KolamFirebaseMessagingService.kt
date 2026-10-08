@@ -4,8 +4,13 @@ import android.app.ActivityManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
+import com.kolammaster.app.AnnouncementRepository
+import com.kolammaster.app.auth.SupabaseGuestAuth
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.OutOfQuotaPolicy
+import androidx.work.WorkManager
 import com.kolammaster.app.MainActivity
 import com.kolammaster.app.R
 import com.google.firebase.messaging.FirebaseMessagingService
@@ -41,27 +46,61 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         val payload = PushNotificationPayloadParser.parse(message.data) ?: return
         when (payload) {
             is PushNotificationPayload.Support -> {
-                handleSupportPush(
+                val appForeground = isApplicationForeground()
+                val handled = handleSupportPush(
                     context = this,
                     payload = payload,
-                    appForeground = isApplicationForeground()
+                    appForeground = appForeground
                 ) {
-                    showNotification(
+                    postPushNotification(
                         payload = payload,
                         notificationId = payload.messageId ?: message.messageId
                             ?: payload.conversationId
                     )
                 }
+                if (handled && appForeground) refreshExistingBadgeCount()
             }
-            is PushNotificationPayload.Announcement ->
-                showNotification(payload, notificationId = message.messageId)
+            is PushNotificationPayload.Announcement -> {
+                Log.i(DIAGNOSTIC_TAG, "Announcement received; announcementId=${payload.announcementId}")
+                if (isApplicationForeground()) {
+                    ForegroundAnnouncementAlertStore.record(this, payload.announcementId)
+                }
+                val pendingAnnouncementCount = payload.announcementId?.let {
+                    PendingAnnouncementStore.record(this, it)
+                } ?: PendingAnnouncementStore.count(this)
+                val unreadCount = pendingAnnouncementCount +
+                    SupportUnreadStore.unreadMessageCount(this)
+                LauncherBadgeHelper.updateExistingNotification(this, unreadCount)
+                showNotification(
+                    payload = payload.copy(
+                        title = payload.title ?: message.notification?.title,
+                        body = payload.body ?: message.notification?.body
+                    ),
+                    notificationId = payload.announcementId ?: message.messageId,
+                    unreadCount = unreadCount
+                )
+                AnnouncementRepository.requestRefresh(this)
+                enqueueAnnouncementBadgeRefresh()
+                Log.i(DIAGNOSTIC_TAG, "Announcement badge refresh enqueue requested")
+            }
         }
+    }
+
+    private fun enqueueAnnouncementBadgeRefresh() {
+        val request = OneTimeWorkRequestBuilder<AnnouncementBadgeRefreshWorker>()
+            .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+            .build()
+        WorkManager.getInstance(applicationContext).enqueueUniqueWork(
+            ANNOUNCEMENT_BADGE_REFRESH_WORK,
+            ExistingWorkPolicy.APPEND_OR_REPLACE,
+            request
+        )
     }
 
     private fun isApplicationForeground(): Boolean {
         val processState = ActivityManager.RunningAppProcessInfo()
         ActivityManager.getMyMemoryState(processState)
-        return processState.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        return processState.importance <= ActivityManager.RunningAppProcessInfo.IMPORTANCE_VISIBLE
     }
 
     override fun onDestroy() {
@@ -71,7 +110,8 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
 
     private fun showNotification(
         payload: PushNotificationPayload,
-        notificationId: String?
+        notificationId: String?,
+        unreadCount: Int,
     ) {
         val support = payload as? PushNotificationPayload.Support
         val title: String
@@ -85,7 +125,10 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
             }
             is PushNotificationPayload.Announcement -> {
                 title = payload.title ?: SUPPORT_TITLE
-                body = payload.body ?: ANNOUNCEMENT_BODY
+                body = payload.body ?: run {
+                    LauncherBadgeHelper.updateExistingNotification(this, unreadCount)
+                    return
+                }
                 type = ANNOUNCEMENT_TYPE
             }
         }
@@ -99,6 +142,8 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
                 putExtra("sender", "ADMIN")
                 support.conversationId?.let { putExtra("conversationId", it) }
                 support.messageId?.let { putExtra("messageId", it) }
+            } else if (payload is PushNotificationPayload.Announcement) {
+                payload.announcementId?.let { putExtra("announcementId", it) }
             }
         }
 
@@ -109,7 +154,7 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
-        val notification = NotificationCompat.Builder(this, SupportNotificationChannel.CHANNEL_ID)
+        val builder = NotificationCompat.Builder(this, SupportNotificationChannel.CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_stat_support)
             .setContentTitle(title)
             .setContentText(body)
@@ -122,12 +167,105 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
             .setDefaults(NotificationCompat.DEFAULT_SOUND or NotificationCompat.DEFAULT_VIBRATE)
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
-            .build()
-        val tag = notificationId ?: type
         try {
-            NotificationManagerCompat.from(this).notify(tag, 0, notification)
+            LauncherBadgeHelper.postActualNotification(this, builder, unreadCount)
         } catch (exception: SecurityException) {
             Log.w(TAG, "Notification permission is not granted.", exception)
+        }
+    }
+
+    private fun postPushNotification(
+        payload: PushNotificationPayload,
+        notificationId: String?,
+        refreshAnnouncements: Boolean = false,
+        enqueueBadgeRefresh: Boolean = false
+    ) {
+        serviceScope.launch {
+            val repository = AnnouncementRepository(this@KolamFirebaseMessagingService)
+            var announcements = emptyList<com.kolammaster.app.Announcement>()
+            var currentAccount: com.kolammaster.app.auth.SupabaseAccount? = null
+            try {
+                currentAccount = SupabaseGuestAuth.currentAccount()
+                if (currentAccount != null) {
+                    SupportUnreadStore.useAccount(
+                        this@KolamFirebaseMessagingService,
+                        currentAccount.id
+                    )
+                    announcements = repository.loadCached(currentAccount)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Could not load cached announcements for the badge count.", exception)
+            }
+            var announcementUnreadCount = currentAccount?.let {
+                PendingAnnouncementStore.reconcile(
+                    this@KolamFirebaseMessagingService,
+                    announcements.count { announcement -> !announcement.isRead },
+                    announcements.map(com.kolammaster.app.Announcement::id).toSet()
+                )
+            } ?: PendingAnnouncementStore.count(this@KolamFirebaseMessagingService)
+            var unreadCount = announcementUnreadCount +
+                SupportUnreadStore.unreadMessageCount(this@KolamFirebaseMessagingService)
+            if (payload is PushNotificationPayload.Announcement) {
+                LauncherBadgeHelper.updateExistingNotification(this@KolamFirebaseMessagingService, unreadCount)
+            }
+            showNotification(payload, notificationId, unreadCount)
+            if (enqueueBadgeRefresh) {
+                enqueueAnnouncementBadgeRefresh()
+                Log.i(DIAGNOSTIC_TAG, "Announcement badge refresh enqueue requested")
+            }
+
+            if (refreshAnnouncements && currentAccount != null) {
+                try {
+                    announcements = repository.refresh()
+                    announcementUnreadCount = PendingAnnouncementStore.count(
+                        this@KolamFirebaseMessagingService
+                    )
+                    unreadCount = announcementUnreadCount +
+                        SupportUnreadStore.unreadMessageCount(
+                            this@KolamFirebaseMessagingService
+                        )
+                    LauncherBadgeHelper.updateExistingNotification(
+                        this@KolamFirebaseMessagingService,
+                        unreadCount
+                    )
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.w(TAG, "Could not refresh announcements for the badge count.", exception)
+                }
+            }
+        }
+    }
+
+    private fun refreshExistingBadgeCount() {
+        serviceScope.launch {
+            try {
+                val account = SupabaseGuestAuth.currentAccount()
+                account?.let {
+                    SupportUnreadStore.useAccount(this@KolamFirebaseMessagingService, it.id)
+                }
+                val announcements = account?.let {
+                    AnnouncementRepository(this@KolamFirebaseMessagingService).loadCached(it)
+                }.orEmpty()
+                val announcementUnreadCount = account?.let {
+                    PendingAnnouncementStore.reconcile(
+                        this@KolamFirebaseMessagingService,
+                        announcements.count { announcement -> !announcement.isRead },
+                        announcements.map(com.kolammaster.app.Announcement::id).toSet()
+                    )
+                } ?: PendingAnnouncementStore.count(this@KolamFirebaseMessagingService)
+                LauncherBadgeHelper.updateExistingNotification(
+                    this@KolamFirebaseMessagingService,
+                    announcementUnreadCount +
+                        SupportUnreadStore.unreadMessageCount(this@KolamFirebaseMessagingService)
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e(TAG, "Could not recalculate the launcher badge count.", exception)
+            }
         }
     }
 
@@ -137,7 +275,8 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         const val ANNOUNCEMENT_TYPE = "announcement"
         const val SUPPORT_TITLE = "Kolam Master"
         const val SUPPORT_BODY = "You have a new message from Support."
-        const val ANNOUNCEMENT_BODY = "A new announcement is available."
+        const val ANNOUNCEMENT_BADGE_REFRESH_WORK = "announcement_badge_refresh"
+        const val DIAGNOSTIC_TAG = "ANNOUNCEMENT_BADGE_DEBUG"
     }
 }
 

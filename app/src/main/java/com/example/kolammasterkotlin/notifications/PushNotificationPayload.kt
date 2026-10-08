@@ -8,7 +8,8 @@ internal sealed interface PushNotificationPayload {
 
     data class Announcement(
         val title: String?,
-        val body: String?
+        val body: String?,
+        val announcementId: String?
     ) : PushNotificationPayload
 }
 
@@ -26,7 +27,8 @@ internal object PushNotificationPayloadParser {
             "announcement", "announcement_message" ->
                 PushNotificationPayload.Announcement(
                     title = data["title"]?.takeIf(String::isNotBlank),
-                    body = data["body"]?.takeIf(String::isNotBlank)
+                    body = data["body"]?.takeIf(String::isNotBlank),
+                    announcementId = data.firstValue("announcementId", "announcement_id")
                 )
             else -> null
         }

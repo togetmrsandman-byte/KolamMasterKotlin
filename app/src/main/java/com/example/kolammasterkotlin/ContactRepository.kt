@@ -366,7 +366,7 @@ internal class ContactRepository(
         const val CONVERSATION_COLUMNS =
             "id,user_id,email,phone,subject,status,created_at,updated_at"
         const val CONVERSATION_LIST_COLUMNS =
-            "$CONVERSATION_COLUMNS,contact_messages(created_at)"
+            "$CONVERSATION_COLUMNS,contact_messages(created_at,message,image_url)"
         const val MESSAGE_COLUMNS =
             "id,conversation_id,sender,message,image_url,created_at"
         const val CONVERSATION_LIMIT = 10
