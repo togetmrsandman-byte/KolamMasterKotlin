@@ -12,39 +12,64 @@ import me.leolin.shortcutbadger.ShortcutBadgeException
 internal object LauncherBadgeHelper {
     const val TAG = "kolam_master_badge_notification"
     const val ID = 73104
+    const val ANNOUNCEMENT_TAG = "kolam_master_announcement_notification"
+    const val ANNOUNCEMENT_ID = 73105
+    const val SUPPORT_TAG = "kolam_master_support_notification"
+    const val SUPPORT_ID = 73106
+
+    private val managedNotificationIdentities = listOf(
+        ANNOUNCEMENT_TAG to ANNOUNCEMENT_ID,
+        SUPPORT_TAG to SUPPORT_ID
+    )
 
     fun postActualNotification(
         context: Context,
         builder: NotificationCompat.Builder,
-        unreadCount: Int
+        unreadCount: Int,
+        tag: String,
+        id: Int
     ) {
+        cancelLegacyNotification(context)
         applyLauncherBadge(context, unreadCount)
         val notification = builder
             .setNumber(unreadCount.coerceAtLeast(0))
             .build()
-        NotificationManagerCompat.from(context).notify(TAG, ID, notification)
+        NotificationManagerCompat.from(context).notify(tag, id, notification)
     }
 
     fun updateExistingNotification(context: Context, unreadCount: Int) {
         Log.i(DIAGNOSTIC_TAG, "Badge update started; combined count=$unreadCount")
         applyLauncherBadge(context, unreadCount)
         val manager = context.getSystemService(NotificationManager::class.java)
+        cancelLegacyNotification(context)
         if (unreadCount <= 0) {
-            manager.cancel(TAG, ID)
+            managedNotificationIdentities.forEach { (tag, id) -> manager.cancel(tag, id) }
             return
         }
-        val active = manager.activeNotifications.firstOrNull {
-            it.tag == TAG && it.id == ID
-        } ?: return
-        val notification = Notification.Builder
-            .recoverBuilder(context, active.notification)
-            .setNumber(unreadCount)
-            .build()
-        manager.notify(TAG, ID, notification)
+        val activeNotifications = manager.activeNotifications
+        managedNotificationIdentities.forEach { (tag, id) ->
+            val active = activeNotifications.firstOrNull {
+                it.tag == tag && it.id == id
+            } ?: return@forEach
+            if (active.notification.number == unreadCount) return@forEach
+            val notification = Notification.Builder
+                .recoverBuilder(context, active.notification)
+                .setNumber(unreadCount)
+                .setOnlyAlertOnce(true)
+                .build()
+            manager.notify(tag, id, notification)
+        }
     }
 
     fun clear(context: Context) {
         applyLauncherBadge(context, 0)
+        cancelLegacyNotification(context)
+        managedNotificationIdentities.forEach { (tag, id) ->
+            NotificationManagerCompat.from(context).cancel(tag, id)
+        }
+    }
+
+    private fun cancelLegacyNotification(context: Context) {
         NotificationManagerCompat.from(context).cancel(TAG, ID)
     }
 

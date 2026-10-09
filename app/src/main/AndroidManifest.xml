@@ -28,7 +28,7 @@
             android:value="default" />
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_icon"
-            android:resource="@drawable/ic_stat_support" />
+            android:resource="@drawable/ic_stat_kolam_experiment" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.contact-uploads"

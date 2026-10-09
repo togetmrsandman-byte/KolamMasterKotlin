@@ -84,7 +84,7 @@ class PushNotificationsInstrumentedTest {
     }
 
     @Test
-    fun zeroCountCancelsOnlyTheStableBadgeNotification() {
+    fun zeroCountCancelsOnlyTheAnnouncementNotification() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manager = NotificationManagerCompat.from(context)
         val notificationManager = context.getSystemService(NotificationManager::class.java)
@@ -99,7 +99,9 @@ class PushNotificationsInstrumentedTest {
                     .setSmallIcon(R.drawable.ic_stat_support)
                     .setContentTitle("Support")
                     .setContentText("A real test notification"),
-                unreadCount = 3
+                unreadCount = 3,
+                tag = LauncherBadgeHelper.ANNOUNCEMENT_TAG,
+                id = LauncherBadgeHelper.ANNOUNCEMENT_ID
             )
             manager.notify(
                 unrelatedTag,
@@ -113,7 +115,10 @@ class PushNotificationsInstrumentedTest {
             assertEquals(
                 3,
                 notificationManager.activeNotifications
-                    .single { it.tag == LauncherBadgeHelper.TAG }
+                    .single {
+                        it.tag == LauncherBadgeHelper.ANNOUNCEMENT_TAG &&
+                            it.id == LauncherBadgeHelper.ANNOUNCEMENT_ID
+                    }
                     .notification.number
             )
 
@@ -121,7 +126,8 @@ class PushNotificationsInstrumentedTest {
 
             assertTrue(
                 notificationManager.activeNotifications.none {
-                    it.tag == LauncherBadgeHelper.TAG
+                    it.tag == LauncherBadgeHelper.ANNOUNCEMENT_TAG &&
+                        it.id == LauncherBadgeHelper.ANNOUNCEMENT_ID
                 }
             )
             assertTrue(
@@ -145,14 +151,16 @@ class PushNotificationsInstrumentedTest {
         val initialRefreshSignal =
             SupportUnreadStore.conversationRefreshSignal(context, conversationId)
         SupportUnreadStore.dismissForegroundAlert(context, messageId)
+        var notificationShown = false
 
         val firstDelivery = handleSupportPush(
             context,
             PushNotificationPayload.Support(conversationId, messageId),
             appForeground = true
-        ) { error("Foreground push must not use the background notification path.") }
+        ) { notificationShown = true }
 
         assertTrue(firstDelivery)
+        assertTrue(notificationShown)
         assertEquals(
             setOf(messageId),
             SupportUnreadStore.unreadMessageIds(context, conversationId)

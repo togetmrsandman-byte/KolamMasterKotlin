@@ -462,7 +462,10 @@ class MainActivity : ComponentActivity() {
                         SupabaseGuestAuth.getOrCreateGuestUserId()
                     }
                     accountState = SupabaseGuestAuth.currentAccount()
-                    accountState?.let(::restoreLessonUnlocks)
+                    accountState?.let {
+                        restoreLessonUnlocks(it)
+                        registerFcmToken(it)
+                    }
                 }
                 continueOnboardingAfterPermission()
             } catch (exception: CancellationException) {
