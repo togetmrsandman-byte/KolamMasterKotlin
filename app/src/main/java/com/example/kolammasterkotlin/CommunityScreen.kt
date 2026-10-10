@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -95,57 +94,75 @@ internal fun CommunityScreen(
         }
     }
 
-    when {
-        isLoading -> Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(color = Color.White)
-        }
-        errorMessage != null -> Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+    Column(modifier = modifier.fillMaxSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(errorMessage, color = Color.White, fontSize = 16.sp)
-            Button(onClick = onRefresh, modifier = Modifier.padding(top = 16.dp)) {
-                Text("Try again")
-            }
-        }
-        submissions.isEmpty() -> Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text("No approved kolams yet.", color = Color.White, fontSize = 16.sp)
-            Button(onClick = onRefresh, modifier = Modifier.padding(top = 16.dp)) {
+            Text(
+                "Community",
+                color = Color.White,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.weight(1f))
+            Button(onClick = onRefresh) {
                 Text("Refresh")
             }
         }
-        else -> LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item(span = { GridItemSpan(maxLineSpan) }) {
-                Button(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-                    Text("Refresh community")
+        Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+            when {
+                isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Color.White)
                 }
-            }
-            items(galleryItems, key = { it.image.id }) { item ->
-                CommunityImageCard(
-                    creatorName = item.creatorName,
-                    country = item.country,
-                    lessonId = item.lessonId,
-                    image = item.image,
-                    onImageLoaded = {
-                        selectedLessonError = null
-                        selectedImage = SelectedCommunityImage(item, it)
+                errorMessage != null -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text(errorMessage, color = Color.White, fontSize = 16.sp)
+                    Button(onClick = onRefresh, modifier = Modifier.padding(top = 16.dp)) {
+                        Text("Try again")
                     }
-                )
+                }
+                submissions.isEmpty() -> Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Text("No approved kolams yet.", color = Color.White, fontSize = 16.sp)
+                }
+                else -> LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        top = 4.dp,
+                        end = 16.dp,
+                        bottom = 20.dp
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(galleryItems, key = { it.image.id }) { item ->
+                        CommunityImageCard(
+                            creatorName = item.creatorName,
+                            country = item.country,
+                            lessonId = item.lessonId,
+                            image = item.image,
+                            onImageLoaded = {
+                                selectedLessonError = null
+                                selectedImage = SelectedCommunityImage(item, it)
+                            }
+                        )
+                    }
+                }
             }
         }
     }

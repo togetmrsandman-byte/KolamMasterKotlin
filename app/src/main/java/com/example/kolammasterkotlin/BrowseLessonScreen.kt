@@ -37,6 +37,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -471,7 +472,11 @@ internal fun BrowseLessonScreen(
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 116.dp, start = 16.dp, end = 16.dp)
+                    .padding(
+                        top = if (catalogue.isRefreshing) 86.dp else 64.dp,
+                        start = 16.dp,
+                        end = 16.dp
+                    )
                     .fillMaxWidth()
                     .shadow(12.dp, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
@@ -790,7 +795,19 @@ private fun FilterRow(
             FilterChip(
                 selected = option in selected,
                 onClick = { onSelected(option) },
-                label = { Text(option, maxLines = 1) }
+                label = { Text(option, maxLines = 1) },
+                colors = FilterChipDefaults.filterChipColors(
+                    containerColor = Color(0xFF4A5057),
+                    labelColor = Color.White,
+                    selectedContainerColor = Color(0xFFC9A86A),
+                    selectedLabelColor = Color(0xFF29251D)
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    enabled = true,
+                    selected = option in selected,
+                    borderColor = Color.White.copy(alpha = 0.38f),
+                    selectedBorderColor = Color(0xFFFFD778)
+                )
             )
         }
     }

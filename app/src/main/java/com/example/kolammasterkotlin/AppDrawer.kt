@@ -604,13 +604,21 @@ internal fun ContactUsDestination(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(
-            "Contact Us",
-            color = Color.White,
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Contact Us",
+                color = Color.White,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
+            if (signedIn) {
+                Button(onClick = onNewConversation) { Text("New Conversation") }
+            }
+        }
         Spacer(Modifier.height(20.dp))
         if (!signedIn) {
             GuestSignInPrompt(
@@ -619,8 +627,6 @@ internal fun ContactUsDestination(
                 enabled = true
             )
         } else {
-            Button(onClick = onNewConversation) { Text("New Conversation") }
-            Spacer(Modifier.height(12.dp))
             PullToRefreshBox(
                 isRefreshing = isLoading && conversations.isNotEmpty(),
                 onRefresh = onRetry,
