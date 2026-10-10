@@ -30,10 +30,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.BitmapFactory
@@ -54,10 +51,14 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
         HistoryHeading()
         Spacer(Modifier.height(20.dp))
 
-        HistoryParagraph(
-            buildAnnotatedString {
-                append("There are three main types of Kolam categories named Sikku Kolam, Pulli Kolam and Rangoli.")
-            }
+        Text(
+            text = "There are three main types of Kolam categories named Sikku Kolam, Pulli Kolam and Rangoli.",
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 5.dp),
+            color = Color.White,
+            fontSize = 15.sp,
+            lineHeight = 23.sp
         )
 
         HistorySectionTitle("Sikku Kolam & Pulli Kolam")
@@ -125,20 +126,7 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
         HistorySectionTitle("It is a Playground for Modern Computer Science")
         HistoryParagraph(buildAnnotatedString {
             append("In the 1970s and 1980s, a breakthrough occurred when computer scientists at ")
-            pushLink(
-                LinkAnnotation.Url(
-                    "https://mcc.edu.in/",
-                    TextLinkStyles(
-                        style = SpanStyle(
-                            color = historyGold,
-                            fontWeight = FontWeight.Bold,
-                            textDecoration = TextDecoration.Underline
-                        )
-                    )
-                )
-            )
             bold("Madras Christian College")
-            pop()
             append(" (led by Dr. Gift Siromoney) realized that ")
             bold("Sikku Kolams are actually advanced visual algorithms.")
         })
@@ -167,6 +155,9 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
         })
         HistoryBullet(buildAnnotatedString {
             append("Anthropologically, it served as a social signal: a freshly drawn Kolam told the entire village that the women of the household were awake, safe, and the home was ready to receive the community.")
+        })
+        HistoryParagraph(buildAnnotatedString {
+            append("Explore these glimpses of traditional Tamil village life through our collection of historical photographs.")
         })
 
         listOf(
