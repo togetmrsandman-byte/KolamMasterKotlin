@@ -377,8 +377,8 @@ internal fun ContactNewConversationDestination(
 }
 
 @Composable
-private fun CountryCallingCodeDialog(
-    selectedCountry: ContactCountryCallingCode,
+internal fun CountryCallingCodeDialog(
+    selectedCountry: ContactCountryCallingCode?,
     onCountrySelected: (ContactCountryCallingCode) -> Unit,
     onDismiss: () -> Unit
 ) {

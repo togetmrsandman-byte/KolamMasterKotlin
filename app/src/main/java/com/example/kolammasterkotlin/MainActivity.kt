@@ -5,6 +5,9 @@ import android.app.Activity
 import android.content.Intent
 import android.content.pm.ActivityInfo
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -87,14 +90,32 @@ private sealed interface AppScreen {
     data object Community : AppScreen
     data object History : AppScreen
     data object Loading : AppScreen
-    data class SikkuReady(val lesson: SikkuLesson) : AppScreen
-    data class RangoliReady(val lesson: RangoliLesson) : AppScreen
+    data class SikkuReady(
+        val lesson: SikkuLesson,
+        val publishLesson: PublishLessonDetails
+    ) : AppScreen
+    data class RangoliReady(
+        val lesson: RangoliLesson,
+        val publishLesson: PublishLessonDetails
+    ) : AppScreen
+    data class PublishReady(
+        val lesson: PublishLessonDetails,
+        val initialImageUris: List<Uri>,
+        val temporaryImageUris: Set<Uri>
+    ) : AppScreen
     data class Failed(val message: String) : AppScreen
 }
 
 internal data class ContactSupportNotification(
     val conversationId: String?,
     val messageId: String?
+)
+
+private fun LessonCatalogueEntry.toPublishLessonDetails() = PublishLessonDetails(
+    lessonId = id,
+    lessonName = lessonName,
+    category = category,
+    difficulty = normalizedDifficulty
 )
 
 internal class AnnouncementNotification(val announcementId: String?)
@@ -151,6 +172,9 @@ class MainActivity : ComponentActivity() {
         }
     private var pendingContactSupportNotification by
         mutableStateOf<ContactSupportNotification?>(null)
+    private var pendingPublishLesson by mutableStateOf<PublishLessonDetails?>(null)
+    private var publishPickerLesson by mutableStateOf<PublishLessonDetails?>(null)
+    private var communityLessonOpenError by mutableStateOf<String?>(null)
     private var pendingAnnouncementNotification by
         mutableStateOf<AnnouncementNotification?>(null)
     private var contactForegroundRefreshKey by mutableIntStateOf(0)
@@ -166,6 +190,7 @@ class MainActivity : ComponentActivity() {
                 isAuthProcessing = false
                 authLoadingMessage = null
                 authError = null
+                pendingPublishLesson = null
                 return@registerForActivityResult
             }
             try {
@@ -178,6 +203,7 @@ class MainActivity : ComponentActivity() {
                 if (exception.statusCode == GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
                     clearAuthProcessing()
                     authError = null
+                    pendingPublishLesson = null
                 } else {
                     showGoogleSignInError(
                         exception,
@@ -186,12 +212,14 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             } catch (exception: IllegalStateException) {
+                pendingPublishLesson = null
                 showGoogleSignInError(
                     exception,
                     fallback = "Google sign-in could not be completed. Please try again.",
                     exposeNonNetworkDetails = false
                 )
             } catch (exception: Exception) {
+                pendingPublishLesson = null
                 showGoogleSignInError(
                     exception,
                     fallback = "Google sign-in could not be completed. Please try again.",
@@ -263,6 +291,7 @@ class MainActivity : ComponentActivity() {
                     unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
                     account = accountState,
                     isAuthProcessing = isAuthProcessing,
+                    publishPickerLesson = publishPickerLesson,
                     authLoadingMessage = authLoadingMessage,
                     authError = authError,
                     authErrorTitle = authErrorTitle,
@@ -285,7 +314,22 @@ class MainActivity : ComponentActivity() {
                         screenState = AppScreen.SignInInvitation
                     },
                     onLanguageBack = { finish() },
-                    onLoadLesson = ::loadLesson,
+                    onLoadLesson = { lesson -> loadLesson(lesson) },
+                    onLoadCommunityLesson = { lesson ->
+                        loadLesson(lesson, fromCommunity = true)
+                    },
+                    communityLessonOpenError = communityLessonOpenError,
+                    onDismissCommunityLessonOpenError = {
+                        communityLessonOpenError = null
+                    },
+                    onCommunityLessonMissing = {
+                        communityLessonOpenError =
+                            "The lesson associated with this kolam could not be found."
+                        goBack()
+                    },
+                    onPublishLesson = ::requestPublish,
+                    onDismissPublishPicker = { publishPickerLesson = null },
+                    onPublishImagesSelected = ::openGalleryPublishForm,
                     supportNotification = pendingContactSupportNotification,
                     onSupportNotificationHandled = {
                         pendingContactSupportNotification = null
@@ -381,6 +425,7 @@ class MainActivity : ComponentActivity() {
                 if (currentAccount != null && !currentAccount.isGuest) {
                     accountState = currentAccount
                     restoreLessonUnlocks(currentAccount)
+                    openPendingPublishAfterSignIn(currentAccount)
                     if (screenState == AppScreen.SignInInvitation) {
                         continueOnboardingAfterPermission()
                     }
@@ -397,6 +442,7 @@ class MainActivity : ComponentActivity() {
                     delay(GOOGLE_CHOOSER_TIMEOUT_MILLIS)
                     if (isAuthProcessing) {
                         googleSignInAwaitingResult = false
+                        pendingPublishLesson = null
                         authErrorTitle = "Sign-in problem"
                         authError = "Sign-in took too long. Please try again."
                         isAuthProcessing = false
@@ -404,9 +450,11 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             } catch (exception: CancellationException) {
+                pendingPublishLesson = null
                 clearAuthProcessing()
                 throw exception
             } catch (exception: Exception) {
+                pendingPublishLesson = null
                 showGoogleSignInError(exception)
             }
         }
@@ -437,12 +485,15 @@ class MainActivity : ComponentActivity() {
                 accountState = newAccount
                 registerFcmToken(newAccount)
                 restoreLessonUnlocks(newAccount)
+                openPendingPublishAfterSignIn(newAccount)
                 if (screenState == AppScreen.SignInInvitation) {
                     continueOnboardingAfterPermission()
                 }
             } catch (exception: CancellationException) {
+                pendingPublishLesson = null
                 throw exception
             } catch (exception: Exception) {
+                pendingPublishLesson = null
                 showGoogleSignInError(exception)
             } finally {
                 clearAuthProcessing()
@@ -461,6 +512,7 @@ class MainActivity : ComponentActivity() {
                     if (currentAccount == null || currentAccount.isGuest) {
                         SupabaseGuestAuth.getOrCreateGuestUserId()
                     }
+
                     accountState = SupabaseGuestAuth.currentAccount()
                     accountState?.let {
                         restoreLessonUnlocks(it)
@@ -476,6 +528,59 @@ class MainActivity : ComponentActivity() {
                 clearAuthProcessing()
             }
         }
+    }
+
+    private fun requestPublish(lesson: PublishLessonDetails) {
+        if (!hasValidatedInternetConnection()) {
+            authErrorTitle = "No internet connection"
+            authError = "Please connect to the internet and try again."
+            return
+        }
+        pendingPublishLesson = lesson
+        lifecycleScope.launch {
+            try {
+                val currentAccount = runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
+                    SupabaseGuestAuth.currentAccount()
+                }
+                if (currentAccount != null && !currentAccount.isGuest) {
+                    accountState = currentAccount
+                    openPendingPublishAfterSignIn(currentAccount)
+                } else {
+                    beginGoogleSignIn()
+                }
+            } catch (exception: CancellationException) {
+                pendingPublishLesson = null
+                throw exception
+            } catch (exception: Exception) {
+                pendingPublishLesson = null
+                showGoogleSignInError(exception)
+            }
+        }
+    }
+
+    private fun openPendingPublishAfterSignIn(account: SupabaseAccount) {
+        val lesson = pendingPublishLesson ?: return
+        if (account.isGuest) return
+        pendingPublishLesson = null
+        publishPickerLesson = lesson
+    }
+
+    private fun openGalleryPublishForm(
+        lesson: PublishLessonDetails,
+        imageUris: List<Uri>,
+        temporaryImageUris: Set<Uri>
+    ) {
+        publishPickerLesson = null
+        navigateTo(AppScreen.PublishReady(lesson, imageUris, temporaryImageUris))
+    }
+
+    private fun hasValidatedInternetConnection(): Boolean {
+        val connectivity = getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = connectivity.activeNetwork ?: return false
+        return connectivity.getNetworkCapabilities(network)?.let { capabilities ->
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        } == true
     }
 
     private fun continueOnboardingAfterPermission() {
@@ -800,16 +905,22 @@ class MainActivity : ComponentActivity() {
         screenState = routeHistory.removeLastOrNull() ?: AppScreen.Landing
     }
 
-    private fun loadLesson(lesson: LessonCatalogueEntry) {
-        routeHistory += AppScreen.Browse
+    private fun loadLesson(lesson: LessonCatalogueEntry, fromCommunity: Boolean = false) {
+        if (!fromCommunity) routeHistory += AppScreen.Browse
         val lessonType = lesson.normalizedType
         if (lessonType == null) {
-            screenState = AppScreen.Failed("This lesson has an unsupported Kolam type.")
+            showLessonLoadFailure(
+                "This lesson has an unsupported Kolam type.",
+                fromCommunity
+            )
             return
         }
         val packageUrl = lesson.packageUrls.firstOrNull()
         if (packageUrl.isNullOrBlank()) {
-            screenState = AppScreen.Failed("This lesson does not have a downloadable package.")
+            showLessonLoadFailure(
+                "This lesson does not have a downloadable package.",
+                fromCommunity
+            )
             return
         }
 
@@ -827,38 +938,59 @@ class MainActivity : ComponentActivity() {
                         destination = destination
                     )
                     if (lessonType == "Rangoli") {
-                        AppScreen.RangoliReady(RangoliLesson.load(destination))
+                        AppScreen.RangoliReady(
+                            RangoliLesson.load(destination),
+                            lesson.toPublishLessonDetails()
+                        )
                     } else {
-                        AppScreen.SikkuReady(SikkuLesson.load(destination))
+                        AppScreen.SikkuReady(
+                            SikkuLesson.load(destination),
+                            lesson.toPublishLessonDetails()
+                        )
                     }
                 }
                 screenState = loadedScreen
             } catch (e: IOException) {
                 Log.e("KmpLesson", "Could not read lesson assets", e)
-                screenState = AppScreen.Failed(
-                    NetworkErrors.messageFor(e, e.message ?: "Could not read lesson files")
+                showLessonLoadFailure(
+                    NetworkErrors.messageFor(e, e.message ?: "Could not read lesson files"),
+                    fromCommunity
                 )
             } catch (e: GeneralSecurityException) {
                 Log.e("KmpLesson", "Could not decrypt lesson package", e)
-                screenState = AppScreen.Failed(e.message ?: "Could not decrypt lesson")
+                showLessonLoadFailure(e.message ?: "Could not decrypt lesson", fromCommunity)
             } catch (e: JSONException) {
                 Log.e("KmpLesson", "Invalid lesson JSON data", e)
-                screenState = AppScreen.Failed(e.message ?: "Invalid lesson data")
+                showLessonLoadFailure(e.message ?: "Invalid lesson data", fromCommunity)
             } catch (e: IllegalArgumentException) {
                 Log.e("KmpLesson", "Invalid lesson package", e)
-                screenState = AppScreen.Failed(e.message ?: "Invalid lesson package")
+                showLessonLoadFailure(e.message ?: "Invalid lesson package", fromCommunity)
             } catch (e: CancellationException) {
-                if (screenState == AppScreen.Loading) screenState = AppScreen.Browse
+                if (screenState == AppScreen.Loading) {
+                    screenState = if (fromCommunity) AppScreen.Community else AppScreen.Browse
+                }
                 throw e
             } catch (e: Exception) {
                 Log.e("KmpLesson", "Unexpected lesson loading failure", e)
-                screenState = AppScreen.Failed(
+                showLessonLoadFailure(
                     e.message?.takeIf(String::isNotBlank)
-                        ?: "Could not load this lesson. Please try again."
+                        ?: "Could not load this lesson. Please try again.",
+                    fromCommunity
                 )
             } finally {
-                if (screenState == AppScreen.Loading) screenState = AppScreen.Browse
+                if (screenState == AppScreen.Loading) {
+                    screenState = if (fromCommunity) AppScreen.Community else AppScreen.Browse
+                }
             }
+        }
+    }
+
+    private fun showLessonLoadFailure(message: String, fromCommunity: Boolean) {
+        if (fromCommunity) {
+            communityLessonOpenError = message
+            screenState = AppScreen.Community
+        } else {
+            screenState = AppScreen.Failed(message)
         }
     }
 
@@ -935,6 +1067,10 @@ private fun KolamMasterApp(
     unlockedCatalogueLessonIds: Set<String>,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
+    publishPickerLesson: PublishLessonDetails?,
+    onPublishLesson: (PublishLessonDetails) -> Unit,
+    onDismissPublishPicker: () -> Unit,
+    onPublishImagesSelected: (PublishLessonDetails, List<Uri>, Set<Uri>) -> Unit,
     authLoadingMessage: String?,
     authError: String?,
     authErrorTitle: String,
@@ -950,6 +1086,10 @@ private fun KolamMasterApp(
     onLanguageSelected: (String) -> Unit,
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
+    onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
+    communityLessonOpenError: String?,
+    onDismissCommunityLessonOpenError: () -> Unit,
+    onCommunityLessonMissing: () -> Unit,
     supportNotification: ContactSupportNotification?,
     onSupportNotificationHandled: () -> Unit,
     onForegroundSupportAlertOpen: (SupportUnreadStore.ForegroundAlert) -> Unit,
@@ -982,6 +1122,12 @@ private fun KolamMasterApp(
     }
     val contactRepository = remember { ContactRepository() }
     val announcementRepository = remember(context) { AnnouncementRepository(context) }
+    val communityRepository = remember { CommunityRepository() }
+    var communitySubmissions by remember { mutableStateOf<List<CommunitySubmission>>(emptyList()) }
+    var communityLoading by remember { mutableStateOf(false) }
+    var communityError by remember { mutableStateOf<String?>(null) }
+    var communityRefreshKey by remember { mutableIntStateOf(0) }
+    var communityLessonRequestId by remember { mutableStateOf<String?>(null) }
     var announcementRefreshSignal by remember {
         mutableStateOf(AnnouncementRepository.refreshSignal(context))
     }
@@ -1018,6 +1164,25 @@ private fun KolamMasterApp(
             }
         preferences.registerOnSharedPreferenceChangeListener(listener)
         onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
+    }
+    LaunchedEffect(screen == AppScreen.Community, communityRefreshKey) {
+        if (screen != AppScreen.Community) return@LaunchedEffect
+        communityLoading = true
+        communityError = null
+        communitySubmissions = emptyList()
+        try {
+            communitySubmissions = communityRepository.loadApprovedSubmissions()
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            communityError = if (NetworkErrors.isNetworkFailure(exception)) {
+                "Could not load the community. Check your connection and try again."
+            } else {
+                "Could not load the community. Please try again."
+            }
+        } finally {
+            communityLoading = false
+        }
     }
     LaunchedEffect(account?.id, announcements, observedSupportUnreadVersion) {
         val currentAccount = account
@@ -1325,6 +1490,10 @@ private fun KolamMasterApp(
         }
     }
     val rootAlpha = remember { androidx.compose.animation.core.Animatable(1f) }
+    var publishSuccessActive by remember { mutableStateOf(false) }
+    LaunchedEffect(screen) {
+        publishSuccessActive = false
+    }
     val onMenuAction: (DrawerAction) -> Unit = { action ->
         when (action) {
             DrawerAction.Home -> onHome()
@@ -1357,11 +1526,15 @@ private fun KolamMasterApp(
             AppScreen.ContactUs,
             AppScreen.Announcements,
             AppScreen.Community,
-            AppScreen.History -> KolamBackground
+            AppScreen.History,
+            is AppScreen.PublishReady -> KolamBackground
             else -> MaterialTheme.colorScheme.surface
         }
     ) { insets ->
         Box(Modifier.fillMaxSize().padding(insets)) {
+            if (publishSuccessActive && screen is AppScreen.PublishReady) {
+                PublishConfetti(Modifier.matchParentSize())
+            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1398,6 +1571,24 @@ private fun KolamMasterApp(
                         onLanguageSelected = onLanguageSelected,
                         onLanguageBack = onLanguageBack,
                         onLoadLesson = onLoadLesson,
+                        onLoadCommunityLesson = onLoadCommunityLesson,
+                        communityLessonOpenError = communityLessonOpenError,
+                        onDismissCommunityLessonOpenError =
+                            onDismissCommunityLessonOpenError,
+                        onCommunityLessonMissing = {
+                            communityLessonRequestId = null
+                            onCommunityLessonMissing()
+                        },
+                        communityLessonRequestId = communityLessonRequestId,
+                        onCommunityLessonRequest = { id ->
+                            communityLessonRequestId = id
+                            onNavigate(AppScreen.Browse)
+                        },
+                        onCommunityLessonRequestHandled = {
+                            communityLessonRequestId = null
+                        },
+                        onPublishLesson = onPublishLesson,
+                        onPublishSuccess = { publishSuccessActive = true },
                         contactForegroundRefreshKey = contactForegroundRefreshKey,
                         supportMessageVersion = supportMessageVersion,
                         contactDetailRefreshKey = contactDetailRefreshKey,
@@ -1430,6 +1621,10 @@ private fun KolamMasterApp(
                         selectedAnnouncement = announcements.firstOrNull {
                             it.id == selectedAnnouncementId
                         },
+                        communitySubmissions = communitySubmissions,
+                        communityLoading = communityLoading,
+                        communityError = communityError,
+                        onRefreshCommunity = { communityRefreshKey++ },
                         isMarkingAllAnnouncementsRead = isMarkingAllAnnouncementsRead,
                         onRetryAnnouncements = { announcementRefreshKey++ },
                         onAnnouncementSelected = { selectedAnnouncementId = it.id },
@@ -1526,6 +1721,15 @@ private fun KolamMasterApp(
         }
     }
 
+    publishPickerLesson?.let { lesson ->
+        GalleryPublishPickerSheet(
+            onDismiss = onDismissPublishPicker,
+            onProceed = {
+                onPublishImagesSelected(lesson, emptyList(), emptySet())
+            }
+        )
+    }
+
     StoreActionDialog(
         title = storeDialog,
         message = "Connect to the internet to continue.",
@@ -1587,7 +1791,8 @@ private fun KolamMasterApp(
         )
     }
 
-    BackHandler(enabled = !drawerOpen &&
+    BackHandler(enabled = publishPickerLesson == null &&
+        !drawerOpen &&
         screen !is AppScreen.Landing &&
         screen !is AppScreen.ChooseLanguage &&
         screen !is AppScreen.Opening
@@ -1621,6 +1826,15 @@ private fun AppScreenContent(
     onLanguageSelected: (String) -> Unit,
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
+    onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
+    communityLessonOpenError: String?,
+    onDismissCommunityLessonOpenError: () -> Unit,
+    onCommunityLessonMissing: () -> Unit,
+    onPublishLesson: (PublishLessonDetails) -> Unit,
+    onPublishSuccess: () -> Unit,
+    communityLessonRequestId: String?,
+    onCommunityLessonRequest: (String) -> Unit,
+    onCommunityLessonRequestHandled: () -> Unit,
     contactForegroundRefreshKey: Int,
     supportMessageVersion: Long,
     contactDetailRefreshKey: Int,
@@ -1647,6 +1861,10 @@ private fun AppScreenContent(
     announcementsError: String?,
     announcementsActionError: String?,
     selectedAnnouncement: Announcement?,
+    communitySubmissions: List<CommunitySubmission>,
+    communityLoading: Boolean,
+    communityError: String?,
+    onRefreshCommunity: () -> Unit,
     isMarkingAllAnnouncementsRead: Boolean,
     onRetryAnnouncements: () -> Unit,
     onAnnouncementSelected: (Announcement) -> Unit,
@@ -1683,6 +1901,18 @@ private fun AppScreenContent(
             unlockedLessonIds = unlockedCatalogueLessonIds,
             accountId = account?.takeUnless { it.isGuest }?.id,
             onGoogleSignIn = onGoogleSignIn,
+            communityLessonId = communityLessonRequestId,
+            onCommunityLessonRequestHandled = onCommunityLessonRequestHandled,
+            onCommunityLessonMissing = {
+                onCommunityLessonRequestHandled()
+                onCommunityLessonMissing()
+            },
+            onCommunityLessonSelected = { lesson ->
+                if (lesson.access == CatalogueAccess.LOCKED) {
+                    onLessonUnlocked(lesson.id)
+                }
+                onLoadCommunityLesson(lesson)
+            },
             onLessonSelected = { lesson ->
                 if (lesson.access == CatalogueAccess.LOCKED) {
                     onLessonUnlocked(lesson.id)
@@ -1759,7 +1989,17 @@ private fun AppScreenContent(
             onBackFromDetail = onAnnouncementDetailBack,
             onMarkAllRead = onMarkAllAnnouncementsRead
         )
-        AppScreen.Community -> PlaceholderDestination("Community", onGoBack)
+        AppScreen.Community -> CommunityScreen(
+            submissions = communitySubmissions,
+            isLoading = communityLoading,
+            errorMessage = communityError,
+            onRefresh = onRefreshCommunity,
+            catalogueEntries = catalogue.entries,
+            isCatalogueLoading = catalogue.isInitialLoading || catalogue.isRefreshing,
+            lessonOpenError = communityLessonOpenError,
+            onOpenLesson = onCommunityLessonRequest,
+            onDismissLessonOpenError = onDismissCommunityLessonOpenError
+        )
         AppScreen.History -> PlaceholderDestination("Kolam History", onGoBack)
         AppScreen.Loading -> androidx.compose.material3.Text(
             text = "Loading lesson...",
@@ -1768,10 +2008,22 @@ private fun AppScreenContent(
         )
         is AppScreen.SikkuReady -> SikkuLessonScreen(
             lesson = screen.lesson,
+            onPublish = { onPublishLesson(screen.publishLesson) },
             modifier = Modifier.fillMaxSize()
         )
         is AppScreen.RangoliReady -> RangoliLessonScreen(
             lesson = screen.lesson,
+            onPublish = { onPublishLesson(screen.publishLesson) },
+            modifier = Modifier.fillMaxSize()
+        )
+        is AppScreen.PublishReady -> GalleryPublishScreen(
+            lesson = screen.lesson,
+            initialImageUris = screen.initialImageUris,
+            temporaryImageUris = screen.temporaryImageUris,
+            account = account,
+            repository = remember { GalleryPublishRepository() },
+            onBack = onGoBack,
+            onPublishSuccess = onPublishSuccess,
             modifier = Modifier.fillMaxSize()
         )
         is AppScreen.Failed -> androidx.compose.foundation.layout.Column(

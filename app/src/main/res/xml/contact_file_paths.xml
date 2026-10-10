@@ -3,4 +3,7 @@
     <cache-path
         name="contact-images"
         path="contact-images/" />
+    <cache-path
+        name="publish-images"
+        path="publish-images/" />
 </paths>

@@ -109,6 +109,10 @@ internal fun BrowseLessonScreen(
     accountId: String?,
     onGoogleSignIn: () -> Unit,
     onLessonSelected: (LessonCatalogueEntry) -> Unit,
+    communityLessonId: String?,
+    onCommunityLessonRequestHandled: () -> Unit,
+    onCommunityLessonMissing: () -> Unit,
+    onCommunityLessonSelected: (LessonCatalogueEntry) -> Unit,
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var query by remember { mutableStateOf("") }
@@ -139,6 +143,7 @@ internal fun BrowseLessonScreen(
     var individualAdTimeoutJob by remember { mutableStateOf<Job?>(null) }
     var revealMessage by remember { mutableStateOf<String?>(null) }
     var lockedLesson by remember { mutableStateOf<LessonCatalogueEntry?>(null) }
+    var lockedLessonFromCommunity by remember { mutableStateOf(false) }
     var completedIndividualAds by remember { mutableIntStateOf(0) }
     var lockedLessonMessage by remember { mutableStateOf<String?>(null) }
     var savedFolders by remember(accountId) { mutableStateOf(emptyList<Folder>()) }
@@ -215,13 +220,37 @@ internal fun BrowseLessonScreen(
         filteredEntries.take(visibleCount)
     }
     val gridState = rememberLazyGridState()
-    val openLesson: (LessonCatalogueEntry) -> Unit = { lesson ->
+    val openLesson: (LessonCatalogueEntry, Boolean) -> Unit = { lesson, fromCommunity ->
         if (lesson.access == CatalogueAccess.LOCKED) {
             lockedLesson = lesson
+            lockedLessonFromCommunity = fromCommunity
             completedIndividualAds = 0
             lockedLessonMessage = null
         } else {
-            onLessonSelected(lesson)
+            if (fromCommunity) onCommunityLessonSelected(lesson) else onLessonSelected(lesson)
+        }
+    }
+
+    LaunchedEffect(communityLessonId, catalogue.entries, unlockedLessonIds) {
+        val requestedId = communityLessonId ?: return@LaunchedEffect
+        val index = catalogue.entries.indexOfFirst { it.id == requestedId }
+        val lesson = catalogue.entries.getOrNull(index)
+        if (lesson == null) {
+            onCommunityLessonMissing()
+        } else {
+            onCommunityLessonRequestHandled()
+            openLesson(
+                lesson.copy(
+                    access = if (index < FREE_CATALOGUE_ENTRY_COUNT ||
+                        lesson.id in unlockedLessonIds
+                    ) {
+                        CatalogueAccess.FREE
+                    } else {
+                        CatalogueAccess.LOCKED
+                    }
+                ),
+                true
+            )
         }
     }
 
@@ -304,7 +333,7 @@ internal fun BrowseLessonScreen(
                             LessonCatalogueCard(
                                 lesson = lesson,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
-                                onClick = { openLesson(lesson) },
+                                onClick = { openLesson(lesson, false) },
                                 onHeartClick = {
                                     if (accountId == null) {
                                         pendingSignInLessonId = lesson.id
@@ -324,7 +353,7 @@ internal fun BrowseLessonScreen(
                             LessonCatalogueCard(
                                 lesson = lesson,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
-                                onClick = { openLesson(lesson) },
+                                onClick = { openLesson(lesson, false) },
                                 onHeartClick = {
                                     if (accountId == null) {
                                         pendingSignInLessonId = lesson.id
@@ -352,7 +381,7 @@ internal fun BrowseLessonScreen(
                                 LessonCatalogueCard(
                                     lesson = lesson,
                                     isSaved = savedFolders.any { lesson.id in it.lessons },
-                                    onClick = { openLesson(lesson) },
+                                    onClick = { openLesson(lesson, false) },
                                     onHeartClick = {
                                         if (accountId == null) {
                                             pendingSignInLessonId = lesson.id
@@ -494,7 +523,10 @@ internal fun BrowseLessonScreen(
                     " to unlock this lesson permanently.",
                 isProcessing = isIndividualAdProcessing,
                 onCancel = {
-                    if (!isIndividualAdProcessing) lockedLesson = null
+                    if (!isIndividualAdProcessing) {
+                        lockedLesson = null
+                        lockedLessonFromCommunity = false
+                    }
                 },
                 onWatchAd = {
                     if (!isIndividualAdProcessing) {
@@ -522,7 +554,12 @@ internal fun BrowseLessonScreen(
                                     completedIndividualAds += 1
                                     if (completedIndividualAds >= requiredAds) {
                                         lockedLesson = null
-                                        onLessonSelected(lesson)
+                                        if (lockedLessonFromCommunity) {
+                                            lockedLessonFromCommunity = false
+                                            onCommunityLessonSelected(lesson)
+                                        } else {
+                                            onLessonSelected(lesson)
+                                        }
                                     } else {
                                         isIndividualAdProcessing = false
                                     }

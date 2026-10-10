@@ -38,7 +38,11 @@ import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
 @Composable
-internal fun RangoliLessonScreen(lesson: RangoliLesson, modifier: Modifier = Modifier) {
+internal fun RangoliLessonScreen(
+    lesson: RangoliLesson,
+    onPublish: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var started by rememberSaveable { mutableStateOf(false) }
     var stepIndex by rememberSaveable { mutableIntStateOf(0) }
     var complete by rememberSaveable { mutableStateOf(false) }
@@ -175,7 +179,9 @@ internal fun RangoliLessonScreen(lesson: RangoliLesson, modifier: Modifier = Mod
                         else -> "Next"
                     },
                     onClick = {
-                        if (!complete) {
+                        if (complete) {
+                            onPublish()
+                        } else {
                             if (stepIndex == lesson.steps.lastIndex) {
                                 complete = true
                             } else {
@@ -185,6 +191,8 @@ internal fun RangoliLessonScreen(lesson: RangoliLesson, modifier: Modifier = Mod
                     },
                     enabled = true,
                     shining = complete,
+                    containerColor = if (complete) androidx.compose.ui.graphics.Color(0xFFFFC928) else null,
+                    contentColor = if (complete) androidx.compose.ui.graphics.Color(0xFF392800) else null,
                     modifier = Modifier.weight(1f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 4.dp,

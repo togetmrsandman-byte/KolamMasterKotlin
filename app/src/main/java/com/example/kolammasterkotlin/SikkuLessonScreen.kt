@@ -58,7 +58,11 @@ internal sealed interface SikkuScreenState {
 }
 
 @Composable
-internal fun SikkuLessonScreen(lesson: SikkuLesson, modifier: Modifier = Modifier) {
+internal fun SikkuLessonScreen(
+    lesson: SikkuLesson,
+    onPublish: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     var started by rememberSaveable { mutableStateOf(false) }
     var complete by rememberSaveable { mutableStateOf(false) }
     var stepIndex by rememberSaveable { mutableIntStateOf(-1) }
@@ -200,7 +204,9 @@ internal fun SikkuLessonScreen(lesson: SikkuLesson, modifier: Modifier = Modifie
                         else -> "Next"
                     },
                     onClick = {
-                        if (!complete) {
+                        if (complete) {
+                            onPublish()
+                        } else {
                             if (stepIndex < 0) {
                                 stepIndex = 0
                             } else if (stepIndex == lesson.steps.lastIndex) {
@@ -212,6 +218,8 @@ internal fun SikkuLessonScreen(lesson: SikkuLesson, modifier: Modifier = Modifie
                     },
                     enabled = true,
                     shining = complete,
+                    containerColor = if (complete) androidx.compose.ui.graphics.Color(0xFFFFC928) else null,
+                    contentColor = if (complete) androidx.compose.ui.graphics.Color(0xFF392800) else null,
                     modifier = Modifier.weight(1f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 4.dp,
