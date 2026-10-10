@@ -2000,7 +2000,7 @@ private fun AppScreenContent(
             onOpenLesson = onCommunityLessonRequest,
             onDismissLessonOpenError = onDismissCommunityLessonOpenError
         )
-        AppScreen.History -> PlaceholderDestination("Kolam History", onGoBack)
+        AppScreen.History -> HistoryScreen(Modifier.fillMaxSize())
         AppScreen.Loading -> androidx.compose.material3.Text(
             text = "Loading lesson...",
             color = androidx.compose.ui.graphics.Color.White,
