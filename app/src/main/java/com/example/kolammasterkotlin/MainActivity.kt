@@ -18,9 +18,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.background
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -90,6 +94,7 @@ private sealed interface AppScreen {
     data object Community : AppScreen
     data object History : AppScreen
     data object Loading : AppScreen
+    data object LessonDownloading : AppScreen
     data class SikkuReady(
         val lesson: SikkuLesson,
         val publishLesson: PublishLessonDetails
@@ -318,6 +323,7 @@ class MainActivity : ComponentActivity() {
                     onLoadCommunityLesson = { lesson ->
                         loadLesson(lesson, fromCommunity = true)
                     },
+                    onCheckMoreThumbnails = ::checkLessonCatalogueUpdates,
                     communityLessonOpenError = communityLessonOpenError,
                     onDismissCommunityLessonOpenError = {
                         communityLessonOpenError = null
@@ -883,6 +889,52 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private suspend fun checkLessonCatalogueUpdates(): List<LessonCatalogueEntry> {
+        catalogueState = catalogueState.copy(
+            isRefreshing = true,
+            refreshFailed = false,
+            refreshNetworkFailed = false
+        )
+        try {
+            val freshEntries = LessonCatalogueRepository(this).refresh()
+            catalogueState = LessonCatalogueUiState(
+                entries = freshEntries,
+                isInitialLoading = false
+            )
+            return freshEntries
+        } catch (exception: CancellationException) {
+            catalogueState = catalogueState.copy(isInitialLoading = false, isRefreshing = false)
+            throw exception
+        } catch (exception: IOException) {
+            Log.w("LessonCatalogue", "Could not check for new catalogue lessons", exception)
+            catalogueState = catalogueState.copy(
+                isInitialLoading = false,
+                isRefreshing = false,
+                refreshFailed = true,
+                refreshNetworkFailed = NetworkErrors.isNetworkFailure(exception)
+            )
+            throw exception
+        } catch (exception: JSONException) {
+            Log.w("LessonCatalogue", "R2 returned invalid lesson catalogue JSON", exception)
+            catalogueState = catalogueState.copy(
+                isInitialLoading = false,
+                isRefreshing = false,
+                refreshFailed = true,
+                refreshNetworkFailed = false
+            )
+            throw exception
+        } catch (exception: Exception) {
+            Log.e("LessonCatalogue", "Unexpected catalogue update check failure", exception)
+            catalogueState = catalogueState.copy(
+                isInitialLoading = false,
+                isRefreshing = false,
+                refreshFailed = true,
+                refreshNetworkFailed = false
+            )
+            throw exception
+        }
+    }
+
     private fun saveLanguage(language: String) {
         activeLanguage = language
         getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
@@ -924,7 +976,7 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        screenState = AppScreen.Loading
+        screenState = if (fromCommunity) AppScreen.Loading else AppScreen.LessonDownloading
         lifecycleScope.launch {
             try {
                 val loadedScreen = withContext(Dispatchers.IO) {
@@ -966,7 +1018,9 @@ class MainActivity : ComponentActivity() {
                 Log.e("KmpLesson", "Invalid lesson package", e)
                 showLessonLoadFailure(e.message ?: "Invalid lesson package", fromCommunity)
             } catch (e: CancellationException) {
-                if (screenState == AppScreen.Loading) {
+                if (screenState == AppScreen.Loading ||
+                    screenState == AppScreen.LessonDownloading
+                ) {
                     screenState = if (fromCommunity) AppScreen.Community else AppScreen.Browse
                 }
                 throw e
@@ -978,7 +1032,9 @@ class MainActivity : ComponentActivity() {
                     fromCommunity
                 )
             } finally {
-                if (screenState == AppScreen.Loading) {
+                if (screenState == AppScreen.Loading ||
+                    screenState == AppScreen.LessonDownloading
+                ) {
                     screenState = if (fromCommunity) AppScreen.Community else AppScreen.Browse
                 }
             }
@@ -1087,6 +1143,7 @@ private fun KolamMasterApp(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
+    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
@@ -1572,6 +1629,7 @@ private fun KolamMasterApp(
                         onLanguageBack = onLanguageBack,
                         onLoadLesson = onLoadLesson,
                         onLoadCommunityLesson = onLoadCommunityLesson,
+                        onCheckMoreThumbnails = onCheckMoreThumbnails,
                         communityLessonOpenError = communityLessonOpenError,
                         onDismissCommunityLessonOpenError =
                             onDismissCommunityLessonOpenError,
@@ -1827,6 +1885,7 @@ private fun AppScreenContent(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
+    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
@@ -1913,6 +1972,7 @@ private fun AppScreenContent(
                 }
                 onLoadCommunityLesson(lesson)
             },
+            onCheckMoreThumbnails = onCheckMoreThumbnails,
             onLessonSelected = { lesson ->
                 if (lesson.access == CatalogueAccess.LOCKED) {
                     onLessonUnlocked(lesson.id)
@@ -2006,6 +2066,27 @@ private fun AppScreenContent(
             color = androidx.compose.ui.graphics.Color.White,
             modifier = Modifier.padding(24.dp)
         )
+        AppScreen.LessonDownloading -> Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.White),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+            ) {
+                androidx.compose.material3.CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color(0xFF315A78),
+                    strokeWidth = 2.dp
+                )
+                androidx.compose.material3.Text(
+                    text = "Please wait while downloading your lesson.",
+                    color = Color.Black
+                )
+            }
+        }
         is AppScreen.SikkuReady -> SikkuLessonScreen(
             lesson = screen.lesson,
             onPublish = { onPublishLesson(screen.publishLesson) },
@@ -2043,7 +2124,7 @@ private fun AppScreenContent(
             } else {
                 androidx.compose.material3.Text(
                     "Could not load lesson: ${screen.message}",
-                    color = Color.White
+                    color = Color.Black
                 )
             }
             androidx.compose.material3.Button(onClick = onGoBack) {

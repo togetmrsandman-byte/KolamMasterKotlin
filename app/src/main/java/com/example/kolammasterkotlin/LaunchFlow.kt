@@ -3,12 +3,7 @@ package com.kolammaster.app
 import android.graphics.BitmapFactory
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.Easing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.window.Dialog
@@ -19,6 +14,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -53,26 +49,23 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlin.math.PI
-import kotlin.math.cos
-import kotlin.math.sin
+import kotlin.random.Random
 
 internal val KolamBackground = Color(0xFF2F343A)
 private val Gold = Color(0xFF8F6F38)
@@ -485,11 +478,13 @@ internal fun LandingPageFrame(
             Box(modifier = Modifier.fillMaxSize()) {
                 LandingDecoration(
                     Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
-                    mirrored = false
+                    mirrored = false,
+                    pictureCount = 6
                 )
                 LandingDecoration(
                     Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
-                    mirrored = true
+                    mirrored = true,
+                    pictureCount = 6
                 )
                 Column(
                     modifier = Modifier.fillMaxSize(),
@@ -683,25 +678,56 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
 }
 
 @Composable
-private fun LandingDecoration(modifier: Modifier, mirrored: Boolean) {
+private fun LandingDecoration(
+    modifier: Modifier,
+    mirrored: Boolean,
+    pictureCount: Int = 4
+) {
     val image = rememberAssetImage("kolam-border.png")
-    Column(
-        modifier = modifier
-            .width(48.dp)
-            .fillMaxHeight()
-            .padding(vertical = 34.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceEvenly
-    ) {
-        repeat(4) {
-            Image(
-                bitmap = image,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
+    if (pictureCount == 6) {
+        BoxWithConstraints(modifier = modifier.width(48.dp).fillMaxHeight()) {
+            val oldTopPosition =
+                24.dp + (maxHeight - 48.dp - 460.dp) / 6
+            val bubbleBottomPosition = 329.dp + maxHeight / 2
+            val bottomInset = (maxHeight - bubbleBottomPosition).coerceAtLeast(0.dp)
+            Column(
                 modifier = Modifier
-                    .size(width = 38.dp, height = 92.dp)
-                    .graphicsLayer { scaleX = if (mirrored) -1f else 1f }
-            )
+                    .fillMaxSize()
+                    .padding(top = oldTopPosition, bottom = bottomInset),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                repeat(pictureCount) {
+                    Image(
+                        bitmap = image,
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .size(width = 38.dp, height = 92.dp)
+                            .graphicsLayer { scaleX = if (mirrored) -1f else 1f }
+                    )
+                }
+            }
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .width(48.dp)
+                .fillMaxHeight()
+                .padding(vertical = 34.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.SpaceEvenly
+        ) {
+            repeat(pictureCount) {
+                Image(
+                    bitmap = image,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .size(width = 38.dp, height = 92.dp)
+                        .graphicsLayer { scaleX = if (mirrored) -1f else 1f }
+                )
+            }
         }
     }
 }
@@ -711,44 +737,17 @@ private fun LandingBubbles(
     modifier: Modifier,
     onDestination: (LandingDestination) -> Unit
 ) {
-    val transition = rememberInfiniteTransition(label = "landing-bubbles")
-    val progress by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(
-                3200,
-                easing = Easing { fraction ->
-                    (1f - cos(PI * fraction).toFloat()) / 2f
-                }
-            ),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "shared-bubble-phase"
-    )
-    val density = LocalDensity.current
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically)
     ) {
         LandingDestination.entries.forEachIndexed { index, destination ->
-            val phase = progress * 2f * PI.toFloat() + index * (PI.toFloat() / 2f)
-            val horizontalAmplitude = 2.7f + 0.45f * sin(index * 1.7f)
-            val verticalAmplitude = 4.275f + 0.675f * sin(index * 1.3f)
-            val x = cos(phase) * horizontalAmplitude
-            val y = sin(phase) * verticalAmplitude
             LandingBubble(
                 title = destination.title,
+                index = index,
                 modifier = Modifier
-                    .padding(horizontal = 8.dp)
-                    .offset {
-                        IntOffset(
-                            with(density) { x.dp.roundToPx() },
-                            with(density) { y.dp.roundToPx() }
-                        )
-                    }
-                    .graphicsLayer { scaleX = 1f + 0.012f * progress; scaleY = 1f + 0.012f * progress },
+                    .padding(horizontal = 8.dp),
                 onClick = { onDestination(destination) }
             )
         }
@@ -756,14 +755,61 @@ private fun LandingBubbles(
 }
 
 @Composable
-private fun LandingBubble(title: String, modifier: Modifier, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(64.dp)
+private fun LandingBubble(
+    title: String,
+    index: Int,
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
+    val horizontalOffset = remember { Animatable(0f) }
+    val verticalOffset = remember { Animatable(0f) }
+    val easing = remember { CubicBezierEasing(0.45f, 0.05f, 0.55f, 0.95f) }
+    LaunchedEffect(index) {
+        val horizontalRandom = Random(index * 37 + 11)
+        val verticalRandom = Random(index * 53 + 29)
+        coroutineScope {
+            launch {
+                while (true) {
+                    horizontalOffset.animateTo(
+                        targetValue = horizontalRandom.nextFloat() * 5f - 2.5f,
+                        animationSpec = tween(
+                            durationMillis = horizontalRandom.nextInt(1800, 3400),
+                            easing = easing
+                        )
+                    )
+                }
+            }
+            launch {
+                while (true) {
+                    delay(verticalRandom.nextLong(120L, 650L))
+                    verticalOffset.animateTo(
+                        targetValue = verticalRandom.nextFloat() * 6f - 3f,
+                        animationSpec = tween(
+                            durationMillis = verticalRandom.nextInt(1900, 3600),
+                            easing = easing
+                        )
+                    )
+                }
+            }
+        }
+    }
+    val shape = RoundedCornerShape(50)
+    val edgeTint = Brush.linearGradient(
+        colors = listOf(
+            Color(0xFF9B793C),
+            Color(0xFFE2CF92),
+            Color(0xFFA78242),
+            Color(0xFFFFE9AA),
+            Color(0xFF8F6F38)
+        )
+    )
     Box(
         modifier = modifier
-            .size(width = 145.dp, height = 128.dp)
+            .offset(x = horizontalOffset.value.dp, y = verticalOffset.value.dp)
+            .size(width = 150.dp, height = 136.dp)
             .clip(shape)
             .background(Color.White.copy(alpha = 0.08f))
-            .border(1.dp, Color.White.copy(alpha = 0.18f), shape)
+            .border(1.dp, edgeTint, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         contentAlignment = Alignment.Center

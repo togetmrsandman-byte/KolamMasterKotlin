@@ -114,6 +114,7 @@ internal fun BrowseLessonScreen(
     onCommunityLessonRequestHandled: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
     onCommunityLessonSelected: (LessonCatalogueEntry) -> Unit,
+    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var query by remember { mutableStateOf("") }
@@ -137,6 +138,8 @@ internal fun BrowseLessonScreen(
         )
     }
     var isLoadingRewardedAd by remember { mutableStateOf(false) }
+    var isCheckingForMoreThumbnails by remember { mutableStateOf(false) }
+    var noMoreThumbnailsAvailable by remember { mutableStateOf(false) }
     var isIndividualAdProcessing by remember { mutableStateOf(false) }
     var thumbnailAdAttempt by remember { mutableIntStateOf(0) }
     var individualAdAttempt by remember { mutableIntStateOf(0) }
@@ -455,6 +458,52 @@ internal fun BrowseLessonScreen(
                             )
                         }
                     }
+                    if (!hasActiveSearchOrFilters &&
+                        catalogue.entries.isNotEmpty() &&
+                        visibleEntries.size >= catalogue.entries.size
+                    ) {
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            ThumbnailRevealBanner(
+                                text = if (noMoreThumbnailsAvailable) {
+                                    "More kolams coming soon."
+                                } else {
+                                    "Check for more thumbnails"
+                                },
+                                enabled = !isCheckingForMoreThumbnails,
+                                loading = isCheckingForMoreThumbnails,
+                                loadingText = "Checking for updates...",
+                                onClick = {
+                                    if (!isCheckingForMoreThumbnails) {
+                                        val previouslyKnownIds =
+                                            catalogue.entries.mapTo(mutableSetOf()) { it.id }
+                                        visibleCount = catalogue.entries.size
+                                        preferences.edit()
+                                            .putInt(REVEALED_THUMBNAIL_COUNT_KEY, visibleCount)
+                                            .apply()
+                                        noMoreThumbnailsAvailable = false
+                                        revealMessage = null
+                                        isCheckingForMoreThumbnails = true
+                                        scope.launch {
+                                            try {
+                                                val latestEntries = onCheckMoreThumbnails()
+                                                noMoreThumbnailsAvailable =
+                                                    latestEntries.none {
+                                                        it.id !in previouslyKnownIds
+                                                    }
+                                            } catch (exception: kotlinx.coroutines.CancellationException) {
+                                                throw exception
+                                            } catch (exception: Exception) {
+                                                revealMessage =
+                                                    "Could not check for more thumbnails. Please try again."
+                                            } finally {
+                                                isCheckingForMoreThumbnails = false
+                                            }
+                                        }
+                                    }
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -660,8 +709,29 @@ private fun LockedLessonDialog(
             }
         },
         confirmButton = {
-            Button(onClick = onWatchAd, enabled = !isProcessing) {
-                Text(if (isProcessing) "Please wait" else "Watch Ad")
+            Button(
+                onClick = onWatchAd,
+                enabled = !isProcessing,
+                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                    disabledContainerColor = Color(0xFF315A78),
+                    disabledContentColor = Color.White
+                )
+            ) {
+                if (isProcessing) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Text("Please wait…")
+                    }
+                } else {
+                    Text("Watch Ad")
+                }
             }
         },
         dismissButton = {
@@ -982,7 +1052,8 @@ private fun ThumbnailRevealBanner(
     text: String,
     onClick: () -> Unit = {},
     enabled: Boolean = false,
-    loading: Boolean = false
+    loading: Boolean = false,
+    loadingText: String = "Loading ad..."
 ) {
     Button(
         onClick = onClick,
@@ -991,10 +1062,26 @@ private fun ThumbnailRevealBanner(
         shape = RoundedCornerShape(10.dp),
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
             containerColor = Color(0xFF315A78),
-            contentColor = Color.White
+            contentColor = Color.White,
+            disabledContainerColor = Color(0xFF315A78),
+            disabledContentColor = Color.White
         )
     ) {
-        Text(if (loading) "Loading ad..." else text)
+        if (loading) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                Text(loadingText)
+            }
+        } else {
+            Text(text)
+        }
     }
 }
 
