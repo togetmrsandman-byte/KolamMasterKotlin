@@ -76,6 +76,9 @@ import javax.net.ssl.HttpsURLConnection
 private const val PREFERENCES_NAME = "kolam_master_preferences"
 private const val LANGUAGE_KEY = "language"
 private const val LEGACY_VISIBLE_LESSON_COUNT_KEY = "browse-revealed-thumbnail-count"
+private const val ASSET_SETUP_PREFERENCES_NAME = "kolam_master_asset_setup"
+private const val ASSET_SETUP_COMPLETE_KEY = "initial_assets_complete"
+private const val INITIAL_ASSET_AUTH_COMPLETE_KEY = "initial_assets_auth_complete"
 private const val NOTIFICATIONS_PERMISSION_REQUESTED_KEY =
     "notifications_permission_requested"
 private const val ONBOARDING_PERMISSION_PENDING_STATE_KEY =
@@ -84,6 +87,7 @@ private const val ONBOARDING_PERMISSION_PENDING_STATE_KEY =
 private sealed interface AppScreen {
     data object ChooseLanguage : AppScreen
     data object SignInInvitation : AppScreen
+    data object DownloadingAssets : AppScreen
     data object Opening : AppScreen
     data object Landing : AppScreen
     data object Browse : AppScreen
@@ -159,6 +163,10 @@ class MainActivity : ComponentActivity() {
     private var catalogueState by mutableStateOf(LessonCatalogueUiState())
     private var unlockedCatalogueLessonIds by mutableStateOf<Set<String>>(emptySet())
     private var visibleLessonCount by mutableIntStateOf(60)
+    private var assetSetupProgress by mutableStateOf(AssetSetupProgress(0, 0, "Preparing images"))
+    private var assetSetupRunning by mutableStateOf(false)
+    private var assetSetupError by mutableStateOf<String?>(null)
+    private var assetSetupJob: Job? = null
     private var accountState by mutableStateOf<SupabaseAccount?>(null)
     private var isAuthProcessing by mutableStateOf(false)
     private var authLoadingMessage by mutableStateOf<String?>(null)
@@ -174,7 +182,7 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (onboardingPermissionFlow.onPermissionRequestFinished()) {
-                screenState = AppScreen.Opening
+                startInitialAssetSetup()
             }
         }
     private var pendingContactSupportNotification by
@@ -260,7 +268,9 @@ class MainActivity : ComponentActivity() {
         screenState = when {
             onboardingPermissionFlow.isWaitingForPermissionResult -> AppScreen.SignInInvitation
             savedLanguage == null -> AppScreen.ChooseLanguage
-            else -> AppScreen.Opening
+            isInitialAssetSetupComplete() -> AppScreen.Opening
+            isInitialAssetAuthComplete(defaultValue = true) -> AppScreen.DownloadingAssets
+            else -> AppScreen.SignInInvitation
         }
         googleSignInClient = GoogleSignIn.getClient(
             this,
@@ -297,6 +307,9 @@ class MainActivity : ComponentActivity() {
                     catalogue = catalogueState,
                     unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
                     visibleLessonCount = visibleLessonCount,
+                    assetSetupProgress = assetSetupProgress,
+                    isAssetSetupRunning = assetSetupRunning,
+                    assetSetupError = assetSetupError,
                     account = accountState,
                     isAuthProcessing = isAuthProcessing,
                     publishPickerLesson = publishPickerLesson,
@@ -306,6 +319,7 @@ class MainActivity : ComponentActivity() {
                     onNavigate = ::navigateTo,
                     onLessonUnlocked = ::recordLessonUnlock,
                     onVisibleLessonCountChanged = ::recordVisibleLessonCount,
+                    onRetryAssetSetup = ::startInitialAssetSetup,
                     onGoBack = ::goBack,
                     onHome = { setRoot(AppScreen.Landing) },
                     onGoogleSignIn = ::beginGoogleSignIn,
@@ -317,6 +331,7 @@ class MainActivity : ComponentActivity() {
                         goBack()
                     },
                     onLanguageSelected = { language ->
+                        setInitialAssetAuthComplete(false)
                         saveLanguage(language)
                         routeHistory.clear()
                         routeHistory += AppScreen.ChooseLanguage
@@ -364,7 +379,11 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        refreshLessonCatalogue()
+        if (screenState == AppScreen.DownloadingAssets) {
+            startInitialAssetSetup()
+        } else if (isInitialAssetSetupComplete()) {
+            refreshLessonCatalogue()
+        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -603,6 +622,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun continueOnboardingAfterPermission() {
+        setInitialAssetAuthComplete(true)
         val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         val permissionGranted =
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -617,7 +637,7 @@ class MainActivity : ComponentActivity() {
                 )
             )
         if (onboardingPermissionFlow.completeSetup(shouldRequest)) {
-            screenState = AppScreen.Opening
+                startInitialAssetSetup()
             return
         }
 
@@ -625,6 +645,111 @@ class MainActivity : ComponentActivity() {
             .putBoolean(NOTIFICATIONS_PERMISSION_REQUESTED_KEY, true)
             .commit()
         notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+
+    private fun isInitialAssetSetupComplete(): Boolean =
+        getSharedPreferences(ASSET_SETUP_PREFERENCES_NAME, MODE_PRIVATE)
+            .getBoolean(ASSET_SETUP_COMPLETE_KEY, false)
+
+    private fun isInitialAssetAuthComplete(defaultValue: Boolean): Boolean =
+        getSharedPreferences(ASSET_SETUP_PREFERENCES_NAME, MODE_PRIVATE)
+            .getBoolean(INITIAL_ASSET_AUTH_COMPLETE_KEY, defaultValue)
+
+    private fun setInitialAssetAuthComplete(complete: Boolean) {
+        check(
+            getSharedPreferences(ASSET_SETUP_PREFERENCES_NAME, MODE_PRIVATE)
+                .edit()
+                .putBoolean(INITIAL_ASSET_AUTH_COMPLETE_KEY, complete)
+                .commit()
+        ) { "Could not save onboarding completion." }
+    }
+
+    private fun startInitialAssetSetup() {
+        if (isInitialAssetSetupComplete()) {
+            assetSetupRunning = false
+            assetSetupError = null
+            screenState = AppScreen.Opening
+            return
+        }
+        if (assetSetupJob?.isActive == true) return
+
+        screenState = AppScreen.DownloadingAssets
+        assetSetupRunning = true
+        assetSetupError = null
+        assetSetupProgress = AssetSetupProgress(0, 0, "Preparing images")
+        assetSetupJob = lifecycleScope.launch {
+            try {
+                val catalogueRepository = LessonCatalogueRepository(this@MainActivity)
+                val communityRepository = CommunityRepository(this@MainActivity)
+                val setup = InitialAssetSetup(
+                    isComplete = ::isInitialAssetSetupComplete,
+                    markComplete = {
+                        check(
+                            getSharedPreferences(ASSET_SETUP_PREFERENCES_NAME, MODE_PRIVATE)
+                                .edit()
+                                .putBoolean(ASSET_SETUP_COMPLETE_KEY, true)
+                                .commit()
+                        ) { "Could not save initial asset setup completion." }
+                    },
+                    loadLessons = {
+                        val entries = catalogueRepository.refresh()
+                        catalogueState = LessonCatalogueUiState(
+                            entries = entries,
+                            isInitialLoading = false
+                        )
+                        entries
+                    },
+                    loadCommunityImages = {
+                        communityRepository.loadApprovedSubmissions()
+                            .flatMap(CommunitySubmission::images)
+                            .take(100)
+                            .also { images ->
+                                CommunityGalleryImageCache.reconcile(
+                                    this@MainActivity,
+                                    images
+                                )
+                            }
+                    },
+                    cacheLessonThumbnails = { urls, reportProgress ->
+                        LessonThumbnailCache.prefetch(
+                            this@MainActivity,
+                            urls,
+                            { completed, total ->
+                                withContext(Dispatchers.Main.immediate) {
+                                    reportProgress(completed, total)
+                                }
+                            }
+                        )
+                    },
+                    cacheCommunityImages = { images, reportProgress ->
+                        CommunityGalleryImageCache.prefetch(
+                            this@MainActivity,
+                            images
+                        ) { completed, total ->
+                            withContext(Dispatchers.Main.immediate) {
+                                reportProgress(completed, total)
+                            }
+                        }
+                    }
+                )
+                val completed = setup.run { progress ->
+                    assetSetupProgress = progress
+                }
+                if (!completed) {
+                    error("One or more required images could not be downloaded.")
+                }
+                assetSetupRunning = false
+                screenState = AppScreen.Opening
+            } catch (exception: CancellationException) {
+                assetSetupRunning = false
+                throw exception
+            } catch (exception: Exception) {
+                Log.e("InitialAssetSetup", "Could not prepare initial app images.", exception)
+                assetSetupRunning = false
+                assetSetupError =
+                    "Some images could not be downloaded. Check your connection and retry."
+            }
+        }
     }
 
     private fun signOutToGuest() {
@@ -1191,6 +1316,9 @@ private fun KolamMasterApp(
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
     visibleLessonCount: Int,
+    assetSetupProgress: AssetSetupProgress,
+    isAssetSetupRunning: Boolean,
+    assetSetupError: String?,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     publishPickerLesson: PublishLessonDetails?,
@@ -1203,6 +1331,7 @@ private fun KolamMasterApp(
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
     onVisibleLessonCountChanged: (Int) -> Unit,
+    onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -1250,8 +1379,10 @@ private fun KolamMasterApp(
     }
     val contactRepository = remember { ContactRepository() }
     val announcementRepository = remember(context) { AnnouncementRepository(context) }
-    val communityRepository = remember { CommunityRepository() }
-    var communitySubmissions by remember { mutableStateOf<List<CommunitySubmission>>(emptyList()) }
+    val communityRepository = remember(context) { CommunityRepository(context) }
+    var communitySubmissions by remember(communityRepository) {
+        mutableStateOf(communityRepository.loadCachedSubmissions())
+    }
     var communityLoading by remember { mutableStateOf(false) }
     var communityError by remember { mutableStateOf<String?>(null) }
     var communityRefreshKey by remember { mutableIntStateOf(0) }
@@ -1297,7 +1428,6 @@ private fun KolamMasterApp(
         if (screen != AppScreen.Community) return@LaunchedEffect
         communityLoading = true
         communityError = null
-        communitySubmissions = emptyList()
         try {
             communitySubmissions = communityRepository.loadApprovedSubmissions()
         } catch (exception: CancellationException) {
@@ -1645,6 +1775,7 @@ private fun KolamMasterApp(
         containerColor = when (screen) {
             AppScreen.ChooseLanguage,
             AppScreen.SignInInvitation,
+            AppScreen.DownloadingAssets,
             AppScreen.Opening,
             AppScreen.Landing,
             AppScreen.Browse,
@@ -1668,7 +1799,10 @@ private fun KolamMasterApp(
                     .fillMaxSize()
                     .graphicsLayer { alpha = rootAlpha.value }
             ) {
-                if (screen != AppScreen.Landing && screen != AppScreen.Opening) {
+                if (screen != AppScreen.Landing &&
+                    screen != AppScreen.Opening &&
+                    screen != AppScreen.DownloadingAssets
+                ) {
                     AppNavigationHeader(
                         onBack = handleScreenBack,
                         onHome = onHome,
@@ -1687,11 +1821,15 @@ private fun KolamMasterApp(
                         catalogue = catalogue,
                         unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
                         visibleLessonCount = visibleLessonCount,
+                        assetSetupProgress = assetSetupProgress,
+                        isAssetSetupRunning = isAssetSetupRunning,
+                        assetSetupError = assetSetupError,
                         account = account,
                         isAuthProcessing = isAuthProcessing,
                         onNavigate = onNavigate,
                         onLessonUnlocked = onLessonUnlocked,
                         onVisibleLessonCountChanged = onVisibleLessonCountChanged,
+                        onRetryAssetSetup = onRetryAssetSetup,
                         onGoBack = onGoBack,
                         onHome = onHome,
                         onGoogleSignIn = onGoogleSignIn,
@@ -1832,7 +1970,10 @@ private fun KolamMasterApp(
                     )
                 }
             }
-            if (screen != AppScreen.Landing && screen != AppScreen.Opening) {
+            if (screen != AppScreen.Landing &&
+                screen != AppScreen.Opening &&
+                screen != AppScreen.DownloadingAssets
+            ) {
                 DrawerOverlay(
                     visible = drawerOpen,
                     settingsExpanded = settingsExpanded,
@@ -1926,7 +2067,8 @@ private fun KolamMasterApp(
         !drawerOpen &&
         screen !is AppScreen.Landing &&
         screen !is AppScreen.ChooseLanguage &&
-        screen !is AppScreen.Opening
+        screen !is AppScreen.Opening &&
+        screen !is AppScreen.DownloadingAssets
     ) {
         when (screen) {
             AppScreen.SignInInvitation -> onScreenChange(AppScreen.ChooseLanguage)
@@ -1945,11 +2087,15 @@ private fun AppScreenContent(
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
     visibleLessonCount: Int,
+    assetSetupProgress: AssetSetupProgress,
+    isAssetSetupRunning: Boolean,
+    assetSetupError: String?,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
     onVisibleLessonCountChanged: (Int) -> Unit,
+    onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -2013,6 +2159,12 @@ private fun AppScreenContent(
             onGoogleSignIn = onGoogleSignIn,
             onSkip = onContinueAsGuest,
             isLoading = isAuthProcessing
+        )
+        AppScreen.DownloadingAssets -> InitialAssetSetupScreen(
+            progress = assetSetupProgress,
+            isRunning = isAssetSetupRunning,
+            errorMessage = assetSetupError,
+            onRetry = onRetryAssetSetup
         )
         AppScreen.Opening -> OpeningScreen(onBegin)
         AppScreen.Landing -> LandingScreen(

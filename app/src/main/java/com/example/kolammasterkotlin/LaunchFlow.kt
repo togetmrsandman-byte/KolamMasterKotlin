@@ -250,6 +250,73 @@ internal fun SignInInvitationScreen(
     }
 }
 
+@Composable
+internal fun InitialAssetSetupScreen(
+    progress: AssetSetupProgress,
+    isRunning: Boolean,
+    errorMessage: String?,
+    onRetry: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KolamBackground)
+            .padding(horizontal = 32.dp, vertical = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "Preparing Kolam Master",
+            color = Color.White,
+            fontSize = 26.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Downloading images for your first visit. Please wait.",
+            color = Color.White.copy(alpha = 0.84f),
+            fontSize = 16.sp,
+            lineHeight = 23.sp,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(28.dp))
+        if (isRunning) {
+            CircularProgressIndicator(color = Gold)
+            Spacer(Modifier.height(16.dp))
+            if (progress.total > 0) {
+                Text(
+                    text = "${progress.completed} of ${progress.total} images",
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = progress.message,
+                color = Color.White.copy(alpha = 0.75f),
+                fontSize = 14.sp,
+                textAlign = TextAlign.Center
+            )
+        } else if (errorMessage != null) {
+            Text(
+                text = errorMessage,
+                color = Color.White,
+                fontSize = 15.sp,
+                textAlign = TextAlign.Center
+            )
+            Spacer(Modifier.height(18.dp))
+            Button(
+                onClick = onRetry,
+                colors = ButtonDefaults.buttonColors(containerColor = Gold)
+            ) {
+                Text("Retry", color = Color.White, fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
 private val LanguageLogoSize = 200.dp
 private val LanguageLogoVerticalOffset = 0.dp
 private val LanguageLogoToSectionSpacing = 12.dp

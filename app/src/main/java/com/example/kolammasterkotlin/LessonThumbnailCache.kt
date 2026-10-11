@@ -9,8 +9,13 @@ import androidx.compose.ui.graphics.asImageBitmap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
@@ -18,6 +23,7 @@ import java.io.IOException
 import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import javax.net.ssl.HttpsURLConnection
 
 internal object LessonThumbnailCache {
@@ -30,6 +36,7 @@ internal object LessonThumbnailCache {
 
     private val downloadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val inFlightDownloads = ConcurrentHashMap<String, Deferred<File?>>()
+    private val downloadSemaphore = Semaphore(3)
 
     suspend fun load(
         context: Context,
@@ -38,24 +45,54 @@ internal object LessonThumbnailCache {
     ): ImageBitmap? = withContext(Dispatchers.IO) {
         if (url.isBlank()) return@withContext null
 
-        val appContext = context.applicationContext
-        val cacheDirectory = File(appContext.filesDir, CACHE_DIRECTORY)
-        val target = File(cacheDirectory, "${url.sha256Hex()}.img")
-        decodeThumbnail(target)?.let { return@withContext it.asImageBitmap() }
+        val file = ensureCached(context, url, onDownloadStarted) ?: return@withContext null
+        decodeThumbnail(file)?.asImageBitmap()
+    }
+
+    suspend fun prefetch(
+        context: Context,
+        urls: List<String>,
+        onProgress: suspend (completed: Int, total: Int) -> Unit
+    ): Boolean = coroutineScope {
+        val uniqueUrls = urls.filter(String::isNotBlank).distinct()
+        val completed = AtomicInteger()
+        val results = uniqueUrls.map { url ->
+            async {
+                ensureCached(context, url) {}.also {
+                    onProgress(completed.incrementAndGet(), uniqueUrls.size)
+                }
+            }
+        }.awaitAll()
+        results.all { it != null }
+    }
+
+    private suspend fun ensureCached(
+        context: Context,
+        url: String,
+        onDownloadStarted: () -> Unit
+    ): File? = withContext(Dispatchers.IO) {
+        val directory = File(context.applicationContext.filesDir, CACHE_DIRECTORY)
+        val target = File(directory, "${url.sha256Hex()}.img")
+        decodeThumbnail(target)?.let {
+            it.recycle()
+            return@withContext target
+        }
 
         onDownloadStarted()
         val cacheKey = target.name
         val download = inFlightDownloads.computeIfAbsent(cacheKey) {
-            downloadScope.async {
-                downloadIfNeeded(cacheDirectory, target, url)
+            downloadScope.async(start = CoroutineStart.LAZY) {
+                downloadSemaphore.withPermit {
+                    downloadIfNeeded(directory, target, url)
+                }
+            }.also { deferred ->
+                deferred.invokeOnCompletion {
+                    inFlightDownloads.remove(cacheKey, deferred)
+                }
             }
         }
-        val downloadedFile = try {
-            download.await()
-        } finally {
-            inFlightDownloads.remove(cacheKey, download)
-        }
-        downloadedFile?.let(::decodeThumbnail)?.asImageBitmap()
+        download.start()
+        download.await()
     }
 
     private fun downloadIfNeeded(
