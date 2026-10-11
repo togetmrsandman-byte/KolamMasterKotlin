@@ -13,7 +13,13 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
 
+internal data class LessonUserData(
+    val unlockedLessonIds: Set<String>,
+    val visibleLessonCount: Int
+)
+
 internal class LessonUnlockRepository(context: Context) {
+    private val applicationContext = context.applicationContext
     private val preferences = context.applicationContext.getSharedPreferences(
         LOCAL_PREFERENCES_NAME,
         Context.MODE_PRIVATE
@@ -44,27 +50,85 @@ internal class LessonUnlockRepository(context: Context) {
         }
     }
 
-    suspend fun loadFromSupabase(userId: String): Set<String> =
+    fun loadLocalVisibleLessonCount(userId: String): Int {
+        val key = visibleCountKey(userId)
+        val legacyPreferences = applicationContext.getSharedPreferences(
+            LEGACY_PREFERENCES_NAME,
+            Context.MODE_PRIVATE
+        )
+        val cached = preferences.getInt(key, INITIAL_VISIBLE_LESSON_COUNT)
+            .coerceAtLeast(INITIAL_VISIBLE_LESSON_COUNT)
+        if (!legacyPreferences.contains(LEGACY_VISIBLE_COUNT_KEY)) return cached
+
+        val legacyCount = legacyPreferences.getInt(
+            LEGACY_VISIBLE_COUNT_KEY,
+            INITIAL_VISIBLE_LESSON_COUNT
+        ).coerceAtLeast(INITIAL_VISIBLE_LESSON_COUNT)
+        val migratedCount = saveLocalVisibleLessonCount(userId, maxOf(cached, legacyCount))
+        check(legacyPreferences.edit().remove(LEGACY_VISIBLE_COUNT_KEY).commit()) {
+            "Could not migrate the local visible lesson count."
+        }
+        return migratedCount
+    }
+
+    fun saveLocalVisibleLessonCount(userId: String, visibleLessonCount: Int): Int {
+        require(visibleLessonCount >= INITIAL_VISIBLE_LESSON_COUNT) {
+            "Visible lesson count cannot be lower than the initial catalogue count."
+        }
+        val key = visibleCountKey(userId)
+        val countToSave = maxOf(
+            visibleLessonCount,
+            preferences.getInt(key, INITIAL_VISIBLE_LESSON_COUNT)
+                .coerceAtLeast(INITIAL_VISIBLE_LESSON_COUNT)
+        )
+        check(preferences.edit().putInt(key, countToSave).commit()) {
+            "Could not persist the visible lesson count locally."
+        }
+        return countToSave
+    }
+
+    suspend fun loadFromSupabase(userId: String): LessonUserData =
         withContext(Dispatchers.IO) {
             val accessToken = SupabaseGuestAuth.accessTokenFor(userId)
-            val query = "user_id=eq.${encode(userId)}&select=unlocked_lessons&limit=1"
+            val query = "user_id=eq.${encode(userId)}" +
+                "&select=unlocked_lessons,visible_lesson_count&limit=1"
             val response = request(
                 method = "GET",
                 path = "/rest/v1/user_data?$query",
                 accessToken = accessToken
             )
             val rows = JSONArray(response)
-            if (rows.length() == 0) emptySet()
-            else readUnlockValue(rows.getJSONObject(0).opt("unlocked_lessons"))
+            if (rows.length() == 0) {
+                LessonUserData(emptySet(), INITIAL_VISIBLE_LESSON_COUNT)
+            } else {
+                val row = rows.getJSONObject(0)
+                LessonUserData(
+                    unlockedLessonIds = readUnlockValue(row.opt("unlocked_lessons")),
+                    visibleLessonCount = row.optInt(
+                        "visible_lesson_count",
+                        INITIAL_VISIBLE_LESSON_COUNT
+                    ).coerceAtLeast(INITIAL_VISIBLE_LESSON_COUNT)
+                )
+            }
         }
 
-    suspend fun saveToSupabase(userId: String, lessonIds: Set<String>) =
+    suspend fun saveToSupabase(
+        userId: String,
+        lessonIds: Set<String>,
+        visibleLessonCount: Int
+    ) =
         withContext(Dispatchers.IO) {
+            require(visibleLessonCount >= INITIAL_VISIBLE_LESSON_COUNT) {
+                "Visible lesson count cannot be lower than the initial catalogue count."
+            }
             val accessToken = SupabaseGuestAuth.accessTokenFor(userId)
             val unlocks = JSONArray().apply {
                 lessonIds.sorted().forEach(::put)
             }
-            val body = JSONObject().put("unlocked_lessons", unlocks).toString()
+            val body = JSONObject()
+                .put("unlocked_lessons", unlocks)
+                .put("visible_lesson_count", visibleLessonCount)
+                .toString()
             val query = "user_id=eq.${encode(userId)}"
             val updateResponse = request(
                 method = "PATCH",
@@ -77,6 +141,7 @@ internal class LessonUnlockRepository(context: Context) {
                 val insertBody = JSONObject()
                     .put("user_id", userId)
                     .put("unlocked_lessons", unlocks)
+                    .put("visible_lesson_count", visibleLessonCount)
                     .toString()
                 request(
                     method = "POST",
@@ -163,10 +228,15 @@ internal class LessonUnlockRepository(context: Context) {
 
     private fun userKey(userId: String): String = "user:$userId"
 
+    private fun visibleCountKey(userId: String): String = "visible-count:$userId"
+
     private fun encode(value: String): String =
         URLEncoder.encode(value, Charsets.UTF_8.name())
 
     private companion object {
         const val LOCAL_PREFERENCES_NAME = "kolam-master-local-lesson-unlocks"
+        const val LEGACY_PREFERENCES_NAME = "kolam_master_preferences"
+        const val LEGACY_VISIBLE_COUNT_KEY = "browse-revealed-thumbnail-count"
+        const val INITIAL_VISIBLE_LESSON_COUNT = 60
     }
 }

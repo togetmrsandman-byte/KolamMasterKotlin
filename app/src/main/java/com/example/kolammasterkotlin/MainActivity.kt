@@ -75,6 +75,7 @@ import javax.net.ssl.HttpsURLConnection
 
 private const val PREFERENCES_NAME = "kolam_master_preferences"
 private const val LANGUAGE_KEY = "language"
+private const val LEGACY_VISIBLE_LESSON_COUNT_KEY = "browse-revealed-thumbnail-count"
 private const val NOTIFICATIONS_PERMISSION_REQUESTED_KEY =
     "notifications_permission_requested"
 private const val ONBOARDING_PERMISSION_PENDING_STATE_KEY =
@@ -157,6 +158,7 @@ class MainActivity : ComponentActivity() {
     private var activeLanguage by mutableStateOf("English")
     private var catalogueState by mutableStateOf(LessonCatalogueUiState())
     private var unlockedCatalogueLessonIds by mutableStateOf<Set<String>>(emptySet())
+    private var visibleLessonCount by mutableIntStateOf(60)
     private var accountState by mutableStateOf<SupabaseAccount?>(null)
     private var isAuthProcessing by mutableStateOf(false)
     private var authLoadingMessage by mutableStateOf<String?>(null)
@@ -294,6 +296,7 @@ class MainActivity : ComponentActivity() {
                     activeLanguage = activeLanguage,
                     catalogue = catalogueState,
                     unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
+                    visibleLessonCount = visibleLessonCount,
                     account = accountState,
                     isAuthProcessing = isAuthProcessing,
                     publishPickerLesson = publishPickerLesson,
@@ -302,6 +305,7 @@ class MainActivity : ComponentActivity() {
                     authErrorTitle = authErrorTitle,
                     onNavigate = ::navigateTo,
                     onLessonUnlocked = ::recordLessonUnlock,
+                    onVisibleLessonCountChanged = ::recordVisibleLessonCount,
                     onGoBack = ::goBack,
                     onHome = { setRoot(AppScreen.Landing) },
                     onGoogleSignIn = ::beginGoogleSignIn,
@@ -484,8 +488,17 @@ class MainActivity : ComponentActivity() {
                             newAccount.id,
                             accountUnlocks + guestUnlocks
                         )
+                        val guestVisibleCount =
+                            lessonUnlockRepository.loadLocalVisibleLessonCount(previousAccount.id)
+                        val accountVisibleCount =
+                            lessonUnlockRepository.loadLocalVisibleLessonCount(newAccount.id)
+                        visibleLessonCount =
+                            lessonUnlockRepository.saveLocalVisibleLessonCount(
+                                newAccount.id,
+                                maxOf(guestVisibleCount, accountVisibleCount)
+                            )
                     } catch (exception: Exception) {
-                        Log.e("LessonUnlocks", "Could not migrate Guest unlocks locally.", exception)
+                        Log.e("LessonUnlocks", "Could not migrate Guest lesson data locally.", exception)
                     }
                 }
                 accountState = newAccount
@@ -697,9 +710,11 @@ class MainActivity : ComponentActivity() {
     private fun restoreLessonUnlocks(account: SupabaseAccount) {
         val generation = ++unlockRestoreGeneration
         val localUnlocks = lessonUnlockRepository.loadLocal(account.id)
+        val localVisibleCount = lessonUnlockRepository.loadLocalVisibleLessonCount(account.id)
+        visibleLessonCount = localVisibleCount
         unlockedCatalogueLessonIds = localUnlocks
         lifecycleScope.launch {
-            val remoteUnlocks = try {
+            val remoteData = try {
                 lessonUnlockRepository.loadFromSupabase(account.id)
             } catch (exception: CancellationException) {
                 throw exception
@@ -713,16 +728,27 @@ class MainActivity : ComponentActivity() {
             val mergedUnlocks = latestLocalUnlocks +
                 localUnlocks +
                 unlockedCatalogueLessonIds +
-                remoteUnlocks
+                remoteData.unlockedLessonIds
+            val mergedVisibleCount = lessonUnlockRepository.saveLocalVisibleLessonCount(
+                account.id,
+                maxOf(localVisibleCount, remoteData.visibleLessonCount)
+            )
             try {
                 lessonUnlockRepository.saveLocal(account.id, mergedUnlocks)
             } catch (exception: Exception) {
                 Log.e("LessonUnlocks", "Could not persist merged lesson unlocks locally.", exception)
             }
             unlockedCatalogueLessonIds = mergedUnlocks
-            if (mergedUnlocks != remoteUnlocks) {
+            visibleLessonCount = mergedVisibleCount
+            if (mergedUnlocks != remoteData.unlockedLessonIds ||
+                mergedVisibleCount != remoteData.visibleLessonCount
+            ) {
                 try {
-                    lessonUnlockRepository.saveToSupabase(account.id, mergedUnlocks)
+                    lessonUnlockRepository.saveToSupabase(
+                        account.id,
+                        mergedUnlocks,
+                        mergedVisibleCount
+                    )
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -794,6 +820,35 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun recordVisibleLessonCount(newCount: Int) {
+        visibleLessonCount = maxOf(visibleLessonCount, newCount)
+        lifecycleScope.launch {
+            try {
+                val account = accountState ?: SupabaseGuestAuth.currentAccount()
+                    ?: run {
+                        SupabaseGuestAuth.getOrCreateGuestUserId()
+                        SupabaseGuestAuth.currentAccount()
+                    }
+                    ?: error("Could not resolve an account for visible lesson storage.")
+                accountState = account
+                val mergedCount = lessonUnlockRepository.saveLocalVisibleLessonCount(
+                    account.id,
+                    visibleLessonCount
+                )
+                visibleLessonCount = mergedCount
+                syncLessonUnlocks(
+                    account,
+                    lessonUnlockRepository.loadLocal(account.id) + unlockedCatalogueLessonIds
+                )
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e("LessonUnlocks", "Could not persist the visible lesson count.", exception)
+                if (NetworkErrors.isNetworkFailure(exception)) showNetworkIssue()
+            }
+        }
+    }
+
     private fun syncLessonUnlocks(
         account: SupabaseAccount,
         localUnlocks: Set<String>,
@@ -801,7 +856,7 @@ class MainActivity : ComponentActivity() {
     ) {
         val generation = unlockRestoreGeneration
         lifecycleScope.launch {
-            val remoteUnlocks = try {
+            val remoteData = try {
                 lessonUnlockRepository.loadFromSupabase(account.id)
             } catch (exception: CancellationException) {
                 throw exception
@@ -817,16 +872,30 @@ class MainActivity : ComponentActivity() {
             val mergedUnlocks = lessonUnlockRepository.loadLocal(account.id) +
                 localUnlocks +
                 unlockedCatalogueLessonIds +
-                remoteUnlocks
+                remoteData.unlockedLessonIds
+            val mergedVisibleCount = lessonUnlockRepository.saveLocalVisibleLessonCount(
+                account.id,
+                maxOf(
+                    lessonUnlockRepository.loadLocalVisibleLessonCount(account.id),
+                    remoteData.visibleLessonCount
+                )
+            )
             try {
                 lessonUnlockRepository.saveLocal(account.id, mergedUnlocks)
             } catch (exception: Exception) {
                 Log.e("LessonUnlocks", "Could not persist synced lesson unlocks locally.", exception)
             }
             unlockedCatalogueLessonIds = mergedUnlocks
-            if (mergedUnlocks != remoteUnlocks) {
+            visibleLessonCount = mergedVisibleCount
+            if (mergedUnlocks != remoteData.unlockedLessonIds ||
+                mergedVisibleCount != remoteData.visibleLessonCount
+            ) {
                 try {
-                    lessonUnlockRepository.saveToSupabase(account.id, mergedUnlocks)
+                    lessonUnlockRepository.saveToSupabase(
+                        account.id,
+                        mergedUnlocks,
+                        mergedVisibleCount
+                    )
                 } catch (exception: CancellationException) {
                     throw exception
                 } catch (exception: Exception) {
@@ -1121,6 +1190,7 @@ private fun KolamMasterApp(
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
+    visibleLessonCount: Int,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     publishPickerLesson: PublishLessonDetails?,
@@ -1132,6 +1202,7 @@ private fun KolamMasterApp(
     authErrorTitle: String,
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
+    onVisibleLessonCountChanged: (Int) -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -1615,10 +1686,12 @@ private fun KolamMasterApp(
                         activeLanguage = activeLanguage,
                         catalogue = catalogue,
                         unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
+                        visibleLessonCount = visibleLessonCount,
                         account = account,
                         isAuthProcessing = isAuthProcessing,
                         onNavigate = onNavigate,
                         onLessonUnlocked = onLessonUnlocked,
+                        onVisibleLessonCountChanged = onVisibleLessonCountChanged,
                         onGoBack = onGoBack,
                         onHome = onHome,
                         onGoogleSignIn = onGoogleSignIn,
@@ -1871,10 +1944,12 @@ private fun AppScreenContent(
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
+    visibleLessonCount: Int,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
+    onVisibleLessonCountChanged: (Int) -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -1959,6 +2034,11 @@ private fun AppScreenContent(
             catalogue = catalogue,
             unlockedLessonIds = unlockedCatalogueLessonIds,
             accountId = account?.takeUnless { it.isGuest }?.id,
+            isGuest = account?.isGuest == true,
+            isAuthProcessing = isAuthProcessing,
+            visibleLessonCount = visibleLessonCount,
+            onVisibleLessonCountChanged = onVisibleLessonCountChanged,
+            onLessonUnlocked = onLessonUnlocked,
             onGoogleSignIn = onGoogleSignIn,
             communityLessonId = communityLessonRequestId,
             onCommunityLessonRequestHandled = onCommunityLessonRequestHandled,
@@ -1967,18 +2047,10 @@ private fun AppScreenContent(
                 onCommunityLessonMissing()
             },
             onCommunityLessonSelected = { lesson ->
-                if (lesson.access == CatalogueAccess.LOCKED) {
-                    onLessonUnlocked(lesson.id)
-                }
                 onLoadCommunityLesson(lesson)
             },
             onCheckMoreThumbnails = onCheckMoreThumbnails,
-            onLessonSelected = { lesson ->
-                if (lesson.access == CatalogueAccess.LOCKED) {
-                    onLessonUnlocked(lesson.id)
-                }
-                onLoadLesson(lesson)
-            }
+            onLessonSelected = onLoadLesson
         )
         AppScreen.MyKolams -> MyFoldersDestination(
             accountId = account?.takeUnless { it.isGuest }?.id,

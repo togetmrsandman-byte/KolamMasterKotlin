@@ -273,8 +273,15 @@ class MyFoldersScreenInstrumentedTest {
                 catalogue = LessonCatalogueUiState(entries = lessons, isInitialLoading = false),
                 unlockedLessonIds = emptySet(),
                 accountId = account.value,
+                visibleLessonCount = 60,
+                onVisibleLessonCountChanged = {},
                 onGoogleSignIn = { signInRequested = true },
                 onLessonSelected = {},
+                communityLessonId = null,
+                onCommunityLessonRequestHandled = {},
+                onCommunityLessonMissing = {},
+                onCommunityLessonSelected = {},
+                onCheckMoreThumbnails = { lessons },
                 folderRepository = repository
             )
         }

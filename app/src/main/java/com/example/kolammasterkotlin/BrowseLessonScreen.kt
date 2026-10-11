@@ -12,6 +12,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,12 +24,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
@@ -39,6 +42,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -68,6 +73,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -84,8 +90,6 @@ import java.io.IOException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
-private const val BROWSE_PREFERENCES_NAME = "kolam_master_preferences"
-private const val REVEALED_THUMBNAIL_COUNT_KEY = "browse-revealed-thumbnail-count"
 private const val INITIAL_REVEALED_THUMBNAIL_COUNT = 60
 private const val FREE_CATALOGUE_ENTRY_COUNT = 30
 private const val THUMBNAIL_REVEAL_BATCH_SIZE = 20
@@ -103,11 +107,117 @@ internal data class LessonCatalogueUiState(
     val refreshNetworkFailed: Boolean = false
 )
 
+internal data class BrowseCatalogueItem(
+    val catalogueIndex: Int,
+    val lesson: LessonCatalogueEntry
+)
+
+internal data class BrowseCatalogueSections(
+    val freeLessons: List<BrowseCatalogueItem>,
+    val individuallyUnlockedLessons: List<BrowseCatalogueItem>,
+    val revealedLessons: List<BrowseCatalogueItem>
+)
+
+internal data class PendingRewardedLessonOpen(
+    val lesson: LessonCatalogueEntry,
+    val fromCommunity: Boolean
+)
+
+internal enum class GuestUnlockWarningAction {
+    SIGN_IN,
+    CANCEL
+}
+
+internal enum class PendingGoogleLessonAction {
+    WAITING,
+    OPEN_LESSON,
+    RETURN_TO_WARNING
+}
+
+internal fun pendingGoogleLessonAction(
+    hasPendingLesson: Boolean,
+    signInAttemptStarted: Boolean,
+    isAuthProcessing: Boolean,
+    isGoogleAccount: Boolean
+): PendingGoogleLessonAction = when {
+    !hasPendingLesson || !signInAttemptStarted || isAuthProcessing ->
+        PendingGoogleLessonAction.WAITING
+    isGoogleAccount -> PendingGoogleLessonAction.OPEN_LESSON
+    else -> PendingGoogleLessonAction.RETURN_TO_WARNING
+}
+
+internal fun completeVerifiedRewardedLessonUnlock(
+    isGuest: Boolean,
+    onUnlockGranted: () -> Unit,
+    onShowGuestWarning: () -> Unit,
+    onOpenLesson: () -> Unit
+) {
+    onUnlockGranted()
+    if (isGuest) onShowGuestWarning() else onOpenLesson()
+}
+
+internal fun handleGuestUnlockWarningAction(
+    action: GuestUnlockWarningAction,
+    onSignIn: () -> Unit,
+    onCancelAndOpen: () -> Unit
+) {
+    when (action) {
+        GuestUnlockWarningAction.SIGN_IN -> onSignIn()
+        GuestUnlockWarningAction.CANCEL -> onCancelAndOpen()
+    }
+}
+
+internal fun browseCatalogueSections(
+    entries: List<LessonCatalogueEntry>,
+    visibleCount: Int,
+    unlockedLessonIds: Set<String>
+): BrowseCatalogueSections {
+    fun item(index: Int, lesson: LessonCatalogueEntry) = BrowseCatalogueItem(
+        catalogueIndex = index,
+        lesson = lesson.copy(
+            access = if (index < FREE_CATALOGUE_ENTRY_COUNT ||
+                lesson.id in unlockedLessonIds
+            ) {
+                CatalogueAccess.FREE
+            } else {
+                CatalogueAccess.LOCKED
+            }
+        )
+    )
+
+    val individuallyUnlockedIds = entries
+        .drop(FREE_CATALOGUE_ENTRY_COUNT)
+        .asSequence()
+        .filter { it.id in unlockedLessonIds }
+        .map { it.id }
+        .toSet()
+
+    return BrowseCatalogueSections(
+        freeLessons = entries.take(FREE_CATALOGUE_ENTRY_COUNT).mapIndexed(::item),
+        individuallyUnlockedLessons = entries
+            .mapIndexed(::item)
+            .drop(FREE_CATALOGUE_ENTRY_COUNT)
+            .filter { it.lesson.id in individuallyUnlockedIds },
+        revealedLessons = entries
+            .drop(FREE_CATALOGUE_ENTRY_COUNT)
+            .take((visibleCount - FREE_CATALOGUE_ENTRY_COUNT).coerceAtLeast(0))
+            .mapIndexed { offset, lesson ->
+                item(offset + FREE_CATALOGUE_ENTRY_COUNT, lesson)
+            }
+            .filterNot { it.lesson.id in individuallyUnlockedIds }
+    )
+}
+
 @Composable
 internal fun BrowseLessonScreen(
     catalogue: LessonCatalogueUiState,
     unlockedLessonIds: Set<String>,
     accountId: String?,
+    isGuest: Boolean = false,
+    isAuthProcessing: Boolean = false,
+    visibleLessonCount: Int,
+    onVisibleLessonCountChanged: (Int) -> Unit,
+    onLessonUnlocked: (String) -> Unit = {},
     onGoogleSignIn: () -> Unit,
     onLessonSelected: (LessonCatalogueEntry) -> Unit,
     communityLessonId: String?,
@@ -122,20 +232,12 @@ internal fun BrowseLessonScreen(
     var types by remember { mutableStateOf<Set<String>>(emptySet()) }
     var filtersOpen by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    val preferences = remember(context) {
-        context.applicationContext.getSharedPreferences(
-            BROWSE_PREFERENCES_NAME,
-            Context.MODE_PRIVATE
-        )
-    }
 
-    var visibleCount by remember(preferences) {
-        mutableIntStateOf(
-            preferences.getInt(
-                REVEALED_THUMBNAIL_COUNT_KEY,
-                INITIAL_REVEALED_THUMBNAIL_COUNT
-            ).coerceAtLeast(INITIAL_REVEALED_THUMBNAIL_COUNT)
-        )
+    var visibleCount by remember(accountId) {
+        mutableIntStateOf(visibleLessonCount.coerceAtLeast(INITIAL_REVEALED_THUMBNAIL_COUNT))
+    }
+    LaunchedEffect(accountId, visibleLessonCount) {
+        visibleCount = maxOf(visibleCount, visibleLessonCount)
     }
     var isLoadingRewardedAd by remember { mutableStateOf(false) }
     var isCheckingForMoreThumbnails by remember { mutableStateOf(false) }
@@ -148,6 +250,10 @@ internal fun BrowseLessonScreen(
     var revealMessage by remember { mutableStateOf<String?>(null) }
     var lockedLesson by remember { mutableStateOf<LessonCatalogueEntry?>(null) }
     var lockedLessonFromCommunity by remember { mutableStateOf(false) }
+    var guestUnlockWarning by remember { mutableStateOf<PendingRewardedLessonOpen?>(null) }
+    var pendingGoogleLessonOpen by remember { mutableStateOf<PendingRewardedLessonOpen?>(null) }
+    var waitingForGoogleSignIn by remember { mutableStateOf(false) }
+    var googleSignInAttemptStarted by remember { mutableStateOf(false) }
     var completedIndividualAds by remember { mutableIntStateOf(0) }
     var lockedLessonMessage by remember { mutableStateOf<String?>(null) }
     var savedFolders by remember(accountId) { mutableStateOf(emptyList<Folder>()) }
@@ -174,6 +280,42 @@ internal fun BrowseLessonScreen(
                     exception,
                     "Could not load saved folders."
                 )
+            }
+        }
+    }
+
+    LaunchedEffect(accountId, isGuest, isAuthProcessing, pendingGoogleLessonOpen) {
+        val pending = pendingGoogleLessonOpen
+        if (pending != null && waitingForGoogleSignIn) {
+            if (isAuthProcessing) {
+                googleSignInAttemptStarted = true
+            } else {
+                when (
+                    pendingGoogleLessonAction(
+                        hasPendingLesson = true,
+                        signInAttemptStarted = googleSignInAttemptStarted,
+                        isAuthProcessing = false,
+                        isGoogleAccount = accountId != null && !isGuest
+                    )
+                ) {
+                    PendingGoogleLessonAction.OPEN_LESSON -> {
+                        pendingGoogleLessonOpen = null
+                        waitingForGoogleSignIn = false
+                        googleSignInAttemptStarted = false
+                        if (pending.fromCommunity) {
+                            onCommunityLessonSelected(pending.lesson)
+                        } else {
+                            onLessonSelected(pending.lesson)
+                        }
+                    }
+                    PendingGoogleLessonAction.RETURN_TO_WARNING -> {
+                        pendingGoogleLessonOpen = null
+                        waitingForGoogleSignIn = false
+                        googleSignInAttemptStarted = false
+                        guestUnlockWarning = pending
+                    }
+                    PendingGoogleLessonAction.WAITING -> Unit
+                }
             }
         }
     }
@@ -350,10 +492,36 @@ internal fun BrowseLessonScreen(
                             )
                         }
                     } else {
+                        val sections = browseCatalogueSections(
+                            entries = catalogue.entries,
+                            visibleCount = visibleCount,
+                            unlockedLessonIds = unlockedLessonIds
+                        )
                         itemsIndexed(
-                            items = visibleEntries.take(FREE_CATALOGUE_ENTRY_COUNT),
-                            key = { index, lesson -> "${lesson.id}-$index" }
-                        ) { _, lesson ->
+                            items = sections.freeLessons,
+                            key = { _, item -> "${item.lesson.id}-${item.catalogueIndex}" }
+                        ) { _, item ->
+                            val lesson = item.lesson
+                            LessonCatalogueCard(
+                                lesson = lesson,
+                                isSaved = savedFolders.any { lesson.id in it.lessons },
+                                onClick = { openLesson(lesson, false) },
+                                onHeartClick = {
+                                    if (accountId == null) {
+                                        pendingSignInLessonId = lesson.id
+                                        onGoogleSignIn()
+                                    } else {
+                                        saveTargetLesson = lesson
+                                        saveTargetAccountId = accountId
+                                    }
+                                }
+                            )
+                        }
+                        itemsIndexed(
+                            items = sections.individuallyUnlockedLessons,
+                            key = { _, item -> "${item.lesson.id}-${item.catalogueIndex}" }
+                        ) { _, item ->
+                            val lesson = item.lesson
                             LessonCatalogueCard(
                                 lesson = lesson,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
@@ -377,11 +545,12 @@ internal fun BrowseLessonScreen(
                                 )
                             }
                             itemsIndexed(
-                                items = visibleEntries.drop(FREE_CATALOGUE_ENTRY_COUNT),
-                                key = { index, lesson ->
-                                    "${lesson.id}-${index + FREE_CATALOGUE_ENTRY_COUNT}"
+                                items = sections.revealedLessons,
+                                key = { _, item ->
+                                    "${item.lesson.id}-${item.catalogueIndex}"
                                 }
-                            ) { _, lesson ->
+                            ) { _, item ->
+                                val lesson = item.lesson
                                 LessonCatalogueCard(
                                     lesson = lesson,
                                     isSaved = savedFolders.any { lesson.id in it.lessons },
@@ -432,9 +601,7 @@ internal fun BrowseLessonScreen(
                                                 )
                                                 if (newCount > visibleCount) {
                                                     visibleCount = newCount
-                                                    preferences.edit()
-                                                        .putInt(REVEALED_THUMBNAIL_COUNT_KEY, newCount)
-                                                        .apply()
+                                                    onVisibleLessonCountChanged(newCount)
                                                 }
                                                 isLoadingRewardedAd = false
                                             },
@@ -476,10 +643,7 @@ internal fun BrowseLessonScreen(
                                     if (!isCheckingForMoreThumbnails) {
                                         val previouslyKnownIds =
                                             catalogue.entries.mapTo(mutableSetOf()) { it.id }
-                                        visibleCount = catalogue.entries.size
-                                        preferences.edit()
-                                            .putInt(REVEALED_THUMBNAIL_COUNT_KEY, visibleCount)
-                                            .apply()
+                                        visibleCount = maxOf(visibleCount, catalogue.entries.size)
                                         noMoreThumbnailsAvailable = false
                                         revealMessage = null
                                         isCheckingForMoreThumbnails = true
@@ -608,12 +772,27 @@ internal fun BrowseLessonScreen(
                                     completedIndividualAds += 1
                                     if (completedIndividualAds >= requiredAds) {
                                         lockedLesson = null
-                                        if (lockedLessonFromCommunity) {
-                                            lockedLessonFromCommunity = false
-                                            onCommunityLessonSelected(lesson)
-                                        } else {
-                                            onLessonSelected(lesson)
-                                        }
+                                        isIndividualAdProcessing = false
+                                        val fromCommunity = lockedLessonFromCommunity
+                                        lockedLessonFromCommunity = false
+                                        val unlockedLesson = lesson.copy(access = CatalogueAccess.FREE)
+                                        completeVerifiedRewardedLessonUnlock(
+                                            isGuest = isGuest,
+                                            onUnlockGranted = { onLessonUnlocked(unlockedLesson.id) },
+                                            onShowGuestWarning = {
+                                                guestUnlockWarning = PendingRewardedLessonOpen(
+                                                    unlockedLesson,
+                                                    fromCommunity
+                                                )
+                                            },
+                                            onOpenLesson = {
+                                                if (fromCommunity) {
+                                                    onCommunityLessonSelected(unlockedLesson)
+                                                } else {
+                                                    onLessonSelected(unlockedLesson)
+                                                }
+                                            }
+                                        )
                                     } else {
                                         isIndividualAdProcessing = false
                                     }
@@ -633,6 +812,34 @@ internal fun BrowseLessonScreen(
                             )
                         }
                     }
+                }
+            )
+        }
+
+        guestUnlockWarning?.let { pending ->
+            GuestLessonUnlockWarningDialog(
+                onSignIn = {
+                    handleGuestUnlockWarningAction(
+                        action = GuestUnlockWarningAction.SIGN_IN,
+                        onSignIn = {
+                            guestUnlockWarning = null
+                            pendingGoogleLessonOpen = pending
+                            waitingForGoogleSignIn = true
+                            googleSignInAttemptStarted = false
+                            onGoogleSignIn()
+                        },
+                        onCancelAndOpen = {}
+                    )
+                },
+                onCancel = {
+                    handleGuestUnlockWarningAction(
+                action = GuestUnlockWarningAction.CANCEL,
+                onSignIn = {},
+                onCancelAndOpen = {
+                    guestUnlockWarning = null
+                    openLesson(pending.lesson, pending.fromCommunity)
+                }
+                    )
                 }
             )
         }
@@ -740,6 +947,119 @@ private fun LockedLessonDialog(
             }
         }
     )
+}
+
+@Composable
+private fun GuestLessonUnlockWarningDialog(
+    onSignIn: () -> Unit,
+    onCancel: () -> Unit
+) {
+    Dialog(onDismissRequest = onCancel) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .widthIn(max = 420.dp),
+            shape = RoundedCornerShape(24.dp),
+            color = Color(0xFF252B30),
+            tonalElevation = 8.dp
+        ) {
+            BoxWithConstraints {
+                val compact = maxWidth < 360.dp
+                Column(
+                    modifier = Modifier
+                        .padding(24.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(44.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(Color(0xFF3B3325)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "✓",
+                                color = Color(0xFFC9A86A),
+                                fontSize = 24.sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.semantics {
+                                    contentDescription = "Lesson unlocked; protect your progress"
+                                }
+                            )
+                        }
+                        Text(
+                            text = "Lesson unlocked!",
+                            color = Color.White,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Text(
+                        text = "This lesson is unlocked on this device. If you uninstall " +
+                            "Kolam Master, you may lose this unlock. Sign in with Google to " +
+                            "help keep your progress safe.",
+                        color = Color.White.copy(alpha = 0.84f),
+                        fontSize = 15.sp,
+                        lineHeight = 22.sp
+                    )
+                    if (compact) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Button(
+                                onClick = onSignIn,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF8F6F38)
+                                )
+                            ) {
+                                Text("Sign in with Google")
+                            }
+                            Button(
+                                onClick = onCancel,
+                                modifier = Modifier.fillMaxWidth(),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF8F6F38)
+                                )
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                    } else {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Button(
+                                onClick = onSignIn,
+                                modifier = Modifier.weight(1f),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF8F6F38)
+                                )
+                            ) {
+                                Text("Sign in with Google")
+                            }
+                            Button(
+                                onClick = onCancel,
+                                modifier = Modifier.weight(1f),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = Color(0xFF8F6F38)
+                                )
+                            ) {
+                                Text("Cancel")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
 
 @Composable
@@ -1180,12 +1500,29 @@ private tailrec fun Context.findActivity(): Activity? = when (this) {
 
 @Composable
 internal fun RemoteLessonThumbnail(url: String?, modifier: Modifier = Modifier) {
-    val image by produceState<ImageBitmap?>(initialValue = null, url) {
-        value = if (url.isNullOrBlank()) {
-            null
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var retryAttempt by remember(url) { mutableIntStateOf(0) }
+    val state by produceState<LessonThumbnailState>(
+        initialValue = LessonThumbnailState.Checking,
+        url,
+        retryAttempt
+    ) {
+        if (url.isNullOrBlank()) {
+            value = LessonThumbnailState.Unavailable
         } else {
-            withContext(Dispatchers.IO) {
-                loadThumbnail(url)
+            value = LessonThumbnailState.Checking
+            value = try {
+                LessonThumbnailCache.load(
+                    context,
+                    url
+                ) {
+                    value = LessonThumbnailState.Downloading
+                }?.let(LessonThumbnailState::Loaded)
+                    ?: LessonThumbnailState.Unavailable
+            } catch (exception: kotlinx.coroutines.CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                LessonThumbnailState.Unavailable
             }
         }
     }
@@ -1195,21 +1532,49 @@ internal fun RemoteLessonThumbnail(url: String?, modifier: Modifier = Modifier) 
             .background(Color.Black.copy(alpha = 0.2f)),
         contentAlignment = Alignment.Center
     ) {
-        if (image == null) {
-            Text(
-                text = "Kolam",
-                color = Color.White.copy(alpha = 0.55f),
-                fontSize = 14.sp
+        when (val thumbnail = state) {
+            LessonThumbnailState.Checking -> ThumbnailFallback()
+            LessonThumbnailState.Downloading -> CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                color = Color.White.copy(alpha = 0.8f),
+                strokeWidth = 2.dp
             )
-        } else {
-            Image(
-                bitmap = image!!,
+            LessonThumbnailState.Unavailable -> {
+                if (url.isNullOrBlank()) {
+                    ThumbnailFallback()
+                } else {
+                    TextButton(
+                        onClick = { retryAttempt++ },
+                        contentPadding = PaddingValues(4.dp)
+                    ) {
+                        Text("Retry", color = Color.White, fontSize = 11.sp)
+                    }
+                }
+            }
+            is LessonThumbnailState.Loaded -> Image(
+                bitmap = thumbnail.image,
                 contentDescription = "Thumbnail for ${url?.substringAfterLast('/')}",
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )
         }
     }
+}
+
+private sealed interface LessonThumbnailState {
+    data object Checking : LessonThumbnailState
+    data object Downloading : LessonThumbnailState
+    data object Unavailable : LessonThumbnailState
+    data class Loaded(val image: ImageBitmap) : LessonThumbnailState
+}
+
+@Composable
+private fun ThumbnailFallback() {
+    Text(
+        text = "Kolam",
+        color = Color.White.copy(alpha = 0.55f),
+        fontSize = 14.sp
+    )
 }
 
 internal fun loadThumbnail(url: String): ImageBitmap? {
