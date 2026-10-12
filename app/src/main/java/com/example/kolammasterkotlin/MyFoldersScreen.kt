@@ -2,6 +2,7 @@ package com.kolammaster.app
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -50,8 +51,8 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
-private val FolderGold = Color(0xFF8F6F38)
-private val FolderSurface = Color.White.copy(alpha = 0.08f)
+private val FolderGold = KolamButtonYellow
+private val FolderSurface = KolamCoolSilver
 
 @Composable
 internal fun MyFoldersDestination(
@@ -138,7 +139,7 @@ internal fun MyFoldersDestination(
         if (accountId == null) {
             Text(
                 "My Folders",
-                color = Color.White,
+                color = KolamGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -151,7 +152,7 @@ internal fun MyFoldersDestination(
                 FolderTitleDecoration()
                 Text(
                     "My Folders",
-                    color = Color.White,
+                    color = KolamGold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -174,28 +175,64 @@ internal fun MyFoldersDestination(
             ) {
                 Spacer(Modifier.height(8.dp))
                 if (isLoading) {
-                    Column(
+                    Card(
                         modifier = Modifier.weight(1f).fillMaxWidth(),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+                        border = BorderStroke(1.dp, KolamSilverBorder)
                     ) {
-                        CircularProgressIndicator(color = Color(0xFFC9A86A))
-                        Spacer(Modifier.height(12.dp))
-                        Text("Loading folders...", color = Color.White.copy(alpha = 0.8f))
+                        Column(
+                            modifier = Modifier.fillMaxSize(),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            CircularProgressIndicator(color = KolamBronze)
+                            Spacer(Modifier.height(12.dp))
+                            Text(
+                                "Loading folders...",
+                                color = KolamContainerSecondary
+                            )
+                        }
                     }
                 } else {
                     loadError?.let { message ->
-                        Text(message, color = Color(0xFFFFB4AB), textAlign = TextAlign.Center)
-                        TextButton(onClick = { refreshKey++ }) { Text("Retry") }
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = FolderSurface),
+                            border = BorderStroke(1.dp, KolamSilverBorder)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    message,
+                                    color = KolamError,
+                                    textAlign = TextAlign.Center
+                                )
+                                TextButton(
+                                    onClick = { refreshKey++ },
+                                    colors = kolamStandardButtonColors()
+                                ) { Text("Retry") }
+                            }
+                        }
                     }
                     actionError?.let { message ->
-                        Text(
-                            text = message,
+                        Card(
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color(0xFFFFB4AB),
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = FolderSurface),
+                            border = BorderStroke(1.dp, KolamSilverBorder)
+                        ) {
+                            Text(
+                                text = message,
+                                modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                color = KolamError,
+                                fontSize = 14.sp,
+                                textAlign = TextAlign.Center
+                            )
+                        }
                     }
                     if (loadError == null) {
                         if (selectedFolderId == null) {
@@ -229,7 +266,7 @@ internal fun MyFoldersDestination(
                             val folder = folders.firstOrNull { it.id == selectedFolderId }
                             Text(
                                 folder?.name ?: "This folder is no longer available.",
-                                color = Color.White,
+                                color = KolamText,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
@@ -342,9 +379,11 @@ internal fun MyFoldersDestination(
             dismissButton = {
                 TextButton(
                     enabled = !isProcessing,
-                    onClick = { deleteFolder = null }
+                    onClick = { deleteFolder = null },
+                    colors = kolamStandardButtonColors()
                 ) { Text("Cancel") }
-            }
+            },
+            containerColor = FolderSurface
         )
     }
 }
@@ -370,28 +409,42 @@ private fun FolderTitleDecoration(mirrored: Boolean = false) {
 
 @Composable
 private fun EmptyFoldersMessage(modifier: Modifier = Modifier) {
-    Column(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+        border = BorderStroke(1.dp, KolamSilverBorder)
     ) {
-        Text("No folders yet.", color = Color.White, fontSize = 18.sp)
-        Text(
-            "Create a folder to organize your lessons.",
-            color = Color.White.copy(alpha = 0.72f),
-            fontSize = 14.sp
-        )
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("No folders yet.", color = KolamText, fontSize = 18.sp)
+            Text(
+                "Create a folder to organize your lessons.",
+                color = KolamContainerSecondary,
+                fontSize = 14.sp
+            )
+        }
     }
 }
 
 @Composable
 private fun EmptyFolderLessonsMessage(modifier: Modifier = Modifier) {
-    Column(
+    Card(
         modifier = modifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+        border = BorderStroke(1.dp, KolamSilverBorder)
     ) {
-        Text("This folder is empty.", color = Color.White, fontSize = 17.sp)
+        Column(
+            modifier = Modifier.fillMaxSize().padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("This folder is empty.", color = KolamText, fontSize = 17.sp)
+        }
     }
 }
 
@@ -406,7 +459,8 @@ private fun FolderListItem(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = FolderSurface)
+        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+        border = BorderStroke(1.dp, KolamSilverBorder)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Column(
@@ -417,7 +471,7 @@ private fun FolderListItem(
             ) {
                 Text(
                     folder.name,
-                    color = Color.White,
+                    color = KolamText,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 17.sp,
                     maxLines = 1,
@@ -427,7 +481,7 @@ private fun FolderListItem(
                     "${folder.lessons.size} ${
                         if (folder.lessons.size == 1) "lesson" else "lessons"
                     }",
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = KolamContainerSecondary,
                     fontSize = 13.sp
                 )
             }
@@ -491,7 +545,8 @@ private fun UnavailableFolderLessonCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = FolderSurface)
+        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+        border = BorderStroke(1.dp, KolamSilverBorder)
     ) {
         Row(
             modifier = Modifier.padding(10.dp),
@@ -501,7 +556,7 @@ private fun UnavailableFolderLessonCard(
                 modifier = Modifier.size(112.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Kolam", color = Color.White.copy(alpha = 0.55f))
+                Text("Kolam", color = KolamContainerSecondary)
             }
             Column(
                 modifier = Modifier
@@ -511,13 +566,13 @@ private fun UnavailableFolderLessonCard(
             ) {
                 Text(
                     text = "Unavailable lesson",
-                    color = Color.White,
+                    color = KolamText,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp
                 )
                 Text(
                     text = lessonId,
-                    color = Color.White.copy(alpha = 0.65f),
+                    color = KolamContainerSecondary,
                     fontSize = 12.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -537,7 +592,8 @@ private fun FolderLessonCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
+        colors = CardDefaults.cardColors(containerColor = FolderSurface),
+        border = BorderStroke(1.dp, KolamSilverBorder)
     ) {
         Row(
             modifier = Modifier.padding(10.dp),
@@ -557,7 +613,7 @@ private fun FolderLessonCard(
             ) {
                 Text(
                     text = lesson.lessonName,
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -571,7 +627,7 @@ private fun FolderLessonCard(
                 if (metadata.isNotEmpty()) {
                     Text(
                         text = metadata,
-                        color = Color.White.copy(alpha = 0.72f),
+                        color = KolamContainerSecondary,
                         fontSize = 12.sp,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
@@ -629,12 +685,18 @@ private fun FolderNameDialog(
         confirmButton = {
             TextButton(
                 enabled = enabled && name.isNotBlank(),
-                onClick = { onConfirm(name) }
+                onClick = { onConfirm(name) },
+                colors = kolamStandardButtonColors()
             ) { Text(if (dialog is FolderDialog.Create) "Create" else "Save") }
         },
         dismissButton = {
-            TextButton(enabled = enabled, onClick = onDismiss) { Text("Cancel") }
-        }
+            TextButton(
+                enabled = enabled,
+                onClick = onDismiss,
+                colors = kolamStandardButtonColors()
+            ) { Text("Cancel") }
+        },
+        containerColor = FolderSurface
     )
 }
 
@@ -727,9 +789,9 @@ internal fun SaveToMyFoldersDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(
                     lesson.lessonName,
-                    color = Color.White.copy(alpha = 0.8f)
+                    color = KolamMutedText
                 )
-                error?.let { Text(it, color = Color(0xFFB3261E)) }
+                error?.let { Text(it, color = KolamError) }
                 when {
                     accountId == null -> Text("Sign in with Google to save lessons.")
                     creatingFolder -> OutlinedTextField(
@@ -749,14 +811,15 @@ internal fun SaveToMyFoldersDialog(
                             TextButton(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !isProcessing,
-                                onClick = { saveToFolder(folder.id) }
+                                onClick = { saveToFolder(folder.id) },
+                                colors = kolamStandardButtonColors()
                             ) {
                                 Column(modifier = Modifier.fillMaxWidth()) {
-                                    Text(folder.name, color = Color(0xFF8F6F38))
+                                    Text(folder.name, color = KolamButtonText)
                                     Text(
                                         if (lesson.id in folder.lessons) "Saved" else
                                             "${folder.lessons.size} lessons",
-                                        color = Color.Gray,
+                                        color = KolamButtonText,
                                         fontSize = 12.sp
                                     )
                                 }
@@ -770,11 +833,13 @@ internal fun SaveToMyFoldersDialog(
             if (creatingFolder) {
                 TextButton(
                     enabled = !isProcessing && folderName.isNotBlank(),
-                    onClick = { saveToFolder("") }
+                    onClick = { saveToFolder("") },
+                    colors = kolamStandardButtonColors()
                 ) { Text(if (isProcessing) "Please wait" else "Create New Folder") }
             } else {
                 TextButton(
                     enabled = !isLoading && !isProcessing,
+                    colors = kolamStandardButtonColors(),
                     onClick = {
                         creatingFolder = true
                         error = null
@@ -785,6 +850,7 @@ internal fun SaveToMyFoldersDialog(
         dismissButton = {
             TextButton(
                 enabled = !isProcessing,
+                colors = kolamStandardButtonColors(),
                 onClick = {
                     if (creatingFolder) {
                         creatingFolder = false

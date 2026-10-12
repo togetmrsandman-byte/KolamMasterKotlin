@@ -8,6 +8,8 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -163,7 +165,7 @@ internal fun ContactNewConversationDestination(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("New Conversation", color = Color.White, fontSize = 28.sp)
+        Text("New Conversation", color = KolamGold, fontSize = 28.sp)
         Spacer(Modifier.height(24.dp))
         Column(
             modifier = Modifier
@@ -181,7 +183,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Phone number", color = Color(0xFFE8E8E8)) },
+                label = { Text("Phone number", color = KolamContainerSecondary) },
                 leadingIcon = {
                     Row(
                         modifier = Modifier
@@ -204,10 +206,10 @@ internal fun ContactNewConversationDestination(
                         }
                         Text(
                             selectedCountry.callingCode,
-                            color = Color.White,
+                            color = KolamText,
                             modifier = Modifier.padding(end = 8.dp)
                         )
-                        Text("▾", color = Color.White)
+                        Text("▾", color = KolamText)
                     }
                 },
                 singleLine = true,
@@ -224,7 +226,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Subject", color = Color(0xFFE8E8E8)) },
+                label = { Text("Subject", color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -237,7 +239,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Message", color = Color(0xFFE8E8E8)) },
+                label = { Text("Message", color = KolamContainerSecondary) },
                 minLines = 4,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -257,7 +259,7 @@ internal fun ContactNewConversationDestination(
             validationError?.let {
                 Text(
                     it,
-                    color = Color(0xFFFFB4AB),
+                    color = KolamError,
                     textAlign = TextAlign.Center
                 )
             }
@@ -312,14 +314,14 @@ internal fun ContactNewConversationDestination(
                 enabled = !isSubmitting,
                 colors = ButtonDefaults.buttonColors(
                     disabledContainerColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = Color.White
+                    disabledContentColor = KolamButtonText
                 )
             ) {
                 if (isSubmitting) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
-                        color = Color(0xFF8F6F38),
-                        trackColor = Color.White.copy(alpha = 0.16f),
+                        color = KolamButtonText,
+                        trackColor = KolamBorder,
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(6.dp))
@@ -369,9 +371,11 @@ internal fun ContactNewConversationDestination(
                     onClick = {
                         errorTitle = null
                         errorMessage = null
-                    }
+                    },
+                    colors = kolamStandardButtonColors()
                 ) { Text("OK") }
-            }
+            },
+            containerColor = KolamCoolSilver
         )
     }
 }
@@ -394,14 +398,18 @@ internal fun CountryCallingCodeDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFF34393F))
+                .background(KolamCoolSilver, RoundedCornerShape(12.dp))
+                .border(
+                    BorderStroke(1.dp, KolamSilverBorder),
+                    RoundedCornerShape(12.dp)
+                )
                 .padding(16.dp)
         ) {
-            Text("Select country", color = Color.White, fontSize = 20.sp)
+            Text("Select country", color = KolamText, fontSize = 20.sp)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search countries", color = Color(0xFFE8E8E8)) },
+                label = { Text("Search countries", color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -414,7 +422,8 @@ internal fun CountryCallingCodeDialog(
                 items(filteredCountries, key = { it.countryCode }) { country ->
                     TextButton(
                         onClick = { onCountrySelected(country) },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = kolamStandardButtonColors()
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -426,14 +435,14 @@ internal fun CountryCallingCodeDialog(
                             )
                             Text(
                                 text = country.countryName,
-                                color = Color.White,
+                                color = KolamButtonText,
                                 modifier = Modifier.weight(1f)
                             )
-                            Text(country.callingCode, color = Color.White)
+                            Text(country.callingCode, color = KolamButtonText)
                             if (country == selectedCountry) {
                                 Text(
                                     "  ✓",
-                                    color = Color(0xFFC9A86A),
+                                    color = KolamButtonText,
                                     modifier = Modifier.padding(start = 4.dp)
                                 )
                             }
@@ -441,7 +450,11 @@ internal fun CountryCallingCodeDialog(
                     }
                 }
             }
-            TextButton(onClick = onDismiss, modifier = Modifier.align(Alignment.End)) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.End),
+                colors = kolamStandardButtonColors()
+            ) {
                 Text("Cancel")
             }
         }
@@ -467,9 +480,9 @@ internal fun ContactNewConversationAttachment(
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = Color.White,
+                contentColor = KolamButtonText,
                 disabledContainerColor = MaterialTheme.colorScheme.primary,
-                disabledContentColor = Color.White
+                disabledContentColor = KolamButtonText
             )
         ) {
             Text("Attach Image")
@@ -488,7 +501,7 @@ internal fun ContactNewConversationAttachment(
                 )
                 Text(
                     text = "Image attached (${it.sizeBytes / 1024} KB)",
-                    color = Color.White,
+                    color = KolamText,
                     modifier = Modifier.weight(1f)
                 )
                 Button(
@@ -497,9 +510,9 @@ internal fun ContactNewConversationAttachment(
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = Color.White,
+                        contentColor = KolamButtonText,
                         disabledContainerColor = MaterialTheme.colorScheme.primary,
-                        disabledContentColor = Color.White
+                        disabledContentColor = KolamButtonText
                     )
                 ) {
                     Text("Remove")
@@ -564,17 +577,17 @@ internal fun isValidContactPhone(phone: String): Boolean {
 
 @Composable
 private fun contactTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    disabledTextColor = Color.White,
-    focusedLabelColor = Color(0xFFE8E8E8),
-    unfocusedLabelColor = Color(0xFFE8E8E8),
-    disabledLabelColor = Color(0xFFE8E8E8),
-    cursorColor = Color.White,
-    focusedBorderColor = Color(0xFFC9A86A),
-    unfocusedBorderColor = Color(0xFFB8B8B8),
-    disabledBorderColor = Color(0xFFB8B8B8),
-    focusedContainerColor = Color(0xFF34393F),
-    unfocusedContainerColor = Color(0xFF34393F),
-    disabledContainerColor = Color(0xFF34393F)
+    focusedTextColor = KolamText,
+    unfocusedTextColor = KolamText,
+    disabledTextColor = KolamContainerSecondary,
+    focusedLabelColor = KolamContainerSecondary,
+    unfocusedLabelColor = KolamContainerSecondary,
+    disabledLabelColor = KolamContainerSecondary,
+    cursorColor = KolamBronze,
+    focusedBorderColor = KolamBronze,
+    unfocusedBorderColor = KolamBorder,
+    disabledBorderColor = KolamBorder,
+    focusedContainerColor = KolamCoolSilver,
+    unfocusedContainerColor = KolamCoolSilver,
+    disabledContainerColor = KolamCoolSilver
 )

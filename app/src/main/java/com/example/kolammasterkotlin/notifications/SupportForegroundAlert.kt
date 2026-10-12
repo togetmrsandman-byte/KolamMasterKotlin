@@ -4,6 +4,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.kolammaster.app.kolamStandardButtonColors
 
 @Composable
 internal fun SupportForegroundAlertDialog(
@@ -15,10 +16,14 @@ internal fun SupportForegroundAlertDialog(
         onDismissRequest = onLater,
         title = { Text("You have a new message from Support") },
         confirmButton = {
-            TextButton(onClick = onOpen) { Text("Open") }
+            TextButton(onClick = onOpen, colors = kolamStandardButtonColors()) {
+                Text("Open")
+            }
         },
         dismissButton = {
-            TextButton(onClick = onLater) { Text("Later") }
+            TextButton(onClick = onLater, colors = kolamStandardButtonColors()) {
+                Text("Later")
+            }
         }
     )
 }

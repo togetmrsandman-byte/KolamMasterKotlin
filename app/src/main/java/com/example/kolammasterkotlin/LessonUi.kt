@@ -61,7 +61,9 @@ internal fun LessonStatusRow(
     text: String?,
     modifier: Modifier = Modifier,
     alignStart: Boolean = false,
-    shining: Boolean = false
+    shining: Boolean = false,
+    containerColor: Color = KolamGold,
+    contentColor: Color = KolamText
 ) {
     Row(
         modifier = modifier
@@ -79,8 +81,8 @@ internal fun LessonStatusRow(
             Box {
                 Surface(
                     shape = ButtonDefaults.shape,
-                    color = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                    color = containerColor,
+                    contentColor = contentColor,
                     shadowElevation = 2.dp
                 ) {
                     Text(

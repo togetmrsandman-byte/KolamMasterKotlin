@@ -5,6 +5,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import com.kolammaster.app.kolamStandardButtonColors
 
 internal data class ForegroundAnnouncementAlert(
     val announcementId: String?,
@@ -62,10 +63,15 @@ internal fun AnnouncementForegroundAlertDialog(
         title = { Text("A new announcement has been received") },
         text = { Text("Would you like to open it now?") },
         confirmButton = {
-            TextButton(onClick = { onOpen(announcementId) }) { Text("Open") }
+            TextButton(
+                onClick = { onOpen(announcementId) },
+                colors = kolamStandardButtonColors()
+            ) { Text("Open") }
         },
         dismissButton = {
-            TextButton(onClick = onLater) { Text("Later") }
+            TextButton(onClick = onLater, colors = kolamStandardButtonColors()) {
+                Text("Later")
+            }
         }
     )
 }

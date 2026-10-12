@@ -95,7 +95,7 @@ import kotlin.math.PI
 import kotlin.math.sin
 import kotlin.random.Random
 
-private val publishGold = Color(0xFFFFC928)
+private val publishGold = KolamBronze
 private const val MAX_PUBLISH_IMAGES = 5
 
 @Composable
@@ -260,12 +260,19 @@ internal fun GalleryPublishScreen(
             title = { Text("Photo unavailable") },
             text = { Text(error) },
             confirmButton = {
-                TextButton(onClick = { photoPickerError = null }) { Text("OK") }
+                TextButton(
+                    onClick = { photoPickerError = null },
+                    colors = kolamStandardButtonColors()
+                ) { Text("OK") }
             }
         )
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(if (isSubmitted) Color.Transparent else KolamBackground)
+    ) {
         when {
             isSubmitted -> Column(
                 modifier = Modifier
@@ -273,15 +280,16 @@ internal fun GalleryPublishScreen(
                     .padding(horizontal = 24.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    contentAlignment = Alignment.Center
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
                 ) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        color = Color(0xF2293139),
+                        color = KolamSurface,
                         shape = RoundedCornerShape(20.dp),
                         border = BorderStroke(1.dp, publishGold.copy(alpha = 0.82f))
                     ) {
@@ -294,7 +302,7 @@ internal fun GalleryPublishScreen(
                         ) {
                             Text(
                                 "Submitted for Review",
-                                color = Color.White,
+                                color = KolamGold,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
@@ -305,7 +313,7 @@ internal fun GalleryPublishScreen(
                                     "it will appear in the Community section for everyone to enjoy.\n\n" +
                                     "We’ll notify you when your kolam is approved and ready to view.\n\n" +
                                     "Thank you for being part of our community!",
-                                color = Color.White.copy(alpha = 0.92f),
+                                color = KolamMutedText,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 16.dp),
@@ -313,9 +321,9 @@ internal fun GalleryPublishScreen(
                             )
                         }
                     }
-                }
-                Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                    Text("Done")
+                    Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
+                        Text("Done")
+                    }
                 }
             }
             else -> LazyColumn(
@@ -328,13 +336,13 @@ internal fun GalleryPublishScreen(
             item {
                 Text(
                     "Share your kolam",
-                    color = Color.White,
+                    color = KolamGold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
                     lesson.lessonName,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = KolamMutedText,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -362,7 +370,7 @@ internal fun GalleryPublishScreen(
                     readOnly = true,
                     minLines = 1,
                     maxLines = 3,
-                    textStyle = TextStyle(color = Color(0xFFB0B6BC)),
+                    textStyle = TextStyle(color = KolamMutedText),
                     supportingText = if (creatorEmail.isBlank()) {
                         { Text("Email is unavailable for this account.") }
                     } else {
@@ -406,7 +414,7 @@ internal fun GalleryPublishScreen(
                 }
                 Text(
                     "Choose up to five images. Each upload must be under 10 MiB.",
-                    color = Color.White.copy(alpha = 0.68f),
+                    color = KolamMutedText,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 6.dp)
                 )
@@ -437,7 +445,7 @@ internal fun GalleryPublishScreen(
             item {
                 Text(
                     "A rewarded ad is required to submit this kolam for admin review.",
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = KolamMutedText,
                     fontSize = 13.sp
                 )
             }
@@ -446,7 +454,7 @@ internal fun GalleryPublishScreen(
                     message?.let {
                         Text(
                             it,
-                            color = Color(0xFFFFB4AB),
+                            color = KolamError,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
@@ -532,8 +540,8 @@ internal fun GalleryPublishScreen(
                     enabled = !isBusy && !isPreparingInitialImages && processingCount == 0,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = publishGold,
-                        contentColor = Color(0xFF392800)
+                        containerColor = KolamButtonYellow,
+                        contentColor = KolamButtonText
                     )
                 ) {
                     Text(
@@ -547,11 +555,8 @@ internal fun GalleryPublishScreen(
                     onClick = onBack,
                     enabled = !isBusy,
                     modifier = Modifier.fillMaxWidth(),
-                    border = BorderStroke(1.dp, publishGold),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = publishGold,
-                        disabledContentColor = publishGold.copy(alpha = 0.45f)
-                    )
+                    border = BorderStroke(1.dp, KolamButtonYellow),
+                    colors = kolamStandardButtonColors()
                 ) {
                     Text("Cancel")
                 }
@@ -577,7 +582,7 @@ internal fun GalleryPublishScreen(
                         .fillMaxWidth()
                         .padding(horizontal = 24.dp)
                         .clip(RoundedCornerShape(16.dp))
-                        .background(Color(0xFF293139))
+                        .background(KolamElevated)
                         .border(
                             width = 1.dp,
                             color = publishGold,
@@ -595,7 +600,7 @@ internal fun GalleryPublishScreen(
                     Text(
                         text = message ?: "Publishing...",
                         modifier = Modifier.weight(1f),
-                        color = Color.White,
+                        color = KolamText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -720,7 +725,7 @@ private fun PublishPhotoPreview(
         modifier = Modifier
             .size(124.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(KolamElevated)
             .padding(8.dp)
     ) {
         Image(
@@ -740,8 +745,8 @@ private fun PublishPhotoPreview(
                 .padding(top = 4.dp),
             contentPadding = PaddingValues(horizontal = 14.dp, vertical = 4.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF315A78),
-                contentColor = Color.White
+                containerColor = KolamButtonYellow,
+                contentColor = KolamButtonText
             )
         ) {
             Text("Remove")
@@ -755,7 +760,7 @@ private fun ConvertingPhotoPreview() {
         modifier = Modifier
             .size(124.dp)
             .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(KolamElevated)
             .padding(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -767,7 +772,7 @@ private fun ConvertingPhotoPreview() {
         )
         Text(
             text = "Converting image…",
-            color = Color.White,
+            color = KolamText,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 8.dp)
         )
@@ -776,37 +781,37 @@ private fun ConvertingPhotoPreview() {
 
 @Composable
 private fun publishTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    disabledTextColor = Color.White.copy(alpha = 0.55f),
-    focusedContainerColor = Color(0xFF293139),
-    unfocusedContainerColor = Color(0xFF293139),
-    disabledContainerColor = Color(0xFF293139),
+    focusedTextColor = KolamText,
+    unfocusedTextColor = KolamText,
+    disabledTextColor = KolamMutedText,
+    focusedContainerColor = KolamElevated,
+    unfocusedContainerColor = KolamElevated,
+    disabledContainerColor = KolamSurface,
     focusedLabelColor = publishGold,
-    unfocusedLabelColor = Color.White.copy(alpha = 0.72f),
-    disabledLabelColor = Color.White.copy(alpha = 0.5f),
-    focusedPlaceholderColor = Color.White.copy(alpha = 0.62f),
-    unfocusedPlaceholderColor = Color.White.copy(alpha = 0.62f),
-    disabledPlaceholderColor = Color.White.copy(alpha = 0.4f),
+    unfocusedLabelColor = KolamMutedText,
+    disabledLabelColor = KolamMutedText,
+    focusedPlaceholderColor = KolamMutedText,
+    unfocusedPlaceholderColor = KolamMutedText,
+    disabledPlaceholderColor = KolamMutedText,
     focusedBorderColor = publishGold,
-    unfocusedBorderColor = Color.White.copy(alpha = 0.45f),
-    disabledBorderColor = Color.White.copy(alpha = 0.25f),
+    unfocusedBorderColor = KolamBorder,
+    disabledBorderColor = KolamBorder,
     cursorColor = publishGold
 )
 
 @Composable
 private fun publishEmailTextFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color(0xFFB0B6BC),
-    unfocusedTextColor = Color(0xFFB0B6BC),
-    focusedContainerColor = Color(0xFF293139),
-    unfocusedContainerColor = Color(0xFF293139),
-    focusedLabelColor = Color(0xFF929AA2),
-    unfocusedLabelColor = Color(0xFF929AA2),
-    focusedPlaceholderColor = Color(0xFF929AA2),
-    unfocusedPlaceholderColor = Color(0xFF929AA2),
-    focusedBorderColor = Color(0xFF68717A),
-    unfocusedBorderColor = Color(0xFF68717A),
-    cursorColor = Color(0xFF929AA2)
+    focusedTextColor = KolamMutedText,
+    unfocusedTextColor = KolamMutedText,
+    focusedContainerColor = KolamSurface,
+    unfocusedContainerColor = KolamSurface,
+    focusedLabelColor = KolamMutedText,
+    unfocusedLabelColor = KolamMutedText,
+    focusedPlaceholderColor = KolamMutedText,
+    unfocusedPlaceholderColor = KolamMutedText,
+    focusedBorderColor = KolamBorder,
+    unfocusedBorderColor = KolamBorder,
+    cursorColor = KolamBronze
 )
 
 private fun showPublishRewardedAd(

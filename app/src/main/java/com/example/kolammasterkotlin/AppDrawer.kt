@@ -17,6 +17,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -109,10 +110,10 @@ internal enum class DrawerAction {
     RateApp
 }
 
-private val drawerBackground = Color(0xFF34393F)
-private val drawerMuted = Color(0xFFD9D2C6)
-private val drawerSwitchOffTrack = Color(0xFF454A50)
-private val drawerSwitchOnThumb = Color(0xFFC9A86A)
+private val drawerBackground = KolamSurface
+private val drawerMuted = KolamMutedText
+private val drawerSwitchOffTrack = KolamBorder
+private val drawerSwitchOnThumb = KolamBronze
 private val unreadColor = Color(0xFFFF6B6B)
 private val FolderBenefitsHorizontalPadding = 14.dp
 private val FolderBenefitsVerticalPadding = 14.dp
@@ -195,7 +196,7 @@ internal fun DrawerOverlay(
                         .height(44.dp)
                         .clickable(onClick = onBack)
                         .padding(vertical = 8.dp),
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -242,7 +243,7 @@ private fun DrawerMenuRow(
             .drawBehind {
                 val y = size.height - 1.dp.toPx()
                 drawLine(
-                    color = Color.White.copy(alpha = 0.16f),
+                    color = KolamBorder,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx()
@@ -254,7 +255,7 @@ private fun DrawerMenuRow(
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            color = Color.White,
+            color = KolamText,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -273,7 +274,7 @@ private fun DrawerSettingsRow(expanded: Boolean, onClick: () -> Unit) {
             .drawBehind {
                 val y = size.height - 1.dp.toPx()
                 drawLine(
-                    color = Color.White.copy(alpha = 0.16f),
+                    color = KolamBorder,
                     start = Offset(0f, y),
                     end = Offset(size.width, y),
                     strokeWidth = 1.dp.toPx()
@@ -285,7 +286,7 @@ private fun DrawerSettingsRow(expanded: Boolean, onClick: () -> Unit) {
         Text(
             text = "Settings",
             modifier = Modifier.weight(1f),
-            color = Color.White,
+            color = KolamText,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -356,14 +357,14 @@ private fun SettingsNotifications() {
             Text(
                 text = "Contact Us Notifications",
                 modifier = Modifier.weight(1f),
-                color = Color.White,
+                color = KolamText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
                 text = if (permissionGranted) "ON" else "OFF",
                 modifier = Modifier.padding(end = 6.dp),
-                color = Color.White,
+                color = KolamText,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.ExtraBold
             )
@@ -393,7 +394,7 @@ private fun SettingsNotifications() {
                 },
                 colors = SwitchDefaults.colors(
                     uncheckedTrackColor = drawerSwitchOffTrack,
-                    checkedTrackColor = Color(0xFF8F6F38),
+                    checkedTrackColor = KolamBronze,
                     uncheckedThumbColor = drawerMuted,
                     checkedThumbColor = drawerSwitchOnThumb
                 )
@@ -421,7 +422,7 @@ internal fun LanguageSettingsScreen(
         Text(
             text = "Choose Your Language",
             modifier = Modifier.offset(y = LanguageMenuSectionVerticalOffset),
-            color = Color.White,
+            color = KolamText,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -438,11 +439,11 @@ internal fun LanguageSettingsScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 8.dp, vertical = 3.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                    colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                 ) {
                     Text(
                         text = if (identifier == activeLanguage) "$nativeName  ✓" else nativeName,
-                        color = Color.White,
+                        color = KolamButtonText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -453,7 +454,7 @@ internal fun LanguageSettingsScreen(
         Text(
             text = "Language changes apply immediately.",
             modifier = Modifier.offset(y = LanguageMenuImmediateTextVerticalOffset),
-            color = Color.White.copy(alpha = 0.72f),
+            color = KolamMutedText,
             fontSize = 13.sp,
             textAlign = TextAlign.Center
         )
@@ -461,7 +462,7 @@ internal fun LanguageSettingsScreen(
         Button(
             onClick = onBack,
             modifier = Modifier.offset(y = LanguageMenuBackButtonVerticalOffset),
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+            colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
         ) { Text("Back") }
         Spacer(Modifier.height(12.dp))
     }
@@ -495,7 +496,7 @@ internal fun ProfileDestination(
                 .padding(horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Profile", color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("Profile", color = KolamGold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(if (account == null) 25.dp else 18.dp))
             if (account == null) {
                 GuestSignInPrompt(
@@ -506,7 +507,7 @@ internal fun ProfileDestination(
                 Spacer(Modifier.height(16.dp))
                 Button(
                     onClick = onBack,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                    colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                 ) { Text("Back") }
             } else {
                 val photo by produceState<ImageBitmap?>(
@@ -528,7 +529,7 @@ internal fun ProfileDestination(
                     )
                     Spacer(Modifier.height(12.dp))
                 }
-                Text(account.name, color = Color.White, fontSize = 20.sp)
+                Text(account.name, color = KolamText, fontSize = 20.sp)
                 Text(account.email, color = drawerMuted, fontSize = 16.sp)
                 Spacer(Modifier.height(16.dp))
                 Row(
@@ -537,11 +538,11 @@ internal fun ProfileDestination(
                 ) {
                     Button(
                         onClick = onBack,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                        colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                     ) { Text("Back") }
                     Button(
                         onClick = onSignOut,
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                        colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                     ) { Text("Sign Out") }
                 }
             }
@@ -611,7 +612,7 @@ internal fun ContactUsDestination(
         ) {
             Text(
                 "Contact Us",
-                color = Color.White,
+                color = KolamGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -643,45 +644,79 @@ internal fun ContactUsDestination(
                 ) {
                     when {
                         isLoading && conversations.isEmpty() -> item {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(24.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = KolamCoolSilver
+                                ),
+                                border = BorderStroke(1.dp, KolamSilverBorder)
                             ) {
-                                CircularProgressIndicator(color = Color(0xFFC9A86A))
-                                Spacer(Modifier.height(12.dp))
-                                Text("Loading conversations...", color = Color.White)
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(24.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    CircularProgressIndicator(color = KolamBronze)
+                                    Spacer(Modifier.height(12.dp))
+                                    Text(
+                                        "Loading conversations...",
+                                        color = KolamContainerSecondary
+                                    )
+                                }
                             }
                         }
                         errorMessage != null -> item {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = KolamCoolSilver
+                                ),
+                                border = BorderStroke(1.dp, KolamSilverBorder)
                             ) {
-                                Text(
-                                    errorMessage,
-                                    color = Color.White,
-                                    fontSize = 16.sp,
-                                    textAlign = TextAlign.Center
-                                )
-                                TextButton(onClick = onRetry) { Text("Retry") }
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        errorMessage,
+                                        color = KolamContainerSecondary,
+                                        fontSize = 16.sp,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    TextButton(
+                                        onClick = onRetry,
+                                        colors = kolamStandardButtonColors()
+                                    ) { Text("Retry") }
+                                }
                             }
                         }
                         conversations.isEmpty() -> item {
-                            Text(
-                                "No conversations yet.",
-                                modifier = Modifier.fillMaxWidth().padding(16.dp),
-                                color = Color.White,
-                                fontSize = 16.sp,
-                                textAlign = TextAlign.Center
-                            )
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = KolamCoolSilver
+                                ),
+                                border = BorderStroke(1.dp, KolamSilverBorder)
+                            ) {
+                                Text(
+                                    "No conversations yet.",
+                                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                                    color = KolamContainerSecondary,
+                                    fontSize = 16.sp,
+                                    textAlign = TextAlign.Center
+                                )
+                            }
                         }
                     }
                     items(orderedConversations, key = ContactConversation::id) { conversation ->
                         Card(
                             onClick = { onConversationSelected(conversation.id) },
                             modifier = Modifier.fillMaxWidth(),
+                            border = BorderStroke(1.dp, KolamSilverBorder),
                             colors = CardDefaults.cardColors(
-                                containerColor = Color(0xFF3F6668)
+                                containerColor = KolamCoolSilver
                             )
                         ) {
                             Row(
@@ -693,7 +728,7 @@ internal fun ContactUsDestination(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
                                         conversation.subject,
-                                        color = Color.White,
+                                        color = KolamText,
                                         fontSize = 17.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         maxLines = 2,
@@ -705,7 +740,7 @@ internal fun ContactUsDestination(
                                         ?: conversation.createdAt
                                     Text(
                                         text = formatContactConversationTimestamp(activityAt),
-                                        color = Color(0xFFD9D2C6),
+                                        color = KolamContainerSecondary,
                                         fontSize = 12.sp,
                                         modifier = Modifier.padding(top = 5.dp)
                                     )
@@ -713,7 +748,7 @@ internal fun ContactUsDestination(
                                         text = conversation.latestMessagePreview
                                             ?.takeIf(String::isNotBlank)
                                             ?: "No messages yet.",
-                                        color = Color.White.copy(alpha = 0.86f),
+                                        color = KolamContainerSecondary,
                                         fontSize = 14.sp,
                                         lineHeight = 20.sp,
                                         maxLines = 2,
@@ -779,10 +814,10 @@ internal fun ColumnScope.MyFoldersGuestContent(
                     .fillMaxWidth()
                     .offset(y = 0.dp),
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White.copy(alpha = 0.08f),
+                color = KolamBackground,
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    Color.White.copy(alpha = 0.18f)
+                    KolamBorder
                 )
             ) {
                 Column(
@@ -794,7 +829,7 @@ internal fun ColumnScope.MyFoldersGuestContent(
                 ) {
                     Text(
                         "Sign in to create folders",
-                        color = Color.White,
+                        color = KolamText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -808,13 +843,13 @@ internal fun ColumnScope.MyFoldersGuestContent(
                 onClick = onSignIn,
                 enabled = !isSignInProcessing,
                 modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
             ) { Text("Sign in with Google") }
             Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
             Button(
                 onClick = onBack,
                 modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
             ) { Text("Back") }
         }
         Spacer(Modifier.weight(1f))
@@ -827,11 +862,11 @@ private fun FolderBenefit(text: String) {
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
-        Text("•", color = Color(0xFFC9A86A), fontSize = 17.sp, fontWeight = FontWeight.Bold)
+        Text("•", color = KolamBronze, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.size(8.dp))
         Text(
             text = text,
-            color = Color.White.copy(alpha = 0.9f),
+            color = KolamMutedText,
             fontSize = 14.sp,
             lineHeight = 20.sp
         )
@@ -847,7 +882,7 @@ private fun GuestSignInPrompt(
     Text(
         text = message,
         modifier = Modifier.fillMaxWidth(),
-        color = Color.White,
+        color = KolamText,
         fontSize = 16.sp,
         lineHeight = 23.sp,
         textAlign = TextAlign.Center
@@ -871,17 +906,19 @@ private fun DestinationScaffold(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = KolamGold, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         content()
         Spacer(Modifier.height(24.dp))
         if (prominentBackButton) {
             Button(
                 onClick = onBack,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8F6F38))
+                colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
             ) { Text("Back") }
         } else {
-            TextButton(onClick = onBack) { Text("Back") }
+            TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
+                Text("Back")
+            }
         }
     }
 }
@@ -898,7 +935,9 @@ internal fun StoreActionDialog(
             title = { Text(title) },
             text = { Text(message) },
             confirmButton = {
-                TextButton(onClick = onDismiss) { Text("OK") }
+                TextButton(onClick = onDismiss, colors = kolamStandardButtonColors()) {
+                    Text("OK")
+                }
             }
         )
     }

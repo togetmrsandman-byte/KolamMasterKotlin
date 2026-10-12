@@ -322,6 +322,7 @@ class MainActivity : ComponentActivity() {
                     onRetryAssetSetup = ::startInitialAssetSetup,
                     onGoBack = ::goBack,
                     onHome = { setRoot(AppScreen.Landing) },
+                    onReturnToCatalogue = { setRoot(AppScreen.Browse) },
                     onGoogleSignIn = ::beginGoogleSignIn,
                     onContinueAsGuest = ::continueAsGuest,
                     onSignOut = ::signOutToGuest,
@@ -1334,6 +1335,7 @@ private fun KolamMasterApp(
     onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
+    onReturnToCatalogue: () -> Unit,
     onGoogleSignIn: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
@@ -1792,9 +1794,6 @@ private fun KolamMasterApp(
         }
     ) { insets ->
         Box(Modifier.fillMaxSize().padding(insets)) {
-            if (publishSuccessActive && screen is AppScreen.PublishReady) {
-                PublishConfetti(Modifier.matchParentSize())
-            }
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -1815,6 +1814,9 @@ private fun KolamMasterApp(
                     )
                 }
                 Box(Modifier.fillMaxWidth().weight(1f)) {
+                    if (publishSuccessActive && screen is AppScreen.PublishReady) {
+                        PublishConfetti(Modifier.matchParentSize())
+                    }
                     AppScreenContent(
                         screen = screen,
                         browseCatalogueState = browseCatalogueState,
@@ -1834,6 +1836,7 @@ private fun KolamMasterApp(
                         onRetryAssetSetup = onRetryAssetSetup,
                         onGoBack = onGoBack,
                         onHome = onHome,
+                        onReturnToCatalogue = onReturnToCatalogue,
                         onGoogleSignIn = onGoogleSignIn,
                         onContinueAsGuest = onContinueAsGuest,
                         onSignOut = onSignOut,
@@ -2016,7 +2019,8 @@ private fun KolamMasterApp(
             text = { androidx.compose.material3.Text(message) },
             confirmButton = {
                 androidx.compose.material3.TextButton(
-                    onClick = { supportNotificationError = null }
+                    onClick = { supportNotificationError = null },
+                    colors = kolamStandardButtonColors()
                 ) { androidx.compose.material3.Text("OK") }
             }
         )
@@ -2058,7 +2062,10 @@ private fun KolamMasterApp(
             title = { androidx.compose.material3.Text(authErrorTitle) },
             text = { androidx.compose.material3.Text(message) },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = onDismissAuthError) {
+                androidx.compose.material3.TextButton(
+                    onClick = onDismissAuthError,
+                    colors = kolamStandardButtonColors()
+                ) {
                     androidx.compose.material3.Text("OK")
                 }
             }
@@ -2101,6 +2108,7 @@ private fun AppScreenContent(
     onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
+    onReturnToCatalogue: () -> Unit,
     onGoogleSignIn: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
@@ -2291,13 +2299,13 @@ private fun AppScreenContent(
         AppScreen.History -> HistoryScreen(Modifier.fillMaxSize())
         AppScreen.Loading -> androidx.compose.material3.Text(
             text = "Loading lesson...",
-            color = androidx.compose.ui.graphics.Color.White,
+            color = KolamText,
             modifier = Modifier.padding(24.dp)
         )
         AppScreen.LessonDownloading -> Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.White),
+                .background(KolamSurface),
             contentAlignment = androidx.compose.ui.Alignment.Center
         ) {
             Row(
@@ -2306,12 +2314,12 @@ private fun AppScreenContent(
             ) {
                 androidx.compose.material3.CircularProgressIndicator(
                     modifier = Modifier.size(24.dp),
-                    color = Color(0xFF315A78),
+                    color = KolamBronze,
                     strokeWidth = 2.dp
                 )
                 androidx.compose.material3.Text(
                     text = "Please wait while downloading your lesson.",
-                    color = Color.Black
+                    color = KolamText
                 )
             }
         }
@@ -2331,7 +2339,7 @@ private fun AppScreenContent(
             temporaryImageUris = screen.temporaryImageUris,
             account = account,
             repository = remember { GalleryPublishRepository() },
-            onBack = onGoBack,
+            onBack = onReturnToCatalogue,
             onPublishSuccess = onPublishSuccess,
             modifier = Modifier.fillMaxSize()
         )
@@ -2345,14 +2353,14 @@ private fun AppScreenContent(
             if (screen.message == NetworkErrors.DISPLAY_TEXT) {
                 androidx.compose.material3.Text(
                     NetworkErrors.TITLE,
-                    color = Color.Black,
+                    color = KolamText,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                 )
-                androidx.compose.material3.Text(NetworkErrors.MESSAGE, color = Color.Black)
+                androidx.compose.material3.Text(NetworkErrors.MESSAGE, color = KolamText)
             } else {
                 androidx.compose.material3.Text(
                     "Could not load lesson: ${screen.message}",
-                    color = Color.Black
+                    color = KolamText
                 )
             }
             androidx.compose.material3.Button(onClick = onGoBack) {

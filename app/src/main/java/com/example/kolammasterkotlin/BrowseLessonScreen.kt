@@ -432,7 +432,7 @@ internal fun BrowseLessonScreen(
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
-                        color = Color(0xFFC9A86A)
+                        color = KolamBronze
                     )
                 }
             }
@@ -451,7 +451,7 @@ internal fun BrowseLessonScreen(
             revealMessage?.let {
                 Text(
                     text = it,
-                    color = Color.White.copy(alpha = 0.75f),
+                    color = KolamMutedText,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
@@ -462,7 +462,7 @@ internal fun BrowseLessonScreen(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = Color(0xFFC9A86A))
+                    CircularProgressIndicator(color = KolamBronze)
                 }
                 catalogue.entries.isEmpty() -> BrowseMessage(
                     text = if (catalogue.refreshNetworkFailed) {
@@ -704,7 +704,7 @@ internal fun BrowseLessonScreen(
                     .fillMaxWidth()
                     .shadow(12.dp, RoundedCornerShape(12.dp))
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF34393F))
+                    .background(KolamSubtleSurface)
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -715,7 +715,7 @@ internal fun BrowseLessonScreen(
             ) {
                 Text(
                     text = "Difficulty",
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -730,7 +730,7 @@ internal fun BrowseLessonScreen(
                 )
                 Text(
                     text = "Kolam Type",
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -869,11 +869,15 @@ internal fun BrowseLessonScreen(
                         onClick = {
                             foldersLoadError = null
                             foldersRefreshKey++
-                        }
+                        },
+                        colors = kolamStandardButtonColors()
                     ) { Text("Retry") }
                 },
                 dismissButton = {
-                    TextButton(onClick = { foldersLoadError = null }) { Text("Close") }
+                    TextButton(
+                        onClick = { foldersLoadError = null },
+                        colors = kolamStandardButtonColors()
+                    ) { Text("Close") }
                 }
             )
         }
@@ -929,13 +933,13 @@ private fun LockedLessonDialog(
                 }
             }
         },
-        confirmButton = {
+        dismissButton = {
             Button(
                 onClick = onWatchAd,
                 enabled = !isProcessing,
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                    disabledContainerColor = Color(0xFF315A78),
-                    disabledContentColor = Color.White
+                    disabledContainerColor = KolamButtonYellow,
+                    disabledContentColor = KolamButtonText
                 )
             ) {
                 if (isProcessing) {
@@ -945,7 +949,7 @@ private fun LockedLessonDialog(
                     ) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
-                            color = Color.White,
+                            color = KolamButtonText,
                             strokeWidth = 2.dp
                         )
                         Text("Please wait…")
@@ -955,8 +959,12 @@ private fun LockedLessonDialog(
                 }
             }
         },
-        dismissButton = {
-            TextButton(onClick = onCancel, enabled = !isProcessing) {
+        confirmButton = {
+            TextButton(
+                onClick = onCancel,
+                enabled = !isProcessing,
+                colors = kolamStandardButtonColors()
+            ) {
                 Text("Cancel")
             }
         }
@@ -974,7 +982,7 @@ private fun GuestLessonUnlockWarningDialog(
                 .fillMaxWidth(0.94f)
                 .widthIn(max = 420.dp),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF252B30),
+            color = KolamText,
             tonalElevation = 8.dp
         ) {
             BoxWithConstraints {
@@ -993,12 +1001,12 @@ private fun GuestLessonUnlockWarningDialog(
                             modifier = Modifier
                                 .size(44.dp)
                                 .clip(RoundedCornerShape(14.dp))
-                                .background(Color(0xFF3B3325)),
+                                .background(KolamElevated),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "✓",
-                                color = Color(0xFFC9A86A),
+                                color = KolamBronze,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics {
@@ -1008,7 +1016,7 @@ private fun GuestLessonUnlockWarningDialog(
                         }
                         Text(
                             text = "Lesson unlocked!",
-                            color = Color.White,
+                            color = KolamText,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -1017,7 +1025,7 @@ private fun GuestLessonUnlockWarningDialog(
                         text = "This lesson is unlocked on this device. If you uninstall " +
                             "Kolam Master, you may lose this unlock. Sign in with Google to " +
                             "help keep your progress safe.",
-                        color = Color.White.copy(alpha = 0.84f),
+                        color = KolamMutedText,
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     )
@@ -1030,7 +1038,7 @@ private fun GuestLessonUnlockWarningDialog(
                                 onClick = onSignIn,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF8F6F38)
+                                    containerColor = KolamButtonYellow
                                 )
                             ) {
                                 Text("Sign in with Google")
@@ -1039,7 +1047,7 @@ private fun GuestLessonUnlockWarningDialog(
                                 onClick = onCancel,
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF8F6F38)
+                                    containerColor = KolamButtonYellow
                                 )
                             ) {
                                 Text("Cancel")
@@ -1054,7 +1062,7 @@ private fun GuestLessonUnlockWarningDialog(
                                 onClick = onSignIn,
                                 modifier = Modifier.weight(1f),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF8F6F38)
+                                    containerColor = KolamButtonYellow
                                 )
                             ) {
                                 Text("Sign in with Google")
@@ -1063,7 +1071,7 @@ private fun GuestLessonUnlockWarningDialog(
                                 onClick = onCancel,
                                 modifier = Modifier.weight(1f),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFF8F6F38)
+                                    containerColor = KolamButtonYellow
                                 )
                             ) {
                                 Text("Cancel")
@@ -1098,7 +1106,7 @@ internal fun CatalogueLessonDetailScreen(
         Spacer(Modifier.height(20.dp))
         Text(
             text = lesson.lessonName,
-            color = Color.White,
+            color = KolamText,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -1110,13 +1118,13 @@ internal fun CatalogueLessonDetailScreen(
                 lesson.gridType,
                 lesson.totalSteps?.let { "$it steps" }
             ).joinToString(" · "),
-            color = Color.White.copy(alpha = 0.75f),
+            color = KolamMutedText,
             fontSize = 14.sp
         )
         Spacer(Modifier.height(16.dp))
         Text(
             text = "Lesson playback will be connected in a later step.",
-            color = Color.White.copy(alpha = 0.75f),
+            color = KolamMutedText,
             fontSize = 16.sp
         )
         Spacer(Modifier.height(24.dp))
@@ -1145,7 +1153,7 @@ private fun SearchField(
                 .weight(1f)
                 .fillMaxSize()
                 .clip(RoundedCornerShape(10.dp))
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(KolamSubtleSurface)
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -1154,11 +1162,11 @@ private fun SearchField(
                 onValueChange = onQueryChange,
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = KolamText),
                 decorationBox = { innerTextField ->
                     Box {
                         if (query.isEmpty()) {
-                            Text("Search lessons", color = Color.White.copy(alpha = 0.55f))
+                            Text("Search lessons", color = KolamMutedText)
                         }
                         innerTextField()
                     }
@@ -1171,12 +1179,11 @@ private fun SearchField(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
                 .background(
-                    if (filtersOpen) Color(0xFF8F6F38)
-                    else Color.White.copy(alpha = 0.08f)
+                    if (filtersOpen) KolamGold else KolamElevated
                 )
                 .clickable(onClick = onToggleFilters)
                 .padding(horizontal = 14.dp, vertical = 14.dp),
-            color = Color.White,
+            color = if (filtersOpen) KolamBackground else KolamText,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -1201,16 +1208,16 @@ private fun FilterRow(
                 onClick = { onSelected(option) },
                 label = { Text(option, maxLines = 1) },
                 colors = FilterChipDefaults.filterChipColors(
-                    containerColor = Color(0xFF4A5057),
-                    labelColor = Color.White,
-                    selectedContainerColor = Color(0xFFC9A86A),
-                    selectedLabelColor = Color(0xFF29251D)
+                    containerColor = KolamElevated,
+                    labelColor = KolamText,
+                    selectedContainerColor = KolamBronze,
+                    selectedLabelColor = KolamBackground
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
                     selected = option in selected,
-                    borderColor = Color.White.copy(alpha = 0.38f),
-                    selectedBorderColor = Color(0xFFFFD778)
+                    borderColor = KolamBorder,
+                    selectedBorderColor = KolamBronze
                 )
             )
         }
@@ -1231,7 +1238,7 @@ internal fun LessonCatalogueCard(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
+            colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
             LessonCatalogueCardContent(lesson, isSaved, onHeartClick)
         }
@@ -1240,7 +1247,7 @@ internal fun LessonCatalogueCard(
             onClick = onClick,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
+            colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
             LessonCatalogueCardContent(lesson, isSaved, onHeartClick)
         }
@@ -1280,7 +1287,7 @@ private fun LessonCatalogueCardContent(
             Text(
                 text = lesson.lessonName,
                 modifier = Modifier.weight(1f),
-                color = Color.White,
+                color = KolamText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
@@ -1302,7 +1309,7 @@ private fun LessonCatalogueCardContent(
             Spacer(Modifier.height(3.dp))
             Text(
                 text = metadata,
-                color = Color.White.copy(alpha = 0.72f),
+                color = KolamMutedText,
                 fontSize = 12.sp,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis
@@ -1370,7 +1377,7 @@ internal fun LessonFavoriteStar(
             }
             drawPath(
                 path = heart,
-                color = if (isSaved) Color.Red else Color.White,
+                color = if (isSaved) Color.Red else KolamMutedText,
                 style = if (isSaved) {
                     androidx.compose.ui.graphics.drawscope.Fill
                 } else {
@@ -1395,10 +1402,10 @@ private fun ThumbnailRevealBanner(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(10.dp),
         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF315A78),
-            contentColor = Color.White,
-            disabledContainerColor = Color(0xFF315A78),
-            disabledContentColor = Color.White
+            containerColor = KolamButtonYellow,
+            contentColor = KolamButtonText,
+            disabledContainerColor = KolamButtonYellow,
+            disabledContentColor = KolamButtonText
         )
     ) {
         if (loading) {
@@ -1408,7 +1415,7 @@ private fun ThumbnailRevealBanner(
             ) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
-                    color = Color.White,
+                    color = KolamButtonText,
                     strokeWidth = 2.dp
                 )
                 Text(loadingText)
@@ -1543,14 +1550,14 @@ internal fun RemoteLessonThumbnail(url: String?, modifier: Modifier = Modifier) 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(Color.Black.copy(alpha = 0.2f)),
+            .background(KolamElevated),
         contentAlignment = Alignment.Center
     ) {
         when (val thumbnail = state) {
             LessonThumbnailState.Checking -> ThumbnailFallback()
             LessonThumbnailState.Downloading -> CircularProgressIndicator(
                 modifier = Modifier.size(20.dp),
-                color = Color.White.copy(alpha = 0.8f),
+                color = KolamBronze,
                 strokeWidth = 2.dp
             )
             LessonThumbnailState.Unavailable -> {
@@ -1559,9 +1566,10 @@ internal fun RemoteLessonThumbnail(url: String?, modifier: Modifier = Modifier) 
                 } else {
                     TextButton(
                         onClick = { retryAttempt++ },
-                        contentPadding = PaddingValues(4.dp)
+                        contentPadding = PaddingValues(4.dp),
+                        colors = kolamStandardButtonColors()
                     ) {
-                        Text("Retry", color = Color.White, fontSize = 11.sp)
+                        Text("Retry", color = KolamButtonText, fontSize = 11.sp)
                     }
                 }
             }
@@ -1586,7 +1594,7 @@ private sealed interface LessonThumbnailState {
 private fun ThumbnailFallback() {
     Text(
         text = "Kolam",
-        color = Color.White.copy(alpha = 0.55f),
+        color = KolamMutedText,
         fontSize = 14.sp
     )
 }
@@ -1621,14 +1629,14 @@ private fun BrowseMessage(text: String) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 Text(
                     text = NetworkErrors.TITLE,
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
                 Text(
                     text = NetworkErrors.MESSAGE,
-                    color = Color.White.copy(alpha = 0.8f),
+                    color = KolamMutedText,
                     fontSize = 16.sp,
                     textAlign = TextAlign.Center
                 )
@@ -1636,7 +1644,7 @@ private fun BrowseMessage(text: String) {
         } else {
             Text(
                 text = text,
-                color = Color.White.copy(alpha = 0.8f),
+                color = KolamMutedText,
                 fontSize = 16.sp
             )
         }

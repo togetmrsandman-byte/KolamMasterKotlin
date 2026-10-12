@@ -393,7 +393,7 @@ internal fun ContactConversationDetailDestination(
     ) {
         Text(
             text = conversation?.subject ?: "Conversation",
-            color = Color.White,
+            color = KolamGold,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -402,7 +402,7 @@ internal fun ContactConversationDetailDestination(
         if (isClosed) {
             Text(
                 "This conversation has been closed. If you still need assistance, please start a new conversation.",
-                color = Color(0xFFE8E8E8),
+                color = KolamMutedText,
                 fontSize = 15.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -416,25 +416,61 @@ internal fun ContactConversationDetailDestination(
         ) {
             if (isLoading && !hasLoaded) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color(0xFFC9A86A))
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = KolamCoolSilver
+                        ),
+                        border = BorderStroke(1.dp, KolamSilverBorder)
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(24.dp),
+                            color = KolamBronze
+                        )
+                    }
                 }
             } else if (!hasLoaded && errorMessage != null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(
-                            if (errorTitle == NetworkErrors.TITLE) {
-                                NetworkErrors.DISPLAY_TEXT
-                            } else {
-                                "Could not load this conversation."
-                            },
-                            color = Color.White
-                        )
-                        TextButton(onClick = { retryKey++ }) { Text("Retry") }
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = KolamCoolSilver
+                        ),
+                        border = BorderStroke(1.dp, KolamSilverBorder)
+                    ) {
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(
+                                if (errorTitle == NetworkErrors.TITLE) {
+                                    NetworkErrors.DISPLAY_TEXT
+                                } else {
+                                    "Could not load this conversation."
+                                },
+                                color = KolamContainerSecondary
+                            )
+                            TextButton(
+                                onClick = { retryKey++ },
+                                colors = kolamStandardButtonColors()
+                            ) { Text("Retry") }
+                        }
                     }
                 }
             } else if (messages.isEmpty()) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No messages in this conversation yet.", color = Color.White)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = KolamCoolSilver
+                        ),
+                        border = BorderStroke(1.dp, KolamSilverBorder)
+                    ) {
+                        Text(
+                            "No messages in this conversation yet.",
+                            modifier = Modifier.padding(16.dp),
+                            color = KolamContainerSecondary
+                        )
+                    }
                 }
             } else {
                 LazyColumn(
@@ -457,7 +493,7 @@ internal fun ContactConversationDetailDestination(
             uploadProgress?.let {
                 Text(
                     it,
-                    color = Color(0xFFE8E8E8),
+                    color = KolamContainerSecondary,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 6.dp)
                 )
@@ -466,11 +502,11 @@ internal fun ContactConversationDetailDestination(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(
-                        Color(0xFF34393F),
+                        KolamCoolSilver,
                         RoundedCornerShape(28.dp)
                     )
                     .border(
-                        BorderStroke(1.dp, Color(0xFFB8B8B8)),
+                        BorderStroke(1.dp, KolamSilverBorder),
                         RoundedCornerShape(28.dp)
                     )
                     .padding(horizontal = 4.dp, vertical = 4.dp),
@@ -479,9 +515,10 @@ internal fun ContactConversationDetailDestination(
                 TextButton(
                     onClick = { showAttachmentOptions = true },
                     enabled = !isSending && !isImageBatchActive,
-                    modifier = Modifier.size(44.dp)
+                    modifier = Modifier.size(44.dp),
+                    colors = kolamStandardButtonColors()
                 ) {
-                    Text("+", fontSize = 26.sp, color = Color.White)
+                    Text("+", fontSize = 26.sp, color = KolamButtonText)
                 }
                 Box(
                     modifier = Modifier
@@ -489,7 +526,7 @@ internal fun ContactConversationDetailDestination(
                         .padding(horizontal = 8.dp, vertical = 10.dp)
                 ) {
                     if (messageText.isEmpty()) {
-                        Text("Type a message...", color = Color(0xFFE0E0E0))
+                        Text("Type a message...", color = KolamContainerSecondary)
                     }
                     BasicTextField(
                         value = messageText,
@@ -499,7 +536,7 @@ internal fun ContactConversationDetailDestination(
                             .fillMaxWidth()
                             .semantics { contentDescription = "Message input" },
                         textStyle = androidx.compose.ui.text.TextStyle(
-                            color = Color.White,
+                            color = KolamText,
                             fontSize = 16.sp
                         ),
                         maxLines = 5,
@@ -513,16 +550,17 @@ internal fun ContactConversationDetailDestination(
                     enabled = !isSending && !isImageBatchActive && messageText.isNotBlank(),
                     modifier = Modifier
                         .size(44.dp)
-                        .semantics { contentDescription = "Send message" }
+                        .semantics { contentDescription = "Send message" },
+                    colors = kolamStandardButtonColors()
                 ) {
                     if (isSending && uploadProgress == null) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
                             strokeWidth = 2.dp,
-                            color = Color(0xFFC9A86A)
+                            color = KolamButtonText
                         )
                     } else {
-                        Text("➤", fontSize = 20.sp, color = Color(0xFFC9A86A))
+                        Text("➤", fontSize = 20.sp, color = KolamButtonText)
                     }
                 }
             }
@@ -552,11 +590,15 @@ internal fun ContactConversationDetailDestination(
             title = { Text(errorTitle.orEmpty()) },
             text = { Text(errorMessage.orEmpty()) },
             confirmButton = {
-                TextButton(onClick = {
-                    errorTitle = null
-                    errorMessage = null
-                }) { Text("OK") }
-            }
+                TextButton(
+                    onClick = {
+                        errorTitle = null
+                        errorMessage = null
+                    },
+                    colors = kolamStandardButtonColors()
+                ) { Text("OK") }
+            },
+            containerColor = KolamCoolSilver
         )
     }
 
@@ -579,8 +621,9 @@ private fun ContactMessageBubble(
             modifier = Modifier.fillMaxWidth(0.88f),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isUserMessage) Color(0xFF285B5B) else Color(0xFF4A4132)
-            )
+                containerColor = KolamCoolSilver
+            ),
+            border = BorderStroke(1.dp, KolamSilverBorder)
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -588,12 +631,12 @@ private fun ContactMessageBubble(
             ) {
                 Text(
                     text = if (isUserMessage) "You" else "Support",
-                    color = if (isUserMessage) Color(0xFFC8E8DD) else Color(0xFFFFD48A),
+                    color = KolamText,
                     fontWeight = FontWeight.Bold,
                     fontSize = 13.sp
                 )
                 if (item.message.message.isNotBlank()) {
-                    Text(item.message.message, color = Color.White, fontSize = 16.sp)
+                    Text(item.message.message, color = KolamText, fontSize = 16.sp)
                 }
                 item.message.imageUrl?.let { url ->
                     ContactMessageImage(url, onClick = { onImageClick(url) })
@@ -605,7 +648,7 @@ private fun ContactMessageBubble(
                 ) {
                     Text(
                         item.message.createdAt,
-                        color = Color.White.copy(alpha = 0.65f),
+                        color = KolamContainerSecondary,
                         fontSize = 11.sp
                     )
                     if (isUserMessage) {
@@ -617,9 +660,9 @@ private fun ContactMessageBubble(
                                 ContactMessageDelivery.Sent -> "Sent"
                             },
                             color = if (item.delivery == ContactMessageDelivery.Failed) {
-                                Color(0xFFFFB4AB)
+                                KolamError
                             } else {
-                                Color.White.copy(alpha = 0.75f)
+                                KolamContainerSecondary
                             },
                             fontSize = 11.sp
                         )
@@ -767,17 +810,22 @@ internal fun ContactImageAttachmentOptionsDialog(
                 Text("Choose how to add an image.")
                 TextButton(
                     onClick = onCamera,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = kolamStandardButtonColors()
                 ) { Text("Camera") }
                 TextButton(
                     onClick = onGallery,
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = kolamStandardButtonColors()
                 ) { Text("Photo Gallery") }
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
+            TextButton(onClick = onDismiss, colors = kolamStandardButtonColors()) {
+                Text("Cancel")
+            }
         },
-        dismissButton = null
+        dismissButton = null,
+        containerColor = KolamCoolSilver
     )
 }

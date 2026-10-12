@@ -89,7 +89,9 @@ internal fun RangoliLessonScreen(
                 !started -> "Preview"
                 else -> "Step ${currentStep?.number} of ${lesson.steps.size}"
             },
-            shining = complete
+            shining = complete,
+            containerColor = if (complete) KolamGold else KolamButtonYellow,
+            contentColor = if (complete) KolamText else KolamButtonText
         )
 
         Box(
@@ -191,8 +193,8 @@ internal fun RangoliLessonScreen(
                     },
                     enabled = true,
                     shining = complete,
-                    containerColor = if (complete) androidx.compose.ui.graphics.Color(0xFFFFC928) else null,
-                    contentColor = if (complete) androidx.compose.ui.graphics.Color(0xFF392800) else null,
+                    containerColor = if (complete) KolamAccent else null,
+                    contentColor = if (complete) KolamButtonText else null,
                     modifier = Modifier.weight(1f),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 4.dp,

@@ -117,7 +117,7 @@ internal fun CommunityScreen(
         ) {
             Text(
                 "Community",
-                color = Color.White,
+                color = KolamGold,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
             )
@@ -127,7 +127,7 @@ internal fun CommunityScreen(
                     modifier = Modifier
                         .padding(end = 12.dp)
                         .size(20.dp),
-                    color = Color.White,
+                    color = KolamBronze,
                     strokeWidth = 2.dp
                 )
             }
@@ -139,7 +139,7 @@ internal fun CommunityScreen(
             when {
                 isLoading && submissions.isEmpty() ->
                     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(color = Color.White)
+                    CircularProgressIndicator(color = KolamBronze)
                 }
                 errorMessage != null && submissions.isEmpty() -> Column(
                     modifier = Modifier
@@ -148,7 +148,7 @@ internal fun CommunityScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text(errorMessage, color = Color.White, fontSize = 16.sp)
+                    Text(errorMessage, color = KolamMutedText, fontSize = 16.sp)
                     Button(onClick = onRefresh, modifier = Modifier.padding(top = 16.dp)) {
                         Text("Try again")
                     }
@@ -160,7 +160,7 @@ internal fun CommunityScreen(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Text("No approved kolams yet.", color = Color.White, fontSize = 16.sp)
+                    Text("No approved kolams yet.", color = KolamMutedText, fontSize = 16.sp)
                 }
                 else -> LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
@@ -178,7 +178,7 @@ internal fun CommunityScreen(
                         item {
                             Text(
                                 text = "$errorMessage Showing the last loaded gallery.",
-                                color = Color(0xFFFFD28A),
+                                color = KolamBronze,
                                 fontSize = 12.sp,
                                 modifier = Modifier.padding(bottom = 8.dp)
                             )
@@ -210,7 +210,7 @@ internal fun CommunityScreen(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF101418))
+                    .background(KolamBackground)
                     .navigationBarsPadding()
                     .padding(horizontal = 20.dp, vertical = 16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -220,7 +220,7 @@ internal fun CommunityScreen(
                         .fillMaxWidth()
                         .weight(1f)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Color(0xFF171D22)),
+                        .background(KolamElevated),
                     contentAlignment = Alignment.Center
                 ) {
                     Image(
@@ -232,7 +232,7 @@ internal fun CommunityScreen(
                 }
                 Text(
                     text = "Submitted by: ${selection.item.creatorName}",
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center,
@@ -243,7 +243,7 @@ internal fun CommunityScreen(
                 selection.item.lessonId?.let { id ->
                     Text(
                         text = "Lesson ID: $id",
-                        color = Color.White.copy(alpha = 0.78f),
+                        color = KolamMutedText,
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
@@ -254,7 +254,7 @@ internal fun CommunityScreen(
                 (selectedLessonError ?: lessonOpenError)?.let { message ->
                     Text(
                         text = message,
-                        color = Color(0xFFFFB4AB),
+                        color = KolamError,
                         textAlign = TextAlign.Center,
                         modifier = Modifier.padding(top = 12.dp)
                     )
@@ -295,10 +295,11 @@ internal fun CommunityScreen(
                             selectedLessonError = null
                         },
                         modifier = Modifier.weight(1f),
-                        border = BorderStroke(1.dp, Color(0xFFFFC928)),
-                        shape = RoundedCornerShape(12.dp)
+                        border = BorderStroke(1.dp, KolamButtonYellow),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = kolamStandardButtonColors()
                     ) {
-                        Text("Cancel", color = Color(0xFFFFC928))
+                        Text("Cancel", color = KolamButtonText)
                     }
                 }
             }
@@ -345,7 +346,7 @@ private fun CommunityImageCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.08f))
+        colors = CardDefaults.cardColors(containerColor = KolamSurface)
     ) {
         Column(modifier = Modifier.padding(10.dp)) {
             Box(
@@ -353,24 +354,25 @@ private fun CommunityImageCard(
                     .fillMaxWidth()
                     .aspectRatio(1f)
                     .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.2f)),
+                    .background(KolamElevated),
                 contentAlignment = Alignment.Center
             ) {
                 when (val state = imageState) {
-                    CommunityImageState.Loading -> CircularProgressIndicator(color = Color.White)
+                    CommunityImageState.Loading -> CircularProgressIndicator(color = KolamBronze)
                     CommunityImageState.Failed -> Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
                             "Image could not be loaded.",
-                            color = Color.White.copy(alpha = 0.75f),
+                            color = KolamMutedText,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
                             modifier = Modifier.padding(horizontal = 8.dp)
                         )
                         androidx.compose.material3.TextButton(
-                            onClick = { retryAttempt++ }
+                            onClick = { retryAttempt++ },
+                            colors = kolamStandardButtonColors()
                         ) { Text("Retry") }
                     }
                     is CommunityImageState.Loaded -> Image(
@@ -387,7 +389,7 @@ private fun CommunityImageCard(
             Text(
                 text = "Submitted by: $creatorName",
                 modifier = Modifier.fillMaxWidth(),
-                color = Color.White,
+                color = KolamText,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 2,
@@ -400,7 +402,7 @@ private fun CommunityImageCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 3.dp),
-                    color = Color.White.copy(alpha = 0.82f),
+                    color = KolamMutedText,
                     fontSize = 11.sp,
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -413,7 +415,7 @@ private fun CommunityImageCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 3.dp),
-                    color = Color.White.copy(alpha = 0.72f),
+                    color = KolamMutedText,
                     fontSize = 11.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

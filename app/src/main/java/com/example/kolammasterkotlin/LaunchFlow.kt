@@ -51,13 +51,16 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -66,10 +69,48 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.random.Random
+import com.kolammaster.app.ui.theme.KolamSolarAmber as ThemeKolamSolarAmber
+import com.kolammaster.app.ui.theme.KolamButtonText as ThemeKolamButtonText
+import com.kolammaster.app.ui.theme.KolamButtonYellow as ThemeKolamButtonYellow
+import com.kolammaster.app.ui.theme.KolamContainerSecondary as ThemeKolamContainerSecondary
+import com.kolammaster.app.ui.theme.KolamCoolSilver as ThemeKolamCoolSilver
+import com.kolammaster.app.ui.theme.KolamDisabled as ThemeKolamDisabled
+import com.kolammaster.app.ui.theme.KolamElevated as ThemeKolamElevated
+import com.kolammaster.app.ui.theme.KolamError as ThemeKolamError
+import com.kolammaster.app.ui.theme.KolamMidnight as ThemeKolamMidnight
+import com.kolammaster.app.ui.theme.KolamMutedNavy as ThemeKolamMutedNavy
+import com.kolammaster.app.ui.theme.KolamNavy as ThemeKolamNavy
+import com.kolammaster.app.ui.theme.KolamSilver as ThemeKolamSilver
+import com.kolammaster.app.ui.theme.KolamSilverBorder as ThemeKolamSilverBorder
+import com.kolammaster.app.ui.theme.KolamWhite as ThemeKolamWhite
 
-internal val KolamBackground = Color(0xFF2F343A)
-private val Gold = Color(0xFF8F6F38)
-private val KolamMasterHeaderColor = Color(0xFF496B6B)
+internal val KolamBackground = ThemeKolamMidnight
+internal val KolamSurface = ThemeKolamNavy
+internal val KolamNavy = ThemeKolamNavy
+internal val KolamElevated = ThemeKolamElevated
+internal val KolamText = ThemeKolamWhite
+internal val KolamMutedText = ThemeKolamSilver
+internal val KolamAccent = ThemeKolamSolarAmber
+internal val KolamButtonYellow = ThemeKolamButtonYellow
+internal val KolamButtonText = ThemeKolamButtonText
+internal val KolamGold = KolamAccent
+internal val KolamBronze = KolamAccent
+internal val KolamBorder = ThemeKolamMutedNavy
+internal val KolamSubtleSurface = ThemeKolamElevated
+internal val KolamDisabled = ThemeKolamDisabled
+internal val KolamError = ThemeKolamError
+internal val KolamCoolSilver = ThemeKolamCoolSilver
+internal val KolamContainerSecondary = ThemeKolamContainerSecondary
+internal val KolamSilverBorder = ThemeKolamSilverBorder
+private val Gold = KolamButtonYellow
+private val KolamMasterHeaderColor = KolamAccent
+private val HeaderTitleStyle = TextStyle(
+    shadow = Shadow(
+        color = KolamBackground.copy(alpha = 0.8f),
+        offset = Offset(0f, 1.dp.value),
+        blurRadius = 1.5f
+    )
+)
 
 internal enum class LandingDestination(val title: String) {
     Browse("Learn Kolam"),
@@ -115,7 +156,7 @@ internal fun LanguageSelectionScreen(
         ) {
             Text(
                 text = "Choose Your Language",
-                color = Color.White,
+                color = KolamGold,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -123,7 +164,7 @@ internal fun LanguageSelectionScreen(
             Spacer(Modifier.height(12.dp))
             Text(
                 text = "You can change this later from My Folders.",
-                color = Color.White.copy(alpha = 0.82f),
+                color = KolamMutedText,
                 fontSize = 16.sp,
                 textAlign = TextAlign.Center
             )
@@ -136,14 +177,14 @@ internal fun LanguageSelectionScreen(
                         .padding(vertical = 4.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Gold)
                 ) {
-                    Text(displayName, color = Color.White, fontSize = 18.sp)
+                    Text(displayName, color = KolamButtonText, fontSize = 18.sp)
                 }
             }
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold)
-            ) { Text("Back", color = Color.White, fontSize = 16.sp) }
+            ) { Text("Back", color = KolamButtonText, fontSize = 16.sp) }
         }
     }
 }
@@ -177,7 +218,7 @@ internal fun SignInInvitationScreen(
         ) {
             Text(
                 text = "Sign in with Google",
-                color = Color.White,
+                color = KolamGold,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center
@@ -186,10 +227,10 @@ internal fun SignInInvitationScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
-                color = Color.White.copy(alpha = 0.08f),
+                color = KolamSurface,
                 border = androidx.compose.foundation.BorderStroke(
                     1.dp,
-                    Color.White.copy(alpha = 0.18f)
+                    KolamBorder
                 )
             ) {
                 Column(
@@ -205,7 +246,7 @@ internal fun SignInInvitationScreen(
                         Text(
                             text = "•  $benefit",
                             modifier = Modifier.fillMaxWidth(),
-                            color = Color.White,
+                            color = KolamText,
                             fontSize = 15.sp,
                             lineHeight = 20.sp
                         )
@@ -219,12 +260,12 @@ internal fun SignInInvitationScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Gold,
                     disabledContainerColor = Gold,
-                    disabledContentColor = Color.White
+                    disabledContentColor = KolamButtonText
                 )
             ) {
                 Text(
                     "Continue with Google",
-                    color = Color.White,
+                    color = KolamButtonText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -236,12 +277,12 @@ internal fun SignInInvitationScreen(
                 colors = ButtonDefaults.buttonColors(
                     containerColor = Gold,
                     disabledContainerColor = Gold,
-                    disabledContentColor = Color.White
+                    disabledContentColor = KolamButtonText
                 )
             ) {
                 Text(
                     "Skip for now",
-                    color = Color.White,
+                    color = KolamButtonText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
                 )
@@ -267,7 +308,7 @@ internal fun InitialAssetSetupScreen(
     ) {
         Text(
             text = "Preparing Kolam Master",
-            color = Color.White,
+            color = KolamGold,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
@@ -275,7 +316,7 @@ internal fun InitialAssetSetupScreen(
         Spacer(Modifier.height(12.dp))
         Text(
             text = "Downloading images for your first visit. Please wait.",
-            color = Color.White.copy(alpha = 0.84f),
+            color = KolamMutedText,
             fontSize = 16.sp,
             lineHeight = 23.sp,
             textAlign = TextAlign.Center
@@ -287,7 +328,7 @@ internal fun InitialAssetSetupScreen(
             if (progress.total > 0) {
                 Text(
                     text = "${progress.completed} of ${progress.total} images",
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -295,14 +336,14 @@ internal fun InitialAssetSetupScreen(
             Spacer(Modifier.height(6.dp))
             Text(
                 text = progress.message,
-                color = Color.White.copy(alpha = 0.75f),
+                color = KolamMutedText,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
             )
         } else if (errorMessage != null) {
             Text(
                 text = errorMessage,
-                color = Color.White,
+                color = KolamText,
                 fontSize = 15.sp,
                 textAlign = TextAlign.Center
             )
@@ -311,7 +352,7 @@ internal fun InitialAssetSetupScreen(
                 onClick = onRetry,
                 colors = ButtonDefaults.buttonColors(containerColor = Gold)
             ) {
-                Text("Retry", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text("Retry", color = KolamButtonText, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -343,7 +384,7 @@ internal fun AuthLoadingOverlay(message: String?) {
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(24.dp),
-            color = Color(0xFF34393F),
+            color = KolamSurface,
             tonalElevation = 12.dp,
             shadowElevation = 20.dp
         ) {
@@ -357,14 +398,14 @@ internal fun AuthLoadingOverlay(message: String?) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(30.dp),
                     color = Gold,
-                    trackColor = Color.White.copy(alpha = 0.16f),
+                    trackColor = KolamBorder,
                     strokeWidth = 3.dp
                 )
                 Spacer(Modifier.width(18.dp))
                 Text(
                     modifier = Modifier.weight(1f),
                     text = message,
-                    color = Color.White,
+                    color = KolamText,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
@@ -414,7 +455,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { alpha = titleAlpha.value },
-            color = Color.White,
+            color = KolamText,
             fontSize = 34.sp,
             fontWeight = FontWeight.ExtraBold,
             textAlign = TextAlign.Center
@@ -451,7 +492,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth(0.88f)
                 .graphicsLayer { alpha = historyAlpha.value },
-            color = Color.White,
+            color = KolamText,
             fontSize = 20.sp,
             lineHeight = 30.sp,
             fontWeight = FontWeight.SemiBold,
@@ -471,12 +512,12 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
             colors = ButtonDefaults.buttonColors(
                 containerColor = Gold,
                 disabledContainerColor = Gold,
-                disabledContentColor = Color.White
+                disabledContentColor = KolamText
             )
         ) {
             Text(
                 text = "Begin",
-                color = Color.White,
+                color = KolamText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -655,9 +696,10 @@ internal fun AppNavigationHeader(
                     .size(width = 56.dp, height = 64.dp)
                     .clickable(onClick = onBack)
                     .wrapContentSize(Alignment.Center),
-                color = Color.White,
+                color = KolamText,
                 fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                style = HeaderTitleStyle
             )
         }
         Text(
@@ -665,9 +707,10 @@ internal fun AppNavigationHeader(
             modifier = Modifier
                 .align(Alignment.Center)
                 .clickable(onClick = onHome),
-            color = Color.White,
+            color = KolamText,
             fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            style = HeaderTitleStyle
         )
         if (showNavigationControls) {
             Box(
@@ -682,10 +725,25 @@ internal fun AppNavigationHeader(
                     repeat(3) {
                         Box(
                             Modifier
-                                .width(22.dp)
-                                .height(2.dp)
-                                .background(Color.White)
-                        )
+                                .size(width = 24.dp, height = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Box(
+                                Modifier
+                                    .offset(x = 1.dp, y = 1.dp)
+                                    .size(width = 22.dp, height = 2.dp)
+                                    .background(
+                                        KolamBackground.copy(alpha = 0.7f),
+                                        RoundedCornerShape(2.dp)
+                                    )
+                            )
+                            Box(
+                                Modifier
+                                    .offset(x = (-1).dp, y = (-1).dp)
+                                    .size(width = 22.dp, height = 2.dp)
+                                    .background(KolamText, RoundedCornerShape(2.dp))
+                            )
+                        }
                     }
                 }
                 if (unreadSupport || unreadAnnouncements) {
@@ -711,9 +769,10 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
         Text(
             text = "Kolam Master",
             modifier = Modifier.align(Alignment.Center),
-            color = Color.White,
+            color = KolamText,
             fontSize = 22.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            style = HeaderTitleStyle
         )
         Box(
             modifier = Modifier
@@ -727,10 +786,25 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
                 repeat(3) {
                     Box(
                         Modifier
-                            .width(22.dp)
-                            .height(2.dp)
-                            .background(Color.White)
-                    )
+                            .size(width = 24.dp, height = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Box(
+                            Modifier
+                                .offset(x = 1.dp, y = 1.dp)
+                                .size(width = 22.dp, height = 2.dp)
+                                .background(
+                                    KolamBackground.copy(alpha = 0.7f),
+                                    RoundedCornerShape(2.dp)
+                                )
+                        )
+                        Box(
+                            Modifier
+                                .offset(x = (-1).dp, y = (-1).dp)
+                                .size(width = 22.dp, height = 2.dp)
+                                .background(KolamText, RoundedCornerShape(2.dp))
+                        )
+                    }
                 }
             }
             if (unreadSupport) {
@@ -863,11 +937,11 @@ private fun LandingBubble(
     val shape = RoundedCornerShape(50)
     val edgeTint = Brush.linearGradient(
         colors = listOf(
-            Color(0xFF9B793C),
-            Color(0xFFE2CF92),
-            Color(0xFFA78242),
-            Color(0xFFFFE9AA),
-            Color(0xFF8F6F38)
+            KolamAccent,
+            KolamAccent.copy(alpha = 0.82f),
+            KolamAccent,
+            KolamAccent.copy(alpha = 0.68f),
+            KolamAccent
         )
     )
     Box(
@@ -875,7 +949,7 @@ private fun LandingBubble(
             .offset(x = horizontalOffset.value.dp, y = verticalOffset.value.dp)
             .size(width = 150.dp, height = 136.dp)
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(KolamSurface)
             .border(1.dp, edgeTint, shape)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
@@ -883,7 +957,7 @@ private fun LandingBubble(
     ) {
         Text(
             text = title,
-            color = Color.White,
+            color = KolamText,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
@@ -906,7 +980,7 @@ internal fun LessonBrowserScreen(
     ) {
         Text(
             text = "Learn Kolam",
-            color = Color.White,
+            color = KolamText,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold
         )
@@ -929,7 +1003,7 @@ internal fun PlaceholderDestination(title: String, onBack: () -> Unit) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text(title, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = KolamText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
         GoldActionButton("Back to Kolam Master", onClick = onBack)
     }
@@ -943,7 +1017,7 @@ private fun GoldActionButton(text: String, onClick: () -> Unit) {
         shape = RoundedCornerShape(8.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Gold)
     ) {
-        Text(text, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(text, color = KolamButtonText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 

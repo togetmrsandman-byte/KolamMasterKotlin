@@ -19,8 +19,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
-private val publishSheetGold = Color(0xFFFFC928)
-private val publishSheetSurface = Color(0xFF20252B)
+private val publishSheetGold = KolamBronze
+private val publishSheetSurface = KolamSurface
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -52,24 +52,24 @@ internal fun GalleryPublishPickerSheet(
                 text = "Your kolam is complete!",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White
+                color = KolamText
             )
             Text(
                 text = "Share your beautiful kolam with the Kolam Master community for everyone to see and enjoy.",
                 style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.86f)
+                color = KolamText
             )
             Text(
                 text = "Continue to add a photo of your finished kolam and share it with the community.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.72f)
+                color = KolamMutedText
             )
             Button(
                 onClick = onProceed,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = publishSheetGold,
-                    contentColor = Color(0xFF392800)
+                    containerColor = KolamButtonYellow,
+                    contentColor = KolamButtonText
                 )
             ) {
                 Text("Proceed")
@@ -77,7 +77,7 @@ internal fun GalleryPublishPickerSheet(
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = publishSheetGold)
+                colors = kolamStandardButtonColors()
             ) {
                 Text("Cancel")
             }

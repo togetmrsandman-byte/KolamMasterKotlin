@@ -44,8 +44,8 @@ import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.concurrent.ConcurrentHashMap
 
-private val historyGold = Color(0xFFFFC928)
-private val historyBody = Color.White.copy(alpha = 0.9f)
+private val historyGold = KolamBronze
+private val historyBody = KolamText
 private val historyImageRatios = mapOf(
     "ancient-village-kolam-and-harvest life.webp" to 1f,
     "sparrows-and-ants-on-kolam.webp" to 1f,
@@ -77,7 +77,7 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 5.dp),
-            color = Color.White,
+            color = KolamText,
             fontSize = 15.sp,
             lineHeight = 23.sp
         )
@@ -205,7 +205,7 @@ private fun HistoryHeading() {
         Text(
             text = "History",
             modifier = Modifier.padding(horizontal = 10.dp),
-            color = Color.White,
+            color = historyGold,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold
         )

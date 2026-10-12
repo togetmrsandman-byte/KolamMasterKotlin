@@ -2,6 +2,7 @@ package com.kolammaster.app
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +28,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -66,13 +66,13 @@ internal fun AnnouncementsDestination(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFF202327))
+            .background(KolamBackground)
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         actionErrorMessage?.let { message ->
             Text(
                 text = message,
-                color = Color(0xFFFFD28A),
+                color = KolamBronze,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -113,7 +113,7 @@ private fun AnnouncementsList(
         Text(
             text = "Announcement",
             modifier = Modifier.weight(1f),
-            color = Color.White,
+            color = KolamGold,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -122,22 +122,22 @@ private fun AnnouncementsList(
             onClick = onMarkAllRead,
             enabled = hasUnreadAnnouncements && !isMarkingAllRead,
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF1976D2),
-                contentColor = Color.White,
-                disabledContainerColor = Color(0xFF1976D2),
-                disabledContentColor = Color.White
+                containerColor = KolamButtonYellow,
+                contentColor = KolamButtonText,
+                disabledContainerColor = KolamButtonYellow,
+                disabledContentColor = KolamButtonText
             )
         ) {
             if (isMarkingAllRead) {
                 CircularProgressIndicator(
                     modifier = Modifier.size(18.dp),
                     strokeWidth = 2.dp,
-                    color = Color.White
+                    color = KolamButtonText
                 )
             } else {
                 Text(
                     "Mark All Read",
-                    color = if (hasUnreadAnnouncements) Color.White else Color.LightGray
+                    color = KolamButtonText
                 )
             }
         }
@@ -149,20 +149,36 @@ private fun AnnouncementsList(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            when {
-                isLoading -> CircularProgressIndicator(color = Color(0xFFC9A86A))
-                errorMessage != null -> Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = KolamCoolSilver),
+                border = BorderStroke(1.dp, KolamSilverBorder)
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(errorMessage, color = Color.White, fontSize = 16.sp)
-                    Button(onClick = onRetry) { Text("Retry") }
+                    when {
+                        isLoading -> CircularProgressIndicator(color = KolamBronze)
+                        errorMessage != null -> Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Text(
+                                errorMessage,
+                                color = KolamContainerSecondary,
+                                fontSize = 16.sp
+                            )
+                            Button(onClick = onRetry) { Text("Retry") }
+                        }
+                        else -> Text(
+                            "There are no announcements yet.",
+                            color = KolamContainerSecondary,
+                            fontSize = 16.sp
+                        )
+                    }
                 }
-                else -> Text(
-                    "There are no announcements yet.",
-                    color = Color.White.copy(alpha = 0.8f),
-                    fontSize = 16.sp
-                )
             }
         }
         return
@@ -176,11 +192,13 @@ private fun AnnouncementsList(
             item {
                 Text(
                     text = "Could not refresh announcements. Showing saved announcements.",
-                    color = Color(0xFFFFD28A),
+                    color = KolamBronze,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
-                TextButton(onClick = onRetry) { Text("Retry") }
+                TextButton(onClick = onRetry, colors = kolamStandardButtonColors()) {
+                    Text("Retry")
+                }
             }
         }
         items(announcements, key = Announcement::id) { announcement ->
@@ -189,7 +207,8 @@ private fun AnnouncementsList(
                     .fillMaxWidth()
                     .clickable { onAnnouncementSelected(announcement) },
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF3F6668))
+                colors = CardDefaults.cardColors(containerColor = KolamCoolSilver),
+                border = BorderStroke(1.dp, KolamSilverBorder)
             ) {
                 Column(Modifier.padding(16.dp)) {
                     Row(
@@ -199,7 +218,7 @@ private fun AnnouncementsList(
                         Text(
                             text = announcement.subject.ifBlank { "Announcement" },
                             modifier = Modifier.weight(1f),
-                            color = Color.White,
+                            color = KolamText,
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 17.sp,
                             maxLines = 2,
@@ -218,14 +237,14 @@ private fun AnnouncementsList(
                     AnnouncementRepository.displayDate(announcement.createdAt)?.let { date ->
                         Text(
                             text = date,
-                            color = Color(0xFFD9D2C6),
+                            color = KolamContainerSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(top = 5.dp)
                         )
                     }
                     Text(
                         text = announcement.message,
-                        color = Color.White.copy(alpha = 0.86f),
+                        color = KolamContainerSecondary,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
                         maxLines = 2,
@@ -245,44 +264,52 @@ private fun AnnouncementDetail(
 ) {
     var showImage by remember(announcement.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
-        TextButton(onClick = onBack) { Text("Back to announcements") }
-        Column(
+        TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
+            Text("Back to announcements")
+        }
+        Card(
             modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFF34393F))
-                .padding(18.dp)
-                .verticalScroll(rememberScrollState())
+                .fillMaxSize(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = KolamCoolSilver),
+            border = BorderStroke(1.dp, KolamSilverBorder)
         ) {
-            Text(
-                text = announcement.subject.ifBlank { "Announcement" },
-                color = Color.White,
-                fontSize = 23.sp,
-                fontWeight = FontWeight.Bold
-            )
-            AnnouncementRepository.displayDate(announcement.createdAt)?.let { date ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(18.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
                 Text(
-                    text = date,
-                    color = Color(0xFFD9D2C6),
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 6.dp)
+                    text = announcement.subject.ifBlank { "Announcement" },
+                    color = KolamText,
+                    fontSize = 23.sp,
+                    fontWeight = FontWeight.Bold
                 )
-            }
-            Text(
-                text = announcement.message,
-                color = Color.White.copy(alpha = 0.92f),
-                fontSize = 16.sp,
-                lineHeight = 24.sp,
-                modifier = Modifier.padding(top = 18.dp)
-            )
-            announcement.imageUrl?.let { url ->
-                Spacer(Modifier.height(18.dp))
-                AnnouncementImage(
-                    url = url,
-                    showImageDialog = showImage,
-                    onImageOpen = { showImage = true },
-                    onImageClose = { showImage = false }
+                AnnouncementRepository.displayDate(announcement.createdAt)?.let { date ->
+                    Text(
+                        text = date,
+                        color = KolamContainerSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+                Text(
+                    text = announcement.message,
+                    color = KolamText,
+                    fontSize = 16.sp,
+                    lineHeight = 24.sp,
+                    modifier = Modifier.padding(top = 18.dp)
                 )
+                announcement.imageUrl?.let { url ->
+                    Spacer(Modifier.height(18.dp))
+                    AnnouncementImage(
+                        url = url,
+                        showImageDialog = showImage,
+                        onImageOpen = { showImage = true },
+                        onImageClose = { showImage = false }
+                    )
+                }
             }
         }
     }
@@ -301,7 +328,7 @@ private fun AnnouncementImage(
     if (bitmap == null) {
         Text(
             text = "Image could not be loaded.",
-            color = Color(0xFFD9D2C6),
+            color = KolamContainerSecondary,
             fontSize = 13.sp
         )
     } else {
@@ -318,7 +345,12 @@ private fun AnnouncementImage(
         if (showImageDialog) {
             AlertDialog(
                 onDismissRequest = onImageClose,
-                confirmButton = { TextButton(onClick = onImageClose) { Text("Close") } },
+                confirmButton = {
+                    TextButton(
+                        onClick = onImageClose,
+                        colors = kolamStandardButtonColors()
+                    ) { Text("Close") }
+                },
                 text = {
                     Image(
                         bitmap = bitmap,
@@ -327,7 +359,7 @@ private fun AnnouncementImage(
                         contentScale = ContentScale.Fit
                     )
                 },
-                containerColor = MaterialTheme.colorScheme.surface
+                containerColor = KolamCoolSilver
             )
         }
     }
