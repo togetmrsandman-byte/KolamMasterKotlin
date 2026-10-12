@@ -72,6 +72,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -197,7 +198,7 @@ internal fun DrawerOverlay(
                     .padding(top = 42.dp, start = 22.dp, end = 22.dp)
             ) {
                 Text(
-                    text = "Back",
+                    text = stringResource(R.string.back),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
@@ -209,15 +210,17 @@ internal fun DrawerOverlay(
                 )
                 Spacer(Modifier.height(24.dp))
 
-                DrawerMenuRow("Home") { onSelect(DrawerAction.Home) }
-                DrawerMenuRow("Profile") { onSelect(DrawerAction.Profile) }
-                DrawerMenuRow("My Folders") { onSelect(DrawerAction.MyFolders) }
-                DrawerMenuRow("Language") { onSelect(DrawerAction.Language) }
-                DrawerMenuRow("Contact Us", unread = unreadContactUs) {
+                DrawerMenuRow(stringResource(R.string.home)) { onSelect(DrawerAction.Home) }
+                DrawerMenuRow(stringResource(R.string.profile)) { onSelect(DrawerAction.Profile) }
+                DrawerMenuRow(stringResource(R.string.my_folders)) { onSelect(DrawerAction.MyFolders) }
+                DrawerMenuRow(stringResource(R.string.language_settings_label)) {
+                    onSelect(DrawerAction.Language)
+                }
+                DrawerMenuRow(stringResource(R.string.contact_us), unread = unreadContactUs) {
                     onSelect(DrawerAction.ContactUs)
                 }
                 DrawerMenuRow(
-                    "Announcements",
+                    stringResource(R.string.announcements),
                     unread = unreadAnnouncements,
                     unreadDescription = "Unread announcements"
                 ) {
@@ -229,8 +232,12 @@ internal fun DrawerOverlay(
                 if (settingsExpanded) {
                     SettingsNotifications()
                 }
-                DrawerMenuRow("Update App") { onSelect(DrawerAction.UpdateApp) }
-                DrawerMenuRow("Rate App") { onSelect(DrawerAction.RateApp) }
+                DrawerMenuRow(stringResource(R.string.update_app)) {
+                    onSelect(DrawerAction.UpdateApp)
+                }
+                DrawerMenuRow(stringResource(R.string.rate_app)) {
+                    onSelect(DrawerAction.RateApp)
+                }
             }
         }
     }
@@ -291,7 +298,7 @@ private fun DrawerSettingsRow(expanded: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Settings",
+            text = stringResource(R.string.settings),
             modifier = Modifier.weight(1f),
             color = KolamText,
             fontSize = 20.sp,
@@ -349,7 +356,7 @@ private fun SettingsNotifications() {
     }
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = "Notifications",
+            text = stringResource(R.string.notifications),
             modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
             color = drawerMuted,
             fontSize = 16.sp,
@@ -362,14 +369,16 @@ private fun SettingsNotifications() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Contact Us Notifications",
+                text = stringResource(R.string.contact_notifications),
                 modifier = Modifier.weight(1f),
                 color = KolamText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = if (permissionGranted) "ON" else "OFF",
+                text = stringResource(
+                    if (permissionGranted) R.string.on else R.string.off
+                ),
                 modifier = Modifier.padding(end = 6.dp),
                 color = KolamText,
                 fontSize = 13.sp,
@@ -429,7 +438,7 @@ internal fun LanguageSettingsScreen(
     ) {
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "Choose Your Language",
+            text = stringResource(R.string.choose_your_language),
             modifier = Modifier.offset(y = LanguageMenuSectionVerticalOffset),
             color = KolamText,
             fontSize = 21.sp,
@@ -468,7 +477,7 @@ internal fun LanguageSettingsScreen(
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = "Language changes apply immediately.",
+            text = stringResource(R.string.language_changes_apply),
             modifier = Modifier.offset(y = LanguageMenuImmediateTextVerticalOffset),
             color = KolamMutedText,
             fontSize = 13.sp,
@@ -519,11 +528,16 @@ internal fun ProfileDestination(
                 .padding(horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text("Profile", color = KolamGold, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.profile),
+                color = KolamGold,
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
             Spacer(Modifier.height(if (account == null) 25.dp else 18.dp))
             if (account == null) {
                 GuestSignInPrompt(
-                    message = "You’re currently using Kolam Master as a Guest.",
+                    message = stringResource(R.string.guest_account_message),
                     onSignIn = onSignIn,
                     enabled = true
                 )
@@ -531,12 +545,12 @@ internal fun ProfileDestination(
                 Button(
                     onClick = onBack,
                     colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                ) { Text("Back") }
+                ) { Text(stringResource(R.string.back)) }
             } else {
                 profilePhoto?.let { image ->
                     Image(
                         bitmap = image,
-                        contentDescription = "Profile photo",
+                        contentDescription = stringResource(R.string.profile_photo_description),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(88.dp)
@@ -554,16 +568,16 @@ internal fun ProfileDestination(
                     Button(
                         onClick = onBack,
                         colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                    ) { Text("Back") }
+                    ) { Text(stringResource(R.string.back)) }
                     Button(
                         onClick = onSignOut,
                         colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                    ) { Text("Sign Out") }
+                    ) { Text(stringResource(R.string.sign_out)) }
                 }
             }
             Image(
                 bitmap = rememberAssetImage("kolam-logo.png"),
-                contentDescription = "Kolam logo",
+                contentDescription = stringResource(R.string.kolam_logo_description),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .padding(top = ProfileLogoTopPadding)
@@ -654,19 +668,21 @@ internal fun ContactUsDestination(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                "Contact Us",
+                stringResource(R.string.contact_us),
                 color = KolamGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
             if (signedIn) {
-                Button(onClick = onNewConversation) { Text("New Conversation") }
+                Button(onClick = onNewConversation) {
+                    Text(stringResource(R.string.new_conversation))
+                }
             }
         }
         Spacer(Modifier.height(20.dp))
         if (!signedIn) {
             GuestSignInPrompt(
-                message = "Sign in to start a new conversation.",
+                message = stringResource(R.string.sign_in_new_conversation),
                 onSignIn = onSignIn,
                 enabled = true
             )
@@ -700,14 +716,14 @@ internal fun ContactUsDestination(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        "Could not refresh conversations. Showing saved conversations.",
+                                        stringResource(R.string.refresh_conversations_cached),
                                         color = KolamContainerSecondary,
                                         textAlign = TextAlign.Center
                                     )
                                     TextButton(
                                         onClick = onRetry,
                                         colors = kolamStandardButtonColors()
-                                    ) { Text("Retry") }
+                                    ) { Text(stringResource(R.string.retry)) }
                                 }
                             }
                         }
@@ -729,7 +745,7 @@ internal fun ContactUsDestination(
                                     CircularProgressIndicator(color = KolamBronze)
                                     Spacer(Modifier.height(12.dp))
                                     Text(
-                                        "Loading conversations...",
+                                        stringResource(R.string.loading_conversations),
                                         color = KolamContainerSecondary
                                     )
                                 }
@@ -749,7 +765,11 @@ internal fun ContactUsDestination(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        errorMessage,
+                                        if (errorMessage == NetworkErrors.DISPLAY_TEXT) {
+                                            stringResource(R.string.network_error_message)
+                                        } else {
+                                            errorMessage
+                                        },
                                         color = KolamContainerSecondary,
                                         fontSize = 16.sp,
                                         textAlign = TextAlign.Center
@@ -757,7 +777,7 @@ internal fun ContactUsDestination(
                                     TextButton(
                                         onClick = onRetry,
                                         colors = kolamStandardButtonColors()
-                                    ) { Text("Retry") }
+                                    ) { Text(stringResource(R.string.retry)) }
                                 }
                             }
                         }
@@ -771,7 +791,7 @@ internal fun ContactUsDestination(
                                 border = BorderStroke(1.dp, KolamSilverBorder)
                             ) {
                                 Text(
-                                    "No conversations yet.",
+                                    stringResource(R.string.no_conversations),
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                                     color = KolamContainerSecondary,
                                     fontSize = 16.sp,
@@ -815,9 +835,15 @@ internal fun ContactUsDestination(
                                         modifier = Modifier.padding(top = 5.dp)
                                     )
                                     Text(
-                                        text = conversation.latestMessagePreview
-                                            ?.takeIf(String::isNotBlank)
-                                            ?: "No messages yet.",
+                                        text = when (val preview =
+                                            conversation.latestMessagePreview
+                                                ?.takeIf(String::isNotBlank)
+                                        ) {
+                                            ContactJson.IMAGE_ATTACHMENT_PREVIEW ->
+                                                stringResource(R.string.image_attachment)
+                                            null -> stringResource(R.string.no_messages_yet)
+                                            else -> preview
+                                        },
                                         color = KolamContainerSecondary,
                                         fontSize = 14.sp,
                                         lineHeight = 20.sp,
@@ -827,12 +853,15 @@ internal fun ContactUsDestination(
                                     )
                                 }
                                 if (SupportUnreadStore.hasUnread(context, conversation.id)) {
+                                    val unreadDescription = stringResource(
+                                        R.string.unread_support_messages_for,
+                                        conversation.subject
+                                    )
                                     Box(
                                         Modifier
                                             .size(9.dp)
                                             .semantics {
-                                                contentDescription =
-                                                    "Unread Support messages for ${conversation.subject}"
+                                                contentDescription = unreadDescription
                                             }
                                             .background(
                                                 unreadColor,
@@ -907,14 +936,14 @@ internal fun ColumnScope.MyFoldersGuestContent(
                     verticalArrangement = Arrangement.spacedBy(FolderBenefitSpacing)
                 ) {
                     Text(
-                        "Sign in to create folders",
+                        stringResource(R.string.sign_in_to_create_folders),
                         color = KolamText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
-                    FolderBenefit("Bookmark your favorite kolams to your folders")
-                    FolderBenefit("Organize your saved kolams")
-                    FolderBenefit("Keep your favorite lessons easy to find")
+                    FolderBenefit(stringResource(R.string.bookmark_favorite_kolams))
+                    FolderBenefit(stringResource(R.string.organize_saved_kolams))
+                    FolderBenefit(stringResource(R.string.keep_lessons_easy_to_find))
                 }
             }
             Spacer(Modifier.height(FolderSignedOutBenefitsToGoogleSpacing))
@@ -923,13 +952,13 @@ internal fun ColumnScope.MyFoldersGuestContent(
                 enabled = !isSignInProcessing,
                 modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset),
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text("Sign in with Google") }
+            ) { Text(stringResource(R.string.sign_in_with_google)) }
             Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
             Button(
                 onClick = onBack,
                 modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text("Back") }
+            ) { Text(stringResource(R.string.back)) }
         }
         Spacer(Modifier.weight(1f))
     }
@@ -967,7 +996,9 @@ private fun GuestSignInPrompt(
         textAlign = TextAlign.Center
     )
     Spacer(Modifier.height(18.dp))
-    Button(onClick = onSignIn, enabled = enabled) { Text("Sign in with Google") }
+    Button(onClick = onSignIn, enabled = enabled) {
+        Text(stringResource(R.string.sign_in_with_google))
+    }
 }
 
 @Composable
@@ -993,10 +1024,10 @@ private fun DestinationScaffold(
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text("Back") }
+            ) { Text(stringResource(R.string.back)) }
         } else {
             TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
-                Text("Back")
+                Text(stringResource(R.string.back))
             }
         }
     }
@@ -1015,7 +1046,7 @@ internal fun StoreActionDialog(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = onDismiss, colors = kolamStandardButtonColors()) {
-                    Text("OK")
+                    Text(stringResource(R.string.ok))
                 }
             }
         )

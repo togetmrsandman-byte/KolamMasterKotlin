@@ -27,12 +27,9 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import android.graphics.BitmapFactory
@@ -73,7 +70,7 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(20.dp))
 
         Text(
-            text = "There are three main types of Kolam categories named Sikku Kolam, Pulli Kolam and Rangoli.",
+            text = stringResource(R.string.history_intro),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 5.dp),
@@ -82,104 +79,39 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
             lineHeight = 23.sp
         )
 
-        HistorySectionTitle("Sikku Kolam & Pulli Kolam")
-        HistoryParagraph(buildAnnotatedString {
-            bold("Where they originated:")
-            append(" ")
-            bold("Tamil Nadu (South India).")
-        })
-        HistoryParagraph(buildAnnotatedString {
-            bold("The Origin Story:")
-            append(" These practices originated out of prehistoric tribal and early agricultural communities in ancient Tamilakam. The practice started as an ")
-            bold("ecological and mathematical necessity.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_sikku_pulli_title))
+        HistoryParagraph(stringResource(R.string.history_sikku_origin_location))
+        HistoryParagraph(stringResource(R.string.history_sikku_origin_story))
         HistoryImage("ancient-village-kolam-and-harvest life.webp")
-        HistoryParagraph(buildAnnotatedString {
-            append("Ancient Tamils drew grids of dots (")
-            bold("Pulli")
-            append(") using edible rice flour to feed ants and birds.")
-        })
+        HistoryParagraph(stringResource(R.string.history_ancient_dot_grids))
         HistoryImage("sparrows-and-ants-on-kolam.webp")
-        HistoryParagraph(buildAnnotatedString {
-            append("They connected or looped around the dots because they believed closed loops trapped evil spirits at the doorstep, preventing them from entering the house.")
-        })
+        HistoryParagraph(stringResource(R.string.history_loop_belief))
         HistoryImage("evil-trapped.webp")
-        HistoryParagraph(buildAnnotatedString {
-            bold("Sikku (or Kambi) Kolam:")
-            append(" You lay down dots, but your lines ")
-            withStyle(SpanStyle(fontStyle = androidx.compose.ui.text.font.FontStyle.Italic)) {
-                append("never touch the dots")
-            }
-            append(". Instead, a single, continuous line twists, turns, and loops around the dots without ever breaking.")
-        })
+        HistoryParagraph(stringResource(R.string.history_sikku_description))
         HistoryImage("sikku-kolam-bubble-picture.png")
-        HistoryParagraph(buildAnnotatedString {
-            bold("Pulli Kolam:")
-            append(" You lay down a grid of dots and connect them using straight or geometric lines to form stars, squares, or flowers.")
-        })
+        HistoryParagraph(stringResource(R.string.history_pulli_description))
         HistoryImage("pulli-kolam-bubble-picture.png")
 
-        HistorySectionTitle("Rangoli")
-        HistoryBullet(buildAnnotatedString {
-            bold("Where it originated:")
-            append(" ")
-            bold("Maharashtra and Madhya Pradesh (Central India).")
-        })
-        HistoryBullet(buildAnnotatedString {
-            bold("The Origin Story:")
-            append(" This practice originated from the ancient ")
-            bold("pastoral and royal communities of Central India")
-            append(". Instead of drawing lines to trap spirits, it originated as a form of ")
-            bold("floor painting (*dhuli citra*)")
-            append(" to decorate courtyards for festivals and royal celebrations. Instead of using a strict dot matrix, people used their fingers to draw freehand animals, flowers, and symbols, filling them with vibrant colored dust to mimic royal carpets.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_rangoli_title))
+        HistoryBullet(stringResource(R.string.history_rangoli_origin_location))
+        HistoryBullet(stringResource(R.string.history_rangoli_origin_story))
 
-        HistorySectionTitle("Sangam Reference")
-        HistoryParagraph(buildAnnotatedString {
-            append("Early Tamil Sangam literature contains references to decorated entrances and courtyards, showing that the practice of floor decoration existed during that period.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_sangam_title))
+        HistoryParagraph(stringResource(R.string.history_sangam_description))
 
-        HistorySectionTitle("Festival Traditions")
-        HistoryParagraph(buildAnnotatedString {
-            append("During festivals and special occasions, Kolams are made larger and more elaborate to mark celebrations and welcome visitors.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_festival_title))
+        HistoryParagraph(stringResource(R.string.history_festival_description))
 
-        HistorySectionTitle("It is a Playground for Modern Computer Science")
-        HistoryParagraph(buildAnnotatedString {
-            append("In the 1970s and 1980s, a breakthrough occurred when computer scientists at ")
-            bold("Madras Christian College")
-            append(" (led by Dr. Gift Siromoney) realized that ")
-            bold("Sikku Kolams are actually advanced visual algorithms.")
-        })
-        HistoryBullet(buildAnnotatedString {
-            append("They discovered that the rules women use to loop lines around dots perfectly match ")
-            bold("formal picture languages")
-            append(" and array grammars used in computer programming.")
-        })
-        HistoryBullet(buildAnnotatedString {
-            append("Today, international researchers use Kolam structures to study ")
-            bold("knot theory")
-            append(", ")
-            bold("picture logic")
-            append(", DNA splicing models, and advanced robotics trajectory planning.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_modern_science_title))
+        HistoryParagraph(stringResource(R.string.history_modern_science_discovery))
+        HistoryBullet(stringResource(R.string.history_modern_science_languages))
+        HistoryBullet(stringResource(R.string.history_modern_science_research))
 
-        HistorySectionTitle("The \"Brahma Muhurtam\" Timing")
-        HistoryParagraph(buildAnnotatedString {
-            append("A Kolam is historically tied to a specific window of time called the ")
-            bold("Brahma Muhurtam")
-            append("—the highly auspicious period that begins roughly ")
-            bold("1.5 hours before sunrise.")
-        })
-        HistoryBullet(buildAnnotatedString {
-            append("Culturally, it was believed this is when deities pass over the earth, and an empty threshold would cause them to bypass the home.")
-        })
-        HistoryBullet(buildAnnotatedString {
-            append("Anthropologically, it served as a social signal: a freshly drawn Kolam told the entire village that the women of the household were awake, safe, and the home was ready to receive the community.")
-        })
-        HistoryParagraph(buildAnnotatedString {
-            append("Explore these glimpses of traditional Tamil village life through our collection of historical photographs.")
-        })
+        HistorySectionTitle(stringResource(R.string.history_brahma_timing_title))
+        HistoryParagraph(stringResource(R.string.history_brahma_timing_description))
+        HistoryBullet(stringResource(R.string.history_brahma_cultural_belief))
+        HistoryBullet(stringResource(R.string.history_brahma_social_signal))
+        HistoryParagraph(stringResource(R.string.history_photo_collection))
 
         listOf(
             "tamil-village-1.webp",
@@ -203,7 +135,7 @@ private fun HistoryHeading() {
     ) {
         HistoryTitleBorder(border, mirrored = true)
         Text(
-            text = "History",
+            text = stringResource(R.string.history_title),
             modifier = Modifier.padding(horizontal = 10.dp),
             color = historyGold,
             fontSize = 26.sp,
@@ -249,7 +181,7 @@ private fun HistorySectionTitle(text: String) {
 }
 
 @Composable
-private fun HistoryParagraph(text: AnnotatedString) {
+private fun HistoryParagraph(text: String) {
     Text(
         text = text,
         modifier = Modifier
@@ -262,7 +194,7 @@ private fun HistoryParagraph(text: AnnotatedString) {
 }
 
 @Composable
-private fun HistoryBullet(text: AnnotatedString) {
+private fun HistoryBullet(text: String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -340,7 +272,3 @@ private val historyImageCache = object : LruCache<String, ImageBitmap>(
             .toInt()
 }
 private val historyImageLoadLocks = ConcurrentHashMap<String, Any>()
-
-private fun androidx.compose.ui.text.AnnotatedString.Builder.bold(text: String) {
-    withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(text) }
-}

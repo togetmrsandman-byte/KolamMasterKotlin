@@ -28,6 +28,8 @@ internal class ContactDataException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
 
 internal object ContactJson {
+    const val IMAGE_ATTACHMENT_PREVIEW = "\u0000kolam:image-attachment"
+
     fun decodeConversation(value: JSONObject): ContactConversation {
         val latestMessage = value.latestContactMessage()
         return ContactConversation(
@@ -44,7 +46,7 @@ internal object ContactJson {
             latestMessagePreview = latestMessage?.let { message ->
                 message.optString("message").trim().takeIf(String::isNotBlank)
                     ?: (message.opt("image_url") as? String)?.takeIf(String::isNotBlank)
-                        ?.let { "Image attachment" }
+                        ?.let { IMAGE_ATTACHMENT_PREVIEW }
             }
         )
     }

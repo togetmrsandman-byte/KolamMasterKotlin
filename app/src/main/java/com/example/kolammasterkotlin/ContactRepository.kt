@@ -253,7 +253,7 @@ internal class ContactRepository(
             updatedAt = createdAt,
             latestMessageCreatedAt = createdAt,
             latestMessagePreview = trimmedMessage.takeIf(String::isNotBlank)
-                ?: initialImageUrl?.let { "Image attachment" }
+                ?: initialImageUrl?.let { ContactJson.IMAGE_ATTACHMENT_PREVIEW }
         )
         localCache?.upsertConversation(account.id, cachedConversation)
         localCache?.saveConversation(account.id, cachedConversation)

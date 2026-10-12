@@ -156,7 +156,7 @@ internal class ContactLocalCache(context: Context) {
                 updatedAt = message.createdAt,
                 latestMessageCreatedAt = message.createdAt,
                 latestMessagePreview = message.message.takeIf(String::isNotBlank)
-                    ?: message.imageUrl?.let { "Image attachment" }
+                    ?: message.imageUrl?.let { ContactJson.IMAGE_ATTACHMENT_PREVIEW }
             )
             saveConversation(userId, updatedConversation)
             val conversations = loadConversations(userId)?.value.orEmpty()

@@ -15,6 +15,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import com.kolammaster.app.MainActivity
 import com.kolammaster.app.R
+import com.kolammaster.app.withSelectedAppLanguage
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import kotlinx.coroutines.CancellationException
@@ -235,6 +236,7 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         unreadCount: Int,
     ) {
         logFcmDiagnostic("showNotification started; type=${payload::class.simpleName}")
+        val localizedContext = withSelectedAppLanguage()
         val support = payload as? PushNotificationPayload.Support
         val title: String
         val body: String
@@ -244,7 +246,7 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         when (payload) {
             is PushNotificationPayload.Support -> {
                 title = SUPPORT_TITLE
-                body = SUPPORT_BODY
+                body = localizedContext.getString(R.string.support_notification_body)
                 type = SUPPORT_TYPE
                 notificationTag = LauncherBadgeHelper.SUPPORT_TAG
                 notificationIdValue = LauncherBadgeHelper.SUPPORT_ID
@@ -457,7 +459,6 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         const val SUPPORT_TYPE = "support_message"
         const val ANNOUNCEMENT_TYPE = "announcement"
         const val SUPPORT_TITLE = "Kolam Master"
-        const val SUPPORT_BODY = "You have a new message from Support."
         const val ANNOUNCEMENT_BADGE_REFRESH_WORK = "announcement_badge_refresh"
         const val DIAGNOSTIC_TAG = "ANNOUNCEMENT_BADGE_DEBUG"
         const val FCM_DIAGNOSTIC_TAG = "KolamFCM"

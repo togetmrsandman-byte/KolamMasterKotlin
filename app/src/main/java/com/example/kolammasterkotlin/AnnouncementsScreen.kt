@@ -42,6 +42,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -73,7 +74,13 @@ internal fun AnnouncementsDestination(
     ) {
         actionErrorMessage?.let { message ->
             Text(
-                text = message,
+                text = if (message == NetworkErrors.DISPLAY_TEXT) {
+                    stringResource(R.string.network_error_message)
+                } else if (message == "\u0000announcements.mark_all_failed") {
+                    stringResource(R.string.announcements_mark_all_failed)
+                } else {
+                    message
+                },
                 color = KolamBronze,
                 fontSize = 13.sp,
                 modifier = Modifier.padding(bottom = 8.dp)
@@ -122,7 +129,7 @@ private fun AnnouncementsList(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "Announcement",
+            text = stringResource(R.string.announcement),
             modifier = Modifier.weight(1f),
             color = KolamGold,
             fontSize = 24.sp,
@@ -147,7 +154,7 @@ private fun AnnouncementsList(
                 )
             } else {
                 Text(
-                    "Mark All Read",
+                    stringResource(R.string.mark_all_read),
                     color = KolamButtonText
                 )
             }
@@ -177,14 +184,18 @@ private fun AnnouncementsList(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text(
-                                errorMessage,
+                                if (errorMessage == NetworkErrors.DISPLAY_TEXT) {
+                                    stringResource(R.string.network_error_message)
+                                } else {
+                                    errorMessage
+                                },
                                 color = KolamContainerSecondary,
                                 fontSize = 16.sp
                             )
-                            Button(onClick = onRetry) { Text("Retry") }
+                            Button(onClick = onRetry) { Text(stringResource(R.string.retry)) }
                         }
                         else -> Text(
-                            "There are no announcements yet.",
+                            stringResource(R.string.no_announcements),
                             color = KolamContainerSecondary,
                             fontSize = 16.sp
                         )
@@ -202,13 +213,13 @@ private fun AnnouncementsList(
         if (errorMessage != null) {
             item {
                 Text(
-                    text = "Could not refresh announcements. Showing saved announcements.",
+                    text = stringResource(R.string.saved_announcements_warning),
                     color = KolamBronze,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(vertical = 4.dp)
                 )
                 TextButton(onClick = onRetry, colors = kolamStandardButtonColors()) {
-                    Text("Retry")
+                    Text(stringResource(R.string.retry))
                 }
             }
         }
@@ -276,7 +287,7 @@ private fun AnnouncementDetail(
     var showImage by remember(announcement.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
-            Text("Back to announcements")
+            Text(stringResource(R.string.back_to_announcements))
         }
         Card(
             modifier = Modifier
@@ -292,7 +303,7 @@ private fun AnnouncementDetail(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = announcement.subject.ifBlank { "Announcement" },
+                    text = announcement.subject.ifBlank { stringResource(R.string.announcement) },
                     color = KolamText,
                     fontSize = 23.sp,
                     fontWeight = FontWeight.Bold
@@ -338,14 +349,14 @@ private fun AnnouncementImage(
     }.value
     if (bitmap == null) {
         Text(
-            text = "Image could not be loaded.",
+            text = stringResource(R.string.image_load_failed),
             color = KolamContainerSecondary,
             fontSize = 13.sp
         )
     } else {
         Image(
             bitmap = bitmap,
-            contentDescription = "Announcement image",
+            contentDescription = stringResource(R.string.announcement_image),
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(bitmap.width.toFloat() / bitmap.height.toFloat())
@@ -360,12 +371,12 @@ private fun AnnouncementImage(
                     TextButton(
                         onClick = onImageClose,
                         colors = kolamStandardButtonColors()
-                    ) { Text("Close") }
+                    ) { Text(stringResource(R.string.close)) }
                 },
                 text = {
                     Image(
                         bitmap = bitmap,
-                        contentDescription = "Announcement image",
+                        contentDescription = stringResource(R.string.announcement_image),
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.Fit
                     )

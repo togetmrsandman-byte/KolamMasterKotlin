@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.Composable
@@ -75,6 +76,11 @@ import javax.net.ssl.HttpsURLConnection
 
 private const val PREFERENCES_NAME = "kolam_master_preferences"
 private const val LANGUAGE_KEY = "language"
+private const val AUTH_SIGN_IN_PROBLEM = "\u0000auth.sign_in_problem"
+private const val AUTH_SIGN_IN_TIMEOUT = "\u0000auth.sign_in_timeout"
+private const val AUTH_GOOGLE_SIGN_IN_FAILED = "\u0000auth.google_sign_in_failed"
+private const val SUPPORT_CONVERSATION_OPEN_FAILED = "\u0000contact.conversation_open_failed"
+private const val ANNOUNCEMENTS_MARK_ALL_FAILED = "\u0000announcements.mark_all_failed"
 private const val LEGACY_VISIBLE_LESSON_COUNT_KEY = "browse-revealed-thumbnail-count"
 private const val ASSET_SETUP_PREFERENCES_NAME = "kolam_master_asset_setup"
 private const val ASSET_SETUP_COMPLETE_KEY = "initial_assets_complete"
@@ -159,19 +165,21 @@ internal class OnboardingPermissionFlow(
 
 class MainActivity : ComponentActivity() {
     private var screenState by mutableStateOf<AppScreen>(AppScreen.ChooseLanguage)
-    private var activeLanguage by mutableStateOf("English")
+    private var activeLanguage by mutableStateOf(DEFAULT_LANGUAGE_IDENTIFIER)
     private var catalogueState by mutableStateOf(LessonCatalogueUiState())
     private var unlockedCatalogueLessonIds by mutableStateOf<Set<String>>(emptySet())
     private var visibleLessonCount by mutableIntStateOf(60)
-    private var assetSetupProgress by mutableStateOf(AssetSetupProgress(0, 0, "Preparing images"))
+    private var assetSetupProgress by mutableStateOf(
+        AssetSetupProgress(0, 0, AssetSetupMessage.PreparingImages)
+    )
     private var assetSetupRunning by mutableStateOf(false)
-    private var assetSetupError by mutableStateOf<String?>(null)
+    private var assetSetupError by mutableStateOf<Int?>(null)
     private var assetSetupJob: Job? = null
     private var accountState by mutableStateOf<SupabaseAccount?>(null)
     private var isAuthProcessing by mutableStateOf(false)
-    private var authLoadingMessage by mutableStateOf<String?>(null)
+    private var authLoadingMessage by mutableStateOf<Int?>(null)
     private var authError by mutableStateOf<String?>(null)
-    private var authErrorTitle by mutableStateOf("Sign-in problem")
+    private var authErrorTitle by mutableStateOf(AUTH_SIGN_IN_PROBLEM)
     private val routeHistory = mutableListOf<AppScreen>()
     private lateinit var googleSignInClient: com.google.android.gms.auth.api.signin.GoogleSignInClient
     private lateinit var lessonUnlockRepository: LessonUnlockRepository
@@ -208,7 +216,7 @@ class MainActivity : ComponentActivity() {
                 pendingPublishLesson = null
                 return@registerForActivityResult
             }
-            authLoadingMessage = "Signing you in, please wait..."
+            authLoadingMessage = R.string.signing_in
             try {
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
@@ -223,7 +231,7 @@ class MainActivity : ComponentActivity() {
                 } else {
                     showGoogleSignInError(
                         exception,
-                        fallback = "Google sign-in could not be completed. Please try again.",
+                        fallback = AUTH_GOOGLE_SIGN_IN_FAILED,
                         exposeNonNetworkDetails = false
                     )
                 }
@@ -231,14 +239,14 @@ class MainActivity : ComponentActivity() {
                 pendingPublishLesson = null
                 showGoogleSignInError(
                     exception,
-                    fallback = "Google sign-in could not be completed. Please try again.",
+                    fallback = AUTH_GOOGLE_SIGN_IN_FAILED,
                     exposeNonNetworkDetails = false
                 )
             } catch (exception: Exception) {
                 pendingPublishLesson = null
                 showGoogleSignInError(
                     exception,
-                    fallback = "Google sign-in could not be completed. Please try again.",
+                    fallback = AUTH_GOOGLE_SIGN_IN_FAILED,
                     exposeNonNetworkDetails = false
                 )
             }
@@ -264,7 +272,7 @@ class MainActivity : ComponentActivity() {
         val savedLanguage = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
             .getString(LANGUAGE_KEY, null)
             ?.takeIf { it in supportedLanguageNames }
-        activeLanguage = savedLanguage ?: "English"
+        activeLanguage = savedLanguage ?: DEFAULT_LANGUAGE_IDENTIFIER
         lessonUnlockRepository = LessonUnlockRepository(this)
         screenState = when {
             onboardingPermissionFlow.isWaitingForPermissionResult -> AppScreen.SignInInvitation
@@ -301,7 +309,8 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             KolamMasterKotlinTheme {
-                KolamMasterApp(
+                LocalizedAppResources(activeLanguage) {
+                    KolamMasterApp(
                     screen = screenState,
                     onScreenChange = { screenState = it },
                     activeLanguage = activeLanguage,
@@ -350,8 +359,9 @@ class MainActivity : ComponentActivity() {
                         communityLessonOpenError = null
                     },
                     onCommunityLessonMissing = {
-                        communityLessonOpenError =
-                            "The lesson associated with this kolam could not be found."
+                        communityLessonOpenError = withSelectedAppLanguage().getString(
+                            R.string.community_lesson_missing
+                        )
                         goBack()
                     },
                     onPublishLesson = ::requestPublish,
@@ -376,8 +386,9 @@ class MainActivity : ComponentActivity() {
                             AnnouncementNotification(announcementId)
                     },
                     contactForegroundRefreshKey = contactForegroundRefreshKey,
-                    supportMessageVersion = supportMessageVersion
-                )
+                        supportMessageVersion = supportMessageVersion
+                    )
+                }
             }
         }
 
@@ -445,7 +456,7 @@ class MainActivity : ComponentActivity() {
     private fun beginGoogleSignIn() {
         if (isAuthProcessing) return
         isAuthProcessing = true
-        authLoadingMessage = "Signing you in, please wait..."
+        authLoadingMessage = R.string.signing_in
         authError = null
         googleChooserTimeoutJob?.cancel()
         lifecycleScope.launch {
@@ -475,8 +486,8 @@ class MainActivity : ComponentActivity() {
                     if (isAuthProcessing) {
                         googleSignInAwaitingResult = false
                         pendingPublishLesson = null
-                        authErrorTitle = "Sign-in problem"
-                        authError = "Sign-in took too long. Please try again."
+                        authErrorTitle = AUTH_SIGN_IN_PROBLEM
+                        authError = AUTH_SIGN_IN_TIMEOUT
                         isAuthProcessing = false
                         authLoadingMessage = null
                     }
@@ -496,7 +507,7 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             var waitingForPermission = false
             try {
-                authLoadingMessage = "Signing you in, please wait..."
+                authLoadingMessage = R.string.signing_in
                 val (previousAccount, newAccount) =
                     runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     SupabaseGuestAuth.currentAccount() to
@@ -547,7 +558,7 @@ class MainActivity : ComponentActivity() {
     private fun continueAsGuest() {
         if (isAuthProcessing) return
         isAuthProcessing = true
-        authLoadingMessage = "Continuing as a guest, please wait..."
+        authLoadingMessage = R.string.continuing_as_guest
         authError = null
         lifecycleScope.launch {
             var waitingForPermission = false
@@ -577,8 +588,8 @@ class MainActivity : ComponentActivity() {
 
     private fun requestPublish(lesson: PublishLessonDetails) {
         if (!hasValidatedInternetConnection()) {
-            authErrorTitle = "No internet connection"
-            authError = "Please connect to the internet and try again."
+            authErrorTitle = NetworkErrors.TITLE
+            authError = NetworkErrors.MESSAGE
             return
         }
         pendingPublishLesson = lesson
@@ -690,7 +701,11 @@ class MainActivity : ComponentActivity() {
         screenState = AppScreen.DownloadingAssets
         assetSetupRunning = true
         assetSetupError = null
-        assetSetupProgress = AssetSetupProgress(0, 0, "Preparing images")
+        assetSetupProgress = AssetSetupProgress(
+            0,
+            0,
+            AssetSetupMessage.PreparingImages
+        )
         assetSetupJob = lifecycleScope.launch {
             try {
                 val catalogueRepository = LessonCatalogueRepository(this@MainActivity)
@@ -738,8 +753,7 @@ class MainActivity : ComponentActivity() {
             } catch (exception: Exception) {
                 Log.e("InitialAssetSetup", "Could not prepare initial app images.", exception)
                 assetSetupRunning = false
-                assetSetupError =
-                    "Some images could not be downloaded. Check your connection and retry."
+                assetSetupError = R.string.some_images_failed
             }
         }
     }
@@ -747,7 +761,7 @@ class MainActivity : ComponentActivity() {
     private fun signOutToGuest() {
         if (isAuthProcessing) return
         isAuthProcessing = true
-        authLoadingMessage = "Signing you out, please wait..."
+        authLoadingMessage = R.string.signing_out
         authError = null
         lifecycleScope.launch {
             try {
@@ -781,11 +795,11 @@ class MainActivity : ComponentActivity() {
 
     private fun showAuthError(
         exception: Exception,
-        fallback: String = "Authentication failed. Please try again.",
+        fallback: String = AUTH_SIGN_IN_PROBLEM,
         exposeNonNetworkDetails: Boolean = true
     ) {
         val networkFailure = NetworkErrors.isNetworkFailure(exception)
-        authErrorTitle = if (networkFailure) NetworkErrors.TITLE else "Sign-in problem"
+        authErrorTitle = if (networkFailure) NetworkErrors.TITLE else AUTH_SIGN_IN_PROBLEM
         authError = if (networkFailure) {
             NetworkErrors.MESSAGE
         } else if (exposeNonNetworkDetails && !NetworkErrors.isHttpFailure(exception)) {
@@ -798,7 +812,7 @@ class MainActivity : ComponentActivity() {
 
     private fun showGoogleSignInError(
         exception: Exception,
-        fallback: String = "Authentication failed. Please try again.",
+        fallback: String = AUTH_GOOGLE_SIGN_IN_FAILED,
         exposeNonNetworkDetails: Boolean = true
     ) {
         val networkMessage = NetworkErrors.googleSignInNetworkMessage(exception)
@@ -1214,7 +1228,7 @@ class MainActivity : ComponentActivity() {
                 Log.e("KmpLesson", "Unexpected lesson loading failure", e)
                 showLessonLoadFailure(
                     e.message?.takeIf(String::isNotBlank)
-                        ?: "Could not load this lesson. Please try again.",
+                        ?: withSelectedAppLanguage().getString(R.string.lessons_load_failed),
                     fromCommunity
                 )
             } finally {
@@ -1310,14 +1324,14 @@ private fun KolamMasterApp(
     visibleLessonCount: Int,
     assetSetupProgress: AssetSetupProgress,
     isAssetSetupRunning: Boolean,
-    assetSetupError: String?,
+    assetSetupError: Int?,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     publishPickerLesson: PublishLessonDetails?,
     onPublishLesson: (PublishLessonDetails) -> Unit,
     onDismissPublishPicker: () -> Unit,
     onPublishImagesSelected: (PublishLessonDetails, List<Uri>, Set<Uri>) -> Unit,
-    authLoadingMessage: String?,
+    authLoadingMessage: Int?,
     authError: String?,
     authErrorTitle: String,
     onNavigate: (AppScreen) -> Unit,
@@ -1351,6 +1365,7 @@ private fun KolamMasterApp(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val localizedContext = context.withSelectedAppLanguage()
     val browseCatalogueState = remember { BrowseCatalogueState() }
     val contactAccountId = account?.takeUnless { it.isGuest }?.id
     val contactLocalCache = remember(context) { ContactLocalCache(context) }
@@ -1454,9 +1469,9 @@ private fun KolamMasterApp(
             throw exception
         } catch (exception: Exception) {
             communityError = if (NetworkErrors.isNetworkFailure(exception)) {
-                "Could not load the community. Check your connection and try again."
+                localizedContext.getString(R.string.community_load_failed_network)
             } else {
-                "Could not load the community. Please try again."
+                localizedContext.getString(R.string.community_load_failed)
             }
         } finally {
             communityLoading = false
@@ -1528,11 +1543,11 @@ private fun KolamMasterApp(
                 announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
                     NetworkErrors.DISPLAY_TEXT
                 } else {
-                    "Could not load announcements. Please try again."
+                    localizedContext.getString(R.string.announcements_load_failed)
                 }
             } else {
                 announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
-                    "Could not refresh announcements. Showing saved announcements."
+                    localizedContext.getString(R.string.announcements_refresh_saved)
                 } else {
                     null
                 }
@@ -1581,11 +1596,11 @@ private fun KolamMasterApp(
                     announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
                         NetworkErrors.DISPLAY_TEXT
                     } else {
-                        "Could not load announcements. Please try again."
+                        localizedContext.getString(R.string.announcements_load_failed)
                     }
                 } else if (NetworkErrors.isNetworkFailure(exception)) {
                     announcementError =
-                        "Could not refresh announcements. Showing saved announcements."
+                        localizedContext.getString(R.string.announcements_refresh_saved)
                 }
                 if (NetworkErrors.isNetworkFailure(exception)) {
                     announcementNetworkRetryAction = { announcementRefreshKey++ }
@@ -1625,7 +1640,7 @@ private fun KolamMasterApp(
             announcementActionError = if (NetworkErrors.isNetworkFailure(exception)) {
                 NetworkErrors.DISPLAY_TEXT
             } else {
-                "Could not mark this announcement as read."
+                localizedContext.getString(R.string.announcement_mark_failed)
             }
             announcementNetworkRetryAction = if (NetworkErrors.isNetworkFailure(exception)) {
                 { announcementMarkReadRetryKey++ }
@@ -1701,7 +1716,7 @@ private fun KolamMasterApp(
                 contactLoadError = if (NetworkErrors.isNetworkFailure(exception)) {
                     NetworkErrors.DISPLAY_TEXT
                 } else {
-                    "Could not load conversations. Please try again."
+                    localizedContext.getString(R.string.conversations_load_failed)
                 }
             }
         } finally {
@@ -1797,7 +1812,7 @@ private fun KolamMasterApp(
             supportNotificationError = if (NetworkErrors.isNetworkFailure(exception)) {
                 NetworkErrors.MESSAGE
             } else {
-                "This support conversation could not be opened."
+                SUPPORT_CONVERSATION_OPEN_FAILED
             }
             onNavigate(AppScreen.ContactUs)
             onSupportNotificationHandled()
@@ -1837,7 +1852,7 @@ private fun KolamMasterApp(
                 announcementActionError = if (NetworkErrors.isNetworkFailure(exception)) {
                     NetworkErrors.DISPLAY_TEXT
                 } else {
-                    "Could not mark announcements as read."
+                    ANNOUNCEMENTS_MARK_ALL_FAILED
                 }
                 if (NetworkErrors.isNetworkFailure(exception)) {
                     announcementNetworkRetryAction = {
@@ -1893,8 +1908,16 @@ private fun KolamMasterApp(
                 onNavigate(AppScreen.ContactUs)
             }
             DrawerAction.Announcements -> onNavigate(AppScreen.Announcements)
-            DrawerAction.UpdateApp -> openStoreFlow(context, { storeDialog = it }, "Update App")
-            DrawerAction.RateApp -> openStoreFlow(context, { storeDialog = it }, "Rate App")
+            DrawerAction.UpdateApp -> openStoreFlow(
+                context,
+                { storeDialog = it },
+                context.withSelectedAppLanguage().getString(R.string.update_app)
+            )
+            DrawerAction.RateApp -> openStoreFlow(
+                context,
+                { storeDialog = it },
+                context.withSelectedAppLanguage().getString(R.string.rate_app)
+            )
         }
     }
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
@@ -2117,19 +2140,31 @@ private fun KolamMasterApp(
 
     StoreActionDialog(
         title = storeDialog,
-        message = "Connect to the internet to continue.",
+        message = stringResource(R.string.connect_internet_to_continue),
         onDismiss = { storeDialog = null }
     )
     supportNotificationError?.let { message ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { supportNotificationError = null },
-            title = { androidx.compose.material3.Text("Contact Us") },
-            text = { androidx.compose.material3.Text(message) },
+            title = {
+                androidx.compose.material3.Text(stringResource(R.string.contact_us))
+            },
+            text = {
+                androidx.compose.material3.Text(
+                    if (message == SUPPORT_CONVERSATION_OPEN_FAILED) {
+                        stringResource(R.string.support_conversation_open_failed)
+                    } else if (message == NetworkErrors.MESSAGE) {
+                        stringResource(R.string.network_error_message)
+                    } else {
+                        message
+                    }
+                )
+            },
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = { supportNotificationError = null },
                     colors = kolamStandardButtonColors()
-                ) { androidx.compose.material3.Text("OK") }
+                ) { androidx.compose.material3.Text(stringResource(R.string.ok)) }
             }
         )
     }
@@ -2167,14 +2202,36 @@ private fun KolamMasterApp(
     authError?.let { message ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = onDismissAuthError,
-            title = { androidx.compose.material3.Text(authErrorTitle) },
-            text = { androidx.compose.material3.Text(message) },
+            title = {
+                androidx.compose.material3.Text(
+                    when (authErrorTitle) {
+                        NetworkErrors.TITLE, "No internet connection" ->
+                            stringResource(R.string.network_error_title)
+                        AUTH_SIGN_IN_PROBLEM ->
+                            stringResource(R.string.sign_in_problem)
+                        else -> authErrorTitle
+                    }
+                )
+            },
+            text = {
+                androidx.compose.material3.Text(
+                    when (message) {
+                        NetworkErrors.MESSAGE, "Please connect to the internet and try again." ->
+                            stringResource(R.string.network_error_message)
+                        AUTH_SIGN_IN_TIMEOUT ->
+                            stringResource(R.string.sign_in_timed_out)
+                        AUTH_GOOGLE_SIGN_IN_FAILED ->
+                            stringResource(R.string.google_signin_failed)
+                        else -> message
+                    }
+                )
+            },
             confirmButton = {
                 androidx.compose.material3.TextButton(
                     onClick = onDismissAuthError,
                     colors = kolamStandardButtonColors()
                 ) {
-                    androidx.compose.material3.Text("OK")
+                    androidx.compose.material3.Text(stringResource(R.string.ok))
                 }
             }
         )
@@ -2207,7 +2264,7 @@ private fun AppScreenContent(
     visibleLessonCount: Int,
     assetSetupProgress: AssetSetupProgress,
     isAssetSetupRunning: Boolean,
-    assetSetupError: String?,
+    assetSetupError: Int?,
     account: SupabaseAccount?,
     isAuthProcessing: Boolean,
     onNavigate: (AppScreen) -> Unit,
@@ -2413,7 +2470,7 @@ private fun AppScreenContent(
         )
         AppScreen.History -> HistoryScreen(Modifier.fillMaxSize())
         AppScreen.Loading -> androidx.compose.material3.Text(
-            text = "Loading lesson...",
+            text = stringResource(R.string.loading_lesson),
             color = KolamText,
             modifier = Modifier.padding(24.dp)
         )
@@ -2433,7 +2490,7 @@ private fun AppScreenContent(
                     strokeWidth = 2.dp
                 )
                 androidx.compose.material3.Text(
-                    text = "Please wait while downloading your lesson.",
+                    text = stringResource(R.string.downloading_lesson),
                     color = KolamText
                 )
             }
@@ -2467,19 +2524,22 @@ private fun AppScreenContent(
         ) {
             if (screen.message == NetworkErrors.DISPLAY_TEXT) {
                 androidx.compose.material3.Text(
-                    NetworkErrors.TITLE,
+                    stringResource(R.string.network_error_title),
                     color = KolamText,
                     fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                 )
-                androidx.compose.material3.Text(NetworkErrors.MESSAGE, color = KolamText)
+                androidx.compose.material3.Text(
+                    stringResource(R.string.network_error_message),
+                    color = KolamText
+                )
             } else {
                 androidx.compose.material3.Text(
-                    "Could not load lesson: ${screen.message}",
+                    stringResource(R.string.lesson_error_detail, screen.message),
                     color = KolamText
                 )
             }
             androidx.compose.material3.Button(onClick = onGoBack) {
-                androidx.compose.material3.Text("Back")
+                androidx.compose.material3.Text(stringResource(R.string.back))
             }
         }
     }

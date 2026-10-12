@@ -16,6 +16,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
@@ -43,24 +44,24 @@ internal fun GalleryPublishPickerSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "CONGRATULATIONS!",
+                text = stringResource(R.string.congratulations),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = publishSheetGold
             )
             Text(
-                text = "Your kolam is complete!",
+                text = stringResource(R.string.your_kolam_is_complete),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = KolamText
             )
             Text(
-                text = "Share your beautiful kolam with the Kolam Master community for everyone to see and enjoy.",
+                text = stringResource(R.string.share_kolam_community),
                 style = MaterialTheme.typography.bodyLarge,
                 color = KolamText
             )
             Text(
-                text = "Continue to add a photo of your finished kolam and share it with the community.",
+                text = stringResource(R.string.continue_finished_kolam),
                 style = MaterialTheme.typography.bodyMedium,
                 color = KolamMutedText
             )
@@ -72,14 +73,14 @@ internal fun GalleryPublishPickerSheet(
                     contentColor = KolamButtonText
                 )
             ) {
-                Text("Proceed")
+                Text(stringResource(R.string.proceed))
             }
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 colors = kolamStandardButtonColors()
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     }

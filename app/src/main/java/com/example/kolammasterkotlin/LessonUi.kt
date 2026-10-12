@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.PI
 import kotlin.math.cos
@@ -218,7 +219,7 @@ internal fun PlaybackSpeedControl(
                 bottom = 10.dp
             )
         ) {
-            Text("Speed ${playbackSpeedLabel(speed)}", maxLines = 1)
+            Text(stringResource(R.string.speed_label, playbackSpeedLabel(speed)), maxLines = 1)
         }
         DropdownMenu(
             expanded = expanded,

@@ -37,6 +37,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.hypot
 import kotlin.math.min
@@ -108,10 +109,14 @@ internal fun SikkuLessonScreen(
         val inDotsStage = started && !complete && stepIndex < 0
         LessonStatusRow(
             text = when {
-                complete -> "Kolam Completed"
-                !started -> "Preview"
+                complete -> stringResource(R.string.kolam_completed)
+                !started -> stringResource(R.string.preview)
                 inDotsStage -> lesson.dotInformation
-                else -> "Step ${lesson.steps[stepIndex].number} of ${lesson.steps.size}"
+                else -> stringResource(
+                    R.string.step_progress,
+                    lesson.steps[stepIndex].number,
+                    lesson.steps.size
+                )
             },
             shining = complete,
             containerColor = if (complete) KolamGold else KolamButtonYellow,
@@ -152,7 +157,7 @@ internal fun SikkuLessonScreen(
                 onClick = { started = true },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Start")
+                Text(stringResource(R.string.start))
             }
             else -> Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -180,7 +185,7 @@ internal fun SikkuLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text("Previous")
+                    Text(stringResource(R.string.previous))
                 }
                 Button(
                     onClick = {
@@ -205,7 +210,7 @@ internal fun SikkuLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text("Replay")
+                    Text(stringResource(R.string.replay))
                 }
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
@@ -214,9 +219,9 @@ internal fun SikkuLessonScreen(
                 )
                 LessonActionButton(
                     text = when {
-                        complete -> "Publish"
-                        stepIndex == lesson.steps.lastIndex -> "Finish"
-                        else -> "Next"
+                        complete -> stringResource(R.string.publish)
+                        stepIndex == lesson.steps.lastIndex -> stringResource(R.string.finish)
+                        else -> stringResource(R.string.next)
                     },
                     onClick = {
                         if (complete) {

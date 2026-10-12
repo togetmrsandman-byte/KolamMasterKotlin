@@ -55,6 +55,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -111,6 +112,28 @@ internal fun GalleryPublishScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val maxImagesMessage = stringResource(R.string.publish_max_images, MAX_PUBLISH_IMAGES)
+    val imageConversionFailedMessage = stringResource(R.string.image_conversion_failed)
+    val capturedPhotoMissingMessage = stringResource(R.string.captured_photo_missing)
+    val cameraCaptureCancelledMessage = stringResource(R.string.camera_capture_cancelled)
+    val cameraPermissionAccessMessage = stringResource(R.string.camera_permission_access)
+    val cameraPermissionRequestFailedMessage =
+        stringResource(R.string.camera_permission_request_failed)
+    val galleryOpenFailedMessage = stringResource(R.string.gallery_open_failed)
+    val cameraOpenFailedMessage = stringResource(R.string.camera_open_failed)
+    val unableShowRewardedAdMessage = stringResource(R.string.unable_show_rewarded_ad)
+    val publishSubmitFailedMessage = stringResource(R.string.kolam_submit_failed)
+    val noRewardMessage = stringResource(R.string.no_reward_not_submitted)
+    val rewardedAdFailedPattern = stringResource(R.string.rewarded_ad_failed)
+    val preparePublishFailedMessage = stringResource(R.string.prepare_publish_failed)
+    val submittedPublishingMessage = stringResource(R.string.uploading_photos)
+    val loadAdMessage = stringResource(R.string.loading_rewarded_ad)
+    val publishSignInMessage = stringResource(R.string.publish_signin_required)
+    val waitConversionMessage = stringResource(R.string.publish_wait_conversion)
+    val creatorNameRequiredMessage = stringResource(R.string.publish_enter_creator_name)
+    val photoRequiredMessage = stringResource(R.string.publish_add_photo)
+    val missingLessonDetailsMessage = stringResource(R.string.publish_missing_lesson_details)
+    val publishSuccessMessage = stringResource(R.string.publish_success_message)
     val photos = remember { mutableStateListOf<GalleryPublishPhoto>() }
     val convertingPhotos = remember { mutableStateListOf<Uri>() }
     val processingUris = remember { mutableSetOf<String>() }
@@ -144,7 +167,7 @@ internal fun GalleryPublishScreen(
         val rejected = distinctUris.drop(availableSlots)
         rejected.forEach { processingUris.remove(it.toString()) }
         if (rejected.isNotEmpty()) {
-            message = "You can add up to $MAX_PUBLISH_IMAGES images."
+            message = maxImagesMessage
         }
         if (accepted.isEmpty()) {
             onFinished?.invoke()
@@ -168,7 +191,7 @@ internal fun GalleryPublishScreen(
                 } catch (exception: Exception) {
                     Log.e("GalleryPublishImage", "Image conversion failed.", exception)
                     message = exception.message?.takeIf(String::isNotBlank)
-                        ?: "This image could not be converted. Please choose a smaller image and try again."
+                        ?: imageConversionFailedMessage
                 } finally {
                     processingUris.remove(key)
                     convertingPhotos.remove(uri)
@@ -206,7 +229,7 @@ internal fun GalleryPublishScreen(
         val uri = temporaryCameraUri
         temporaryCameraUri = null
         if (uri == null) {
-            message = "The captured photo could not be located. Please take it again."
+            message = capturedPhotoMissingMessage
             return@rememberLauncherForActivityResult
         }
         if (captured) {
@@ -214,7 +237,7 @@ internal fun GalleryPublishScreen(
                 context.contentResolver.delete(uri, null, null)
             }
         } else {
-            message = "Camera capture cancelled."
+            message = cameraCaptureCancelledMessage
             context.contentResolver.delete(uri, null, null)
         }
     }
@@ -238,10 +261,10 @@ internal fun GalleryPublishScreen(
             } catch (exception: Exception) {
                 temporaryCameraUri?.let { context.contentResolver.delete(it, null, null) }
                 temporaryCameraUri = null
-                message = exception.message ?: "The camera could not be opened."
+                message = exception.message ?: cameraOpenFailedMessage
             }
         } else {
-            photoPickerError = "Allow camera access to take a photo."
+            photoPickerError = cameraPermissionAccessMessage
         }
     }
 
@@ -257,13 +280,13 @@ internal fun GalleryPublishScreen(
     photoPickerError?.let { error ->
         AlertDialog(
             onDismissRequest = { photoPickerError = null },
-            title = { Text("Photo unavailable") },
+            title = { Text(stringResource(R.string.publish_photo_unavailable)) },
             text = { Text(error) },
             confirmButton = {
                 TextButton(
                     onClick = { photoPickerError = null },
                     colors = kolamStandardButtonColors()
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.ok)) }
             }
         )
     }
@@ -301,18 +324,14 @@ internal fun GalleryPublishScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                "Submitted for Review",
+                                stringResource(R.string.submitted_for_review),
                                 color = KolamGold,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                             Text(
-                                text = "Thank you for submitting your kolam!\n\n" +
-                                    "Your kolam is now waiting for admin approval. Once approved, " +
-                                    "it will appear in the Community section for everyone to enjoy.\n\n" +
-                                    "We’ll notify you when your kolam is approved and ready to view.\n\n" +
-                                    "Thank you for being part of our community!",
+                                text = publishSuccessMessage,
                                 color = KolamMutedText,
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -322,7 +341,7 @@ internal fun GalleryPublishScreen(
                         }
                     }
                     Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                        Text("Done")
+                        Text(stringResource(R.string.done))
                     }
                 }
             }
@@ -335,7 +354,7 @@ internal fun GalleryPublishScreen(
         ) {
             item {
                 Text(
-                    "Share your kolam",
+                    stringResource(R.string.share_your_kolam),
                     color = KolamGold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold
@@ -354,8 +373,8 @@ internal fun GalleryPublishScreen(
                         message = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Creator name") },
-                    placeholder = { Text("Enter your name") },
+                    label = { Text(stringResource(R.string.creator_name)) },
+                    placeholder = { Text(stringResource(R.string.enter_your_name)) },
                     singleLine = true,
                     colors = publishTextFieldColors()
                 )
@@ -365,14 +384,14 @@ internal fun GalleryPublishScreen(
                     value = creatorEmail,
                     onValueChange = {},
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Email") },
-                    placeholder = { Text("Email unavailable") },
+                    label = { Text(stringResource(R.string.email)) },
+                    placeholder = { Text(stringResource(R.string.email_unavailable)) },
                     readOnly = true,
                     minLines = 1,
                     maxLines = 3,
                     textStyle = TextStyle(color = KolamMutedText),
                     supportingText = if (creatorEmail.isBlank()) {
-                        { Text("Email is unavailable for this account.") }
+                        { Text(stringResource(R.string.email_unavailable_account)) }
                     } else {
                         null
                     },
@@ -387,14 +406,14 @@ internal fun GalleryPublishScreen(
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
                             } catch (exception: Exception) {
                                 photoPickerError = exception.message
-                                    ?: "Camera permission could not be requested."
+                                    ?: cameraPermissionRequestFailedMessage
                             }
                         },
                         enabled = !isBusy && !isPreparingInitialImages &&
                             photos.size + convertingPhotos.size < MAX_PUBLISH_IMAGES,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Take Photo")
+                        Text(stringResource(R.string.take_photo))
                     }
                     Button(
                         onClick = {
@@ -402,18 +421,18 @@ internal fun GalleryPublishScreen(
                                 galleryLauncher.launch("image/*")
                             } catch (exception: Exception) {
                                 photoPickerError = exception.message
-                                    ?: "The gallery could not be opened."
+                                    ?: galleryOpenFailedMessage
                             }
                         },
                         enabled = !isBusy && !isPreparingInitialImages &&
                             photos.size + convertingPhotos.size < MAX_PUBLISH_IMAGES,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text("Choose Photo")
+                        Text(stringResource(R.string.choose_photo))
                     }
                 }
                 Text(
-                    "Choose up to five images. Each upload must be under 10 MiB.",
+                    stringResource(R.string.publish_image_limits),
                     color = KolamMutedText,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 6.dp)
@@ -444,7 +463,7 @@ internal fun GalleryPublishScreen(
             }
             item {
                 Text(
-                    "A rewarded ad is required to submit this kolam for admin review.",
+                    stringResource(R.string.publish_rewarded_ad_required),
                     color = KolamMutedText,
                     fontSize = 13.sp
                 )
@@ -463,39 +482,39 @@ internal fun GalleryPublishScreen(
                     onClick = {
                         val currentAccount = account
                         if (currentAccount == null || currentAccount.isGuest) {
-                            message = "Sign in with Google before publishing."
+                            message = publishSignInMessage
                             return@Button
                         }
                         if (processingCount > 0) {
-                            message = "Please wait for image conversion to finish."
+                            message = waitConversionMessage
                             return@Button
                         }
                         val missingFields = buildList {
-                            if (creatorName.isBlank()) add("enter a creator name")
+                            if (creatorName.isBlank()) add(creatorNameRequiredMessage)
                             if (photos.none { it.webpBytes.isNotEmpty() }) {
-                                add("add at least one readable photo")
+                                add(photoRequiredMessage)
                             }
                         }
                         if (missingFields.isNotEmpty()) {
-                            message = "Please ${missingFields.joinToString(", ")}."
+                            message = missingFields.joinToString(" ")
                             return@Button
                         }
                         if (lesson.category.isNullOrBlank() || lesson.difficulty.isNullOrBlank()) {
-                            message = "Required lesson details are unavailable. This kolam cannot be submitted yet."
+                            message = missingLessonDetailsMessage
                             return@Button
                         }
                         isBusy = true
-                        message = "Loading rewarded ad..."
+                        message = loadAdMessage
                         scope.launch {
                             try {
                                 val activity = context.findActivity()
-                                    ?: throw IllegalStateException("Unable to show a rewarded ad right now.")
+                                    ?: throw IllegalStateException(unableShowRewardedAdMessage)
                                 showPublishRewardedAd(
                                     activity = activity,
                                     onRewardEarned = {
                                         scope.launch {
                                             try {
-                                                message = "Uploading photos and submitting..."
+                                                message = submittedPublishingMessage
                                                 repository.submit(
                                                     currentAccount,
                                                     lesson,
@@ -511,7 +530,7 @@ internal fun GalleryPublishScreen(
                                             } catch (exception: Exception) {
                                                 message = NetworkErrors.messageFor(
                                                     exception,
-                                                    "The kolam could not be submitted. Please try again."
+                                                    publishSubmitFailedMessage
                                                 )
                                                 isBusy = false
                                             }
@@ -519,11 +538,15 @@ internal fun GalleryPublishScreen(
                                     },
                                     onDismissedWithoutReward = {
                                         isBusy = false
-                                        message = "No reward was earned, so the kolam was not submitted."
+                                        message = noRewardMessage
                                     },
                                     onFailed = { adError ->
                                         isBusy = false
-                                        message = "The rewarded ad could not be shown (${adError.code}). Please try again."
+                                        message = String.format(
+                                            java.util.Locale.getDefault(),
+                                            rewardedAdFailedPattern,
+                                            adError.code
+                                        )
                                     }
                                 )
                             } catch (exception: CancellationException) {
@@ -532,7 +555,7 @@ internal fun GalleryPublishScreen(
                                 isBusy = false
                                 message = NetworkErrors.messageFor(
                                     exception,
-                                    "The kolam could not be prepared for submission."
+                                    preparePublishFailedMessage
                                 )
                             }
                         }
@@ -545,8 +568,10 @@ internal fun GalleryPublishScreen(
                     )
                 ) {
                     Text(
-                        if (isPreparingInitialImages) "Preparing photos..."
-                        else "Watch Ad and Submit"
+                        stringResource(
+                            if (isPreparingInitialImages) R.string.preparing_photos
+                            else R.string.watch_ad_submit
+                        )
                     )
                 }
             }
@@ -558,7 +583,7 @@ internal fun GalleryPublishScreen(
                     border = BorderStroke(1.dp, KolamButtonYellow),
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text("Cancel")
+                    Text(stringResource(R.string.cancel))
                 }
             }
         }
@@ -598,7 +623,7 @@ internal fun GalleryPublishScreen(
                         strokeWidth = 3.dp
                     )
                     Text(
-                        text = message ?: "Publishing...",
+                        text = message ?: stringResource(R.string.publishing),
                         modifier = Modifier.weight(1f),
                         color = KolamText,
                         fontSize = 16.sp,
@@ -730,7 +755,7 @@ private fun PublishPhotoPreview(
     ) {
         Image(
             bitmap = photo.preview,
-            contentDescription = "Selected kolam photo ${index + 1}",
+            contentDescription = stringResource(R.string.selected_kolam_photo, index + 1),
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
@@ -749,7 +774,7 @@ private fun PublishPhotoPreview(
                 contentColor = KolamButtonText
             )
         ) {
-            Text("Remove")
+            Text(stringResource(R.string.remove))
         }
     }
 }
@@ -771,7 +796,7 @@ private fun ConvertingPhotoPreview() {
             strokeWidth = 3.dp
         )
         Text(
-            text = "Converting image…",
+            text = stringResource(R.string.converting_image),
             color = KolamText,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 8.dp)

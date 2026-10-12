@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
@@ -86,9 +87,13 @@ internal fun RangoliLessonScreen(
     ) {
         LessonStatusRow(
             text = when {
-                complete -> "Kolam Completed"
-                !started -> "Preview"
-                else -> "Step ${currentStep?.number} of ${lesson.steps.size}"
+                complete -> stringResource(R.string.kolam_completed)
+                !started -> stringResource(R.string.preview)
+                else -> stringResource(
+                    R.string.step_progress,
+                    currentStep?.number ?: 0,
+                    lesson.steps.size
+                )
             },
             shining = complete,
             containerColor = if (complete) KolamGold else KolamButtonYellow,
@@ -127,7 +132,7 @@ internal fun RangoliLessonScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Start")
+                Text(stringResource(R.string.start))
             }
             else -> Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -155,7 +160,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text("Previous")
+                    Text(stringResource(R.string.previous))
                 }
                 Button(
                     onClick = {
@@ -180,7 +185,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text("Replay")
+                    Text(stringResource(R.string.replay))
                 }
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
@@ -189,9 +194,9 @@ internal fun RangoliLessonScreen(
                 )
                 LessonActionButton(
                     text = when {
-                        complete -> "Publish"
-                        stepIndex == lesson.steps.lastIndex -> "Finish"
-                        else -> "Next"
+                        complete -> stringResource(R.string.publish)
+                        stepIndex == lesson.steps.lastIndex -> stringResource(R.string.finish)
+                        else -> stringResource(R.string.next)
                     },
                     onClick = {
                         if (complete) {

@@ -57,6 +57,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -77,6 +78,16 @@ internal fun ContactNewConversationDestination(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val contactUsTitle = stringResource(R.string.contact_us)
+    val cameraPermissionTitle = stringResource(R.string.contact_camera_permission_title)
+    val cameraPermissionMessage = stringResource(R.string.contact_camera_permission_message)
+    val selectedImageReadFailed = stringResource(R.string.contact_image_read_failed)
+    val cameraOpenFailed = stringResource(R.string.camera_open_failed)
+    val subjectRequired = stringResource(R.string.subject_required)
+    val messageRequired = stringResource(R.string.message_required)
+    val phoneRequired = stringResource(R.string.valid_phone_required)
+    val imageSizeLimit = stringResource(R.string.contact_image_size_limit)
+    val sendFailed = stringResource(R.string.contact_send_failed)
     var phone by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(defaultContactCountryCallingCode) }
     var isCountryPickerOpen by remember { mutableStateOf(false) }
@@ -101,9 +112,9 @@ internal fun ContactNewConversationDestination(
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
-                errorTitle = "Contact Us"
+                errorTitle = contactUsTitle
                 errorMessage = exception.message
-                    ?: "The selected image could not be read."
+                    ?: selectedImageReadFailed
             } finally {
                 if (deleteAfterRead) {
                     context.contentResolver.delete(uri, null, null)
@@ -149,12 +160,12 @@ internal fun ContactNewConversationDestination(
             } catch (exception: Exception) {
                 cameraUri?.let { context.contentResolver.delete(it, null, null) }
                 cameraUri = null
-                errorTitle = "Contact Us"
-                errorMessage = exception.message ?: "The camera could not be opened."
+                errorTitle = contactUsTitle
+                errorMessage = exception.message ?: cameraOpenFailed
             }
         } else {
-            errorTitle = "Camera permission"
-            errorMessage = "Allow camera access to take a Contact Us photo."
+            errorTitle = cameraPermissionTitle
+            errorMessage = cameraPermissionMessage
         }
     }
 
@@ -165,7 +176,7 @@ internal fun ContactNewConversationDestination(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("New Conversation", color = KolamGold, fontSize = 28.sp)
+        Text(stringResource(R.string.new_conversation), color = KolamGold, fontSize = 28.sp)
         Spacer(Modifier.height(24.dp))
         Column(
             modifier = Modifier
@@ -183,7 +194,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Phone number", color = KolamContainerSecondary) },
+                label = { Text(stringResource(R.string.phone_number), color = KolamContainerSecondary) },
                 leadingIcon = {
                     Row(
                         modifier = Modifier
@@ -226,7 +237,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Subject", color = KolamContainerSecondary) },
+                label = { Text(stringResource(R.string.subject), color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -239,7 +250,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text("Message", color = KolamContainerSecondary) },
+                label = { Text(stringResource(R.string.message), color = KolamContainerSecondary) },
                 minLines = 4,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -269,10 +280,10 @@ internal fun ContactNewConversationDestination(
                     val trimmedSubject = subject.trim()
                     val trimmedMessage = message.trim()
                     validationError = when {
-                        trimmedSubject.isEmpty() -> "Please enter a subject."
-                        trimmedMessage.isEmpty() -> "Please enter a message."
+                        trimmedSubject.isEmpty() -> subjectRequired
+                        trimmedMessage.isEmpty() -> messageRequired
                         !isValidLocalContactPhone(phone) ->
-                            "Please enter a valid phone number using digits only."
+                            phoneRequired
                         else -> null
                     }
                     if (validationError != null) return@Button
@@ -285,7 +296,7 @@ internal fun ContactNewConversationDestination(
                                     bitmap.toContactWebp()
                                 }.also { bytes ->
                                     require(bytes.size <= MAX_CONTACT_IMAGE_BYTES) {
-                                        "Image must be 10 MB or smaller after WebP conversion."
+                                        imageSizeLimit
                                     }
                                 }
                             }
@@ -302,9 +313,8 @@ internal fun ContactNewConversationDestination(
                                 errorTitle = NetworkErrors.TITLE
                                 errorMessage = NetworkErrors.MESSAGE
                             } else {
-                                errorTitle = "Contact Us"
-                                errorMessage =
-                                    "Could not send your message. Please try again."
+                                errorTitle = contactUsTitle
+                                errorMessage = sendFailed
                             }
                         } finally {
                             isSubmitting = false
@@ -325,9 +335,9 @@ internal fun ContactNewConversationDestination(
                         strokeWidth = 2.dp
                     )
                     Spacer(Modifier.width(6.dp))
-                    Text("Sending...")
+                    Text(stringResource(R.string.sending))
                 } else {
-                    Text("Send")
+                    Text(stringResource(R.string.send))
                 }
             }
         }
@@ -373,7 +383,7 @@ internal fun ContactNewConversationDestination(
                         errorMessage = null
                     },
                     colors = kolamStandardButtonColors()
-                ) { Text("OK") }
+                ) { Text(stringResource(R.string.ok)) }
             },
             containerColor = KolamCoolSilver
         )
@@ -405,11 +415,11 @@ internal fun CountryCallingCodeDialog(
                 )
                 .padding(16.dp)
         ) {
-            Text("Select country", color = KolamText, fontSize = 20.sp)
+            Text(stringResource(R.string.select_country), color = KolamText, fontSize = 20.sp)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text("Search countries", color = KolamContainerSecondary) },
+                label = { Text(stringResource(R.string.search_countries), color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -455,7 +465,7 @@ internal fun CountryCallingCodeDialog(
                 modifier = Modifier.align(Alignment.End),
                 colors = kolamStandardButtonColors()
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     }
@@ -485,7 +495,7 @@ internal fun ContactNewConversationAttachment(
                 disabledContentColor = KolamButtonText
             )
         ) {
-            Text("Attach Image")
+            Text(stringResource(R.string.attach_image))
         }
         attachment?.let {
             Row(
@@ -495,12 +505,12 @@ internal fun ContactNewConversationAttachment(
             ) {
                 Image(
                     bitmap = it.preview,
-                    contentDescription = "Selected image preview",
+                    contentDescription = stringResource(R.string.selected_image_preview),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(64.dp)
                 )
                 Text(
-                    text = "Image attached (${it.sizeBytes / 1024} KB)",
+                    text = stringResource(R.string.image_attached, it.sizeBytes / 1024),
                     color = KolamText,
                     modifier = Modifier.weight(1f)
                 )
@@ -515,7 +525,7 @@ internal fun ContactNewConversationAttachment(
                         disabledContentColor = KolamButtonText
                     )
                 ) {
-                    Text("Remove")
+                    Text(stringResource(R.string.remove))
                 }
             }
         }
@@ -535,7 +545,7 @@ internal suspend fun Context.readContactNewConversationImage(
 ): ContactNewConversationImage {
     val mimeType = contentResolver.getType(uri)
         ?.takeIf(::isSupportedContactImageMimeType)
-        ?: throw IOException("Choose a supported image file.")
+        ?: throw IOException(getString(R.string.contact_supported_image_required))
     val bytes = contentResolver.openInputStream(uri)?.use { input ->
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -545,14 +555,14 @@ internal suspend fun Context.readContactNewConversationImage(
             if (count < 0) break
             totalBytes += count
             require(totalBytes <= MAX_NEW_CONVERSATION_IMAGE_BYTES) {
-                "Image must be 10 MB or smaller."
+                getString(R.string.contact_image_size_limit)
             }
             output.write(buffer, 0, count)
         }
         output.toByteArray()
-    } ?: throw IOException("The selected image could not be read.")
+    } ?: throw IOException(getString(R.string.contact_image_read_failed))
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        ?: throw IOException("Choose a supported image file.")
+        ?: throw IOException(getString(R.string.contact_supported_image_required))
     return ContactNewConversationImage(
         uri = uri,
         mimeType = mimeType,

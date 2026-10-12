@@ -38,7 +38,7 @@ class InitialAssetSetupTest {
         assertTrue(harness.setup.run { progress += it })
         assertTrue(harness.isComplete)
         assertEquals(59, harness.cachedThumbnails.size)
-        assertEquals("Setup complete; missing images can load later", progress.last().message)
+        assertEquals(AssetSetupMessage.CompleteWithMissingImages, progress.last().message)
     }
 
     private class Harness {

@@ -7,8 +7,16 @@ import kotlinx.coroutines.withTimeoutOrNull
 internal data class AssetSetupProgress(
     val completed: Int,
     val total: Int,
-    val message: String
+    val message: AssetSetupMessage
 )
+
+internal enum class AssetSetupMessage {
+    PreparingImages,
+    PreparingLearnThumbnails,
+    DownloadingLearnThumbnails,
+    Complete,
+    CompleteWithMissingImages
+}
 
 internal class InitialAssetSetup(
     private val isComplete: () -> Boolean,
@@ -32,7 +40,9 @@ internal class InitialAssetSetup(
         }
         val uniqueThumbnailUrls = thumbnailUrls.distinct()
         val total = uniqueThumbnailUrls.size
-        onProgress(AssetSetupProgress(0, total, "Preparing Learn thumbnails"))
+        onProgress(
+            AssetSetupProgress(0, total, AssetSetupMessage.PreparingLearnThumbnails)
+        )
 
         val thumbnailsReady = withTimeoutOrNull(IMAGE_CACHE_TIMEOUT_MILLIS) {
             try {
@@ -41,7 +51,7 @@ internal class InitialAssetSetup(
                         AssetSetupProgress(
                             completed = completed,
                             total = total,
-                            message = "Downloading Learn thumbnails"
+                            message = AssetSetupMessage.DownloadingLearnThumbnails
                         )
                     )
                 }
@@ -59,9 +69,9 @@ internal class InitialAssetSetup(
                 total,
                 total,
                 if (thumbnailsReady) {
-                    "Setup complete"
+                    AssetSetupMessage.Complete
                 } else {
-                    "Setup complete; missing images can load later"
+                    AssetSetupMessage.CompleteWithMissingImages
                 }
             )
         )

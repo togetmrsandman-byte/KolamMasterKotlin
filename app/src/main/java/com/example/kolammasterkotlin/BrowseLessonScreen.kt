@@ -68,6 +68,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -237,6 +239,7 @@ internal fun BrowseLessonScreen(
 ) {
     var filtersOpen by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val localizedContext = context.withSelectedAppLanguage()
 
     var visibleCount by remember(accountId) {
         mutableIntStateOf(visibleLessonCount.coerceAtLeast(INITIAL_REVEALED_THUMBNAIL_COUNT))
@@ -283,7 +286,7 @@ internal fun BrowseLessonScreen(
             if (latestAccountId == accountId) {
                 foldersLoadError = NetworkErrors.messageFor(
                     exception,
-                    "Could not load saved folders."
+                    localizedContext.getString(R.string.folders_load_saved_failed)
                 )
             }
         }
@@ -468,12 +471,13 @@ internal fun BrowseLessonScreen(
                     text = if (catalogue.refreshNetworkFailed) {
                         NetworkErrors.DISPLAY_TEXT
                     } else if (catalogue.refreshFailed) {
-                        "Lessons could not be loaded. Please try again."
+                        stringResource(R.string.lessons_load_failed)
                     } else {
-                        "No lessons are available yet."
+                        stringResource(R.string.lessons_none_available)
                     }
                 )
-                filteredEntries.isEmpty() -> BrowseMessage("No lessons match your search and filters.")
+                filteredEntries.isEmpty() ->
+                    BrowseMessage(stringResource(R.string.lessons_search_empty))
                 else -> LazyVerticalGrid(
                     columns = GridCells.Fixed(2),
                     state = gridState,
@@ -551,8 +555,9 @@ internal fun BrowseLessonScreen(
                         if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 ThumbnailRevealBanner(
-                                    text = "Watch a short ad to unlock lessons below.",
-                                    enabled = true
+                                    text = stringResource(R.string.watch_short_ad),
+                                    enabled = true,
+                                    loadingText = stringResource(R.string.loading_ad)
                                 )
                             }
                             itemsIndexed(
@@ -582,12 +587,14 @@ internal fun BrowseLessonScreen(
                     if (!hasActiveSearchOrFilters && visibleEntries.size < catalogue.entries.size) {
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             ThumbnailRevealBanner(
-                                text = "Watch an ad to unlock more thumbnails",
+                                text = stringResource(R.string.watch_ad_unlock),
                                 enabled = !isLoadingRewardedAd,
+                                loadingText = stringResource(R.string.loading_ad),
                                 onClick = {
                                     val activity = context.findActivity()
                                     if (activity == null) {
-                                        revealMessage = "Unable to show an ad right now."
+                                        revealMessage =
+                                            localizedContext.getString(R.string.ad_unavailable)
                                     } else if (!isLoadingRewardedAd) {
                                         isLoadingRewardedAd = true
                                         revealMessage = null
@@ -598,7 +605,8 @@ internal fun BrowseLessonScreen(
                                             if (thumbnailAdAttempt == attempt) {
                                                 thumbnailAdAttempt++
                                                 isLoadingRewardedAd = false
-                                                revealMessage = "The ad could not be shown. Please try again."
+                                                revealMessage =
+                                                    localizedContext.getString(R.string.ad_show_failed)
                                             }
                                         }
                                         showThumbnailRewardedAd(
@@ -620,14 +628,26 @@ internal fun BrowseLessonScreen(
                                                 if (thumbnailAdAttempt != attempt) return@showThumbnailRewardedAd
                                                 thumbnailAdTimeoutJob?.cancel()
                                                 isLoadingRewardedAd = false
-                                                revealMessage =
-                                                    "No reward was earned. Thumbnails were not revealed."
+                                                revealMessage = localizedContext.getString(
+                                                    R.string.ad_reward_not_earned
+                                                )
                                             },
                                             onFailed = { errorCode ->
                                                 if (thumbnailAdAttempt != attempt) return@showThumbnailRewardedAd
                                                 thumbnailAdTimeoutJob?.cancel()
                                                 isLoadingRewardedAd = false
-                                                revealMessage = adFailureMessage(errorCode)
+                                                revealMessage = adFailureMessage(
+                                                    errorCode,
+                                                    localizedContext.getString(
+                                                        R.string.ad_show_failed
+                                                    ),
+                                                    localizedContext.getString(
+                                                        R.string.network_error_title
+                                                    ),
+                                                    localizedContext.getString(
+                                                        R.string.network_error_message
+                                                    )
+                                                )
                                             }
                                         )
                                     }
@@ -643,13 +663,13 @@ internal fun BrowseLessonScreen(
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             ThumbnailRevealBanner(
                                 text = if (noMoreThumbnailsAvailable) {
-                                    "More kolams coming soon."
+                                    stringResource(R.string.more_kolams_coming)
                                 } else {
-                                    "Check for more thumbnails"
+                                    stringResource(R.string.check_more_thumbnails)
                                 },
                                 enabled = !isCheckingForMoreThumbnails,
                                 loading = isCheckingForMoreThumbnails,
-                                loadingText = "Checking for updates...",
+                                loadingText = stringResource(R.string.checking_for_updates),
                                 onClick = {
                                     if (!isCheckingForMoreThumbnails) {
                                         val previouslyKnownIds =
@@ -668,8 +688,9 @@ internal fun BrowseLessonScreen(
                                             } catch (exception: kotlinx.coroutines.CancellationException) {
                                                 throw exception
                                             } catch (exception: Exception) {
-                                                revealMessage =
-                                                    "Could not check for more thumbnails. Please try again."
+                                                revealMessage = localizedContext.getString(
+                                                    R.string.check_thumbnails_failed
+                                                )
                                             } finally {
                                                 isCheckingForMoreThumbnails = false
                                             }
@@ -714,13 +735,17 @@ internal fun BrowseLessonScreen(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
-                    text = "Difficulty",
+                    text = stringResource(R.string.difficulty),
                     color = KolamText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 FilterRow(
-                    options = listOf("Easy", "Intermediate", "Expert"),
+                    options = listOf(
+                        BrowseFilterOption("Easy", R.string.easy),
+                        BrowseFilterOption("Intermediate", R.string.intermediate),
+                        BrowseFilterOption("Expert", R.string.expert)
+                    ),
                     selected = browseState.difficulties,
                     onSelected = { option ->
                         browseState.difficulties =
@@ -729,13 +754,17 @@ internal fun BrowseLessonScreen(
                     }
                 )
                 Text(
-                    text = "Kolam Type",
+                    text = stringResource(R.string.kolam_type),
                     color = KolamText,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold
                 )
                 FilterRow(
-                    options = listOf("Sikku", "Pulli", "Rangoli"),
+                    options = listOf(
+                        BrowseFilterOption("Sikku"),
+                        BrowseFilterOption("Pulli"),
+                        BrowseFilterOption("Rangoli")
+                    ),
                     selected = browseState.types,
                     onSelected = { option ->
                         browseState.types = browseState.types.toggle(option)
@@ -750,9 +779,11 @@ internal fun BrowseLessonScreen(
             LockedLessonDialog(
                 requiredAds = requiredAds,
                 completedAds = completedIndividualAds,
-                message = lockedLessonMessage ?: "Please watch $requiredAds short ad" +
-                    (if (requiredAds == 1) "" else "s") +
-                    " to unlock this lesson permanently.",
+                message = lockedLessonMessage ?: pluralStringResource(
+                    R.plurals.watch_ads_unlock_lesson,
+                    requiredAds,
+                    requiredAds
+                ),
                 isProcessing = isIndividualAdProcessing,
                 onCancel = {
                     if (!isIndividualAdProcessing) {
@@ -764,7 +795,8 @@ internal fun BrowseLessonScreen(
                     if (!isIndividualAdProcessing) {
                         val activity = context.findActivity()
                         if (activity == null) {
-                            lockedLessonMessage = "Unable to show a rewarded ad right now."
+                            lockedLessonMessage =
+                                localizedContext.getString(R.string.ad_no_activity)
                         } else {
                             isIndividualAdProcessing = true
                             lockedLessonMessage = null
@@ -775,7 +807,8 @@ internal fun BrowseLessonScreen(
                                 if (individualAdAttempt == attempt) {
                                     individualAdAttempt++
                                     isIndividualAdProcessing = false
-                                    lockedLessonMessage = "The ad could not be shown. Please try again."
+                                    lockedLessonMessage =
+                                        localizedContext.getString(R.string.ad_rewarded_show_failed)
                                 }
                             }
                             showIndividualRewardedAd(
@@ -815,13 +848,19 @@ internal fun BrowseLessonScreen(
                                     if (individualAdAttempt != attempt) return@showIndividualRewardedAd
                                     individualAdTimeoutJob?.cancel()
                                     isIndividualAdProcessing = false
-                                    lockedLessonMessage = "Rewarded ad closed before reward."
+                                    lockedLessonMessage =
+                                        localizedContext.getString(R.string.rewarded_ad_closed)
                                 },
                                 onFailed = { errorCode ->
                                     if (individualAdAttempt != attempt) return@showIndividualRewardedAd
                                     individualAdTimeoutJob?.cancel()
                                     isIndividualAdProcessing = false
-                                    lockedLessonMessage = adFailureMessage(errorCode)
+                                    lockedLessonMessage = adFailureMessage(
+                                        errorCode,
+                                        localizedContext.getString(R.string.ad_show_failed),
+                                        localizedContext.getString(R.string.network_error_title),
+                                        localizedContext.getString(R.string.network_error_message)
+                                    )
                                 }
                             )
                         }
@@ -862,8 +901,18 @@ internal fun BrowseLessonScreen(
             val isNetworkIssue = message == NetworkErrors.DISPLAY_TEXT
             AlertDialog(
                 onDismissRequest = { foldersLoadError = null },
-                title = { Text(if (isNetworkIssue) NetworkErrors.TITLE else "My Folders") },
-                text = { Text(if (isNetworkIssue) NetworkErrors.MESSAGE else message) },
+                title = {
+                    Text(
+                        if (isNetworkIssue) stringResource(R.string.network_error_title)
+                        else stringResource(R.string.my_folders)
+                    )
+                },
+                text = {
+                    Text(
+                        if (isNetworkIssue) stringResource(R.string.network_error_message)
+                        else message
+                    )
+                },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -871,13 +920,13 @@ internal fun BrowseLessonScreen(
                             foldersRefreshKey++
                         },
                         colors = kolamStandardButtonColors()
-                    ) { Text("Retry") }
+                    ) { Text(stringResource(R.string.retry)) }
                 },
                 dismissButton = {
                     TextButton(
                         onClick = { foldersLoadError = null },
                         colors = kolamStandardButtonColors()
-                    ) { Text("Close") }
+                    ) { Text(stringResource(R.string.close)) }
                 }
             )
         }
@@ -924,12 +973,18 @@ private fun LockedLessonDialog(
 ) {
     AlertDialog(
         onDismissRequest = { if (!isProcessing) onCancel() },
-        title = { Text("Lesson Locked") },
+        title = { Text(stringResource(R.string.lesson_locked)) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(message)
                 if (requiredAds == 2) {
-                    Text("$completedAds of $requiredAds ads completed")
+                    Text(
+                        stringResource(
+                            R.string.lesson_unlock_ads_completed,
+                            completedAds,
+                            requiredAds
+                        )
+                    )
                 }
             }
         },
@@ -952,10 +1007,10 @@ private fun LockedLessonDialog(
                             color = KolamButtonText,
                             strokeWidth = 2.dp
                         )
-                        Text("Please wait…")
+                        Text(stringResource(R.string.please_wait))
                     }
                 } else {
-                    Text("Watch Ad")
+                    Text(stringResource(R.string.watch_ad))
                 }
             }
         },
@@ -965,7 +1020,7 @@ private fun LockedLessonDialog(
                 enabled = !isProcessing,
                 colors = kolamStandardButtonColors()
             ) {
-                Text("Cancel")
+                Text(stringResource(R.string.cancel))
             }
         }
     )
@@ -976,6 +1031,8 @@ private fun GuestLessonUnlockWarningDialog(
     onSignIn: () -> Unit,
     onCancel: () -> Unit
 ) {
+    val lessonUnlockProtectionDescription =
+        stringResource(R.string.lesson_unlock_protect_progress)
     Dialog(onDismissRequest = onCancel) {
         Surface(
             modifier = Modifier
@@ -1010,21 +1067,19 @@ private fun GuestLessonUnlockWarningDialog(
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.semantics {
-                                    contentDescription = "Lesson unlocked; protect your progress"
+                                    contentDescription = lessonUnlockProtectionDescription
                                 }
                             )
                         }
                         Text(
-                            text = "Lesson unlocked!",
+                            text = stringResource(R.string.lesson_unlocked),
                             color = KolamText,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.SemiBold
                         )
                     }
                     Text(
-                        text = "This lesson is unlocked on this device. If you uninstall " +
-                            "Kolam Master, you may lose this unlock. Sign in with Google to " +
-                            "help keep your progress safe.",
+                        text = stringResource(R.string.local_unlock_signin_message),
                         color = KolamMutedText,
                         fontSize = 15.sp,
                         lineHeight = 22.sp
@@ -1041,7 +1096,7 @@ private fun GuestLessonUnlockWarningDialog(
                                     containerColor = KolamButtonYellow
                                 )
                             ) {
-                                Text("Sign in with Google")
+                                Text(stringResource(R.string.sign_in_with_google))
                             }
                             Button(
                                 onClick = onCancel,
@@ -1050,7 +1105,7 @@ private fun GuestLessonUnlockWarningDialog(
                                     containerColor = KolamButtonYellow
                                 )
                             ) {
-                                Text("Cancel")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     } else {
@@ -1065,7 +1120,7 @@ private fun GuestLessonUnlockWarningDialog(
                                     containerColor = KolamButtonYellow
                                 )
                             ) {
-                                Text("Sign in with Google")
+                                Text(stringResource(R.string.sign_in_with_google))
                             }
                             Button(
                                 onClick = onCancel,
@@ -1074,7 +1129,7 @@ private fun GuestLessonUnlockWarningDialog(
                                     containerColor = KolamButtonYellow
                                 )
                             ) {
-                                Text("Cancel")
+                                Text(stringResource(R.string.cancel))
                             }
                         }
                     }
@@ -1116,20 +1171,22 @@ internal fun CatalogueLessonDetailScreen(
                 lesson.normalizedType,
                 lesson.normalizedDifficulty,
                 lesson.gridType,
-                lesson.totalSteps?.let { "$it steps" }
+                lesson.totalSteps?.let {
+                    stringResource(R.string.lesson_playback_steps, it)
+                }
             ).joinToString(" · "),
             color = KolamMutedText,
             fontSize = 14.sp
         )
         Spacer(Modifier.height(16.dp))
         Text(
-            text = "Lesson playback will be connected in a later step.",
+            text = stringResource(R.string.lesson_playback_placeholder),
             color = KolamMutedText,
             fontSize = 16.sp
         )
         Spacer(Modifier.height(24.dp))
         Button(onClick = onBack) {
-            Text("Back to lessons")
+            Text(stringResource(R.string.back_to_lessons))
         }
     }
 }
@@ -1166,7 +1223,10 @@ private fun SearchField(
                 decorationBox = { innerTextField ->
                     Box {
                         if (query.isEmpty()) {
-                            Text("Search lessons", color = KolamMutedText)
+                            Text(
+                                stringResource(R.string.search_lessons),
+                                color = KolamMutedText
+                            )
                         }
                         innerTextField()
                     }
@@ -1175,7 +1235,11 @@ private fun SearchField(
         }
         Spacer(Modifier.size(8.dp))
         Text(
-            text = if (activeFilterCount == 0) "Filters" else "Filters ($activeFilterCount)",
+            text = if (activeFilterCount == 0) {
+                stringResource(R.string.filter)
+            } else {
+                stringResource(R.string.filter_count, activeFilterCount)
+            },
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
                 .background(
@@ -1192,7 +1256,7 @@ private fun SearchField(
 
 @Composable
 private fun FilterRow(
-    options: List<String>,
+    options: List<BrowseFilterOption>,
     selected: Set<String>,
     onSelected: (String) -> Unit
 ) {
@@ -1203,10 +1267,15 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         options.forEach { option ->
+            val label = if (option.labelResource == null) {
+                option.value
+            } else {
+                stringResource(option.labelResource)
+            }
             FilterChip(
-                selected = option in selected,
-                onClick = { onSelected(option) },
-                label = { Text(option, maxLines = 1) },
+                selected = option.value in selected,
+                onClick = { onSelected(option.value) },
+                label = { Text(label, maxLines = 1) },
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = KolamElevated,
                     labelColor = KolamText,
@@ -1215,7 +1284,7 @@ private fun FilterRow(
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
-                    selected = option in selected,
+                    selected = option.value in selected,
                     borderColor = KolamBorder,
                     selectedBorderColor = KolamBronze
                 )
@@ -1223,6 +1292,11 @@ private fun FilterRow(
         }
     }
 }
+
+private data class BrowseFilterOption(
+    val value: String,
+    @param:androidx.annotation.StringRes val labelResource: Int? = null
+)
 
 private fun Set<String>.toggle(value: String): Set<String> =
     if (value in this) this - value else this + value
@@ -1324,17 +1398,16 @@ internal fun LessonFavoriteStar(
     isSaved: Boolean,
     onClick: () -> Unit
 ) {
+    val accessibilityDescription = stringResource(
+        if (isSaved) R.string.saved_lesson_accessibility
+        else R.string.save_lesson_accessibility,
+        lessonName
+    )
     Box(
         modifier = Modifier
             .size(36.dp)
             .clickable(onClick = onClick)
-            .semantics {
-                contentDescription = if (isSaved) {
-                    "Saved $lessonName to My Folders"
-                } else {
-                    "Save $lessonName to My Folders"
-                }
-            },
+            .semantics { contentDescription = accessibilityDescription },
         contentAlignment = Alignment.Center
     ) {
         Canvas(modifier = Modifier.size(20.dp)) {
@@ -1394,7 +1467,7 @@ private fun ThumbnailRevealBanner(
     onClick: () -> Unit = {},
     enabled: Boolean = false,
     loading: Boolean = false,
-    loadingText: String = "Loading ad..."
+    loadingText: String
 ) {
     Button(
         onClick = onClick,
@@ -1506,11 +1579,16 @@ private fun showIndividualRewardedAd(
     )
 }
 
-private fun adFailureMessage(errorCode: Int): String =
+private fun adFailureMessage(
+    errorCode: Int,
+    fallback: String,
+    networkTitle: String,
+    networkMessage: String
+): String =
     if (errorCode == ADMOB_NETWORK_ERROR_CODE) {
-        NetworkErrors.DISPLAY_TEXT
+        "$networkTitle\n$networkMessage"
     } else {
-        "The ad could not be shown. Please try again."
+        fallback
     }
 
 private tailrec fun Context.findActivity(): Activity? = when (this) {
@@ -1569,13 +1647,16 @@ internal fun RemoteLessonThumbnail(url: String?, modifier: Modifier = Modifier) 
                         contentPadding = PaddingValues(4.dp),
                         colors = kolamStandardButtonColors()
                     ) {
-                        Text("Retry", color = KolamButtonText, fontSize = 11.sp)
+                        Text(stringResource(R.string.retry), color = KolamButtonText, fontSize = 11.sp)
                     }
                 }
             }
             is LessonThumbnailState.Loaded -> Image(
                 bitmap = thumbnail.image,
-                contentDescription = "Thumbnail for ${url?.substringAfterLast('/')}",
+                contentDescription = stringResource(
+                    R.string.thumbnail_for,
+                    url?.substringAfterLast('/') ?: ""
+                ),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize()
             )

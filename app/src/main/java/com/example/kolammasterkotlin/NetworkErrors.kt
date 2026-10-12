@@ -4,6 +4,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import io.github.jan.supabase.exceptions.HttpRequestException as SupabaseHttpRequestException
@@ -125,19 +126,19 @@ internal fun NetworkRetryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(NetworkErrors.TITLE) },
-        text = { Text(NetworkErrors.MESSAGE) },
+        title = { Text(stringResource(R.string.network_error_title)) },
+        text = { Text(stringResource(R.string.network_error_message)) },
         confirmButton = {
             TextButton(
                 onClick = onRetry,
                 colors = kolamStandardButtonColors()
-            ) { Text("Retry") }
+            ) { Text(stringResource(R.string.retry)) }
         },
         dismissButton = {
             TextButton(
                 onClick = onClose,
                 colors = kolamStandardButtonColors()
-            ) { Text("Close") }
+            ) { Text(stringResource(R.string.close)) }
         },
         containerColor = KolamCoolSilver
     )
