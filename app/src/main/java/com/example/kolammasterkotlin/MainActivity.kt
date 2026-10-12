@@ -1358,6 +1358,7 @@ private fun KolamMasterApp(
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val browseCatalogueState = remember { BrowseCatalogueState() }
     var storeDialog by remember { mutableStateOf<String?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var settingsExpanded by remember { mutableStateOf(false) }
@@ -1816,6 +1817,7 @@ private fun KolamMasterApp(
                 Box(Modifier.fillMaxWidth().weight(1f)) {
                     AppScreenContent(
                         screen = screen,
+                        browseCatalogueState = browseCatalogueState,
                         onScreenChange = onScreenChange,
                         activeLanguage = activeLanguage,
                         catalogue = catalogue,
@@ -2082,6 +2084,7 @@ private fun KolamMasterApp(
 @Composable
 private fun AppScreenContent(
     screen: AppScreen,
+    browseCatalogueState: BrowseCatalogueState,
     onScreenChange: (AppScreen) -> Unit,
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
@@ -2184,6 +2187,7 @@ private fun AppScreenContent(
         )
         AppScreen.Browse -> BrowseLessonScreen(
             catalogue = catalogue,
+            browseState = browseCatalogueState,
             unlockedLessonIds = unlockedCatalogueLessonIds,
             accountId = account?.takeUnless { it.isGuest }?.id,
             isGuest = account?.isGuest == true,

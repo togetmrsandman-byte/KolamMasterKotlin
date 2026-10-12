@@ -27,9 +27,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
-import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -106,6 +106,13 @@ internal data class LessonCatalogueUiState(
     val refreshFailed: Boolean = false,
     val refreshNetworkFailed: Boolean = false
 )
+
+internal class BrowseCatalogueState {
+    val gridState = LazyGridState()
+    var query by mutableStateOf("")
+    var difficulties by mutableStateOf<Set<String>>(emptySet())
+    var types by mutableStateOf<Set<String>>(emptySet())
+}
 
 internal data class BrowseCatalogueItem(
     val catalogueIndex: Int,
@@ -211,6 +218,7 @@ internal fun browseCatalogueSections(
 @Composable
 internal fun BrowseLessonScreen(
     catalogue: LessonCatalogueUiState,
+    browseState: BrowseCatalogueState = remember { BrowseCatalogueState() },
     unlockedLessonIds: Set<String>,
     accountId: String?,
     isGuest: Boolean = false,
@@ -227,9 +235,6 @@ internal fun BrowseLessonScreen(
     onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
-    var query by remember { mutableStateOf("") }
-    var difficulties by remember { mutableStateOf<Set<String>>(emptySet()) }
-    var types by remember { mutableStateOf<Set<String>>(emptySet()) }
     var filtersOpen by remember { mutableStateOf(false) }
     val context = androidx.compose.ui.platform.LocalContext.current
 
@@ -334,9 +339,9 @@ internal fun BrowseLessonScreen(
 
     val filteredEntries = remember(
         catalogue.entries,
-        query,
-        difficulties,
-        types,
+        browseState.query,
+        browseState.difficulties,
+        browseState.types,
         unlockedLessonIds
     ) {
         catalogue.entries.mapIndexed { originalIndex, lesson ->
@@ -350,22 +355,28 @@ internal fun BrowseLessonScreen(
                 }
             )
         }.filter { lesson ->
-            val matchesSearch = query.isBlank() || lesson.searchableText()
-                .contains(query.trim(), ignoreCase = true)
-            val matchesDifficulty = difficulties.isEmpty() ||
-                lesson.normalizedDifficulty in difficulties
-            val matchesType = types.isEmpty() || lesson.normalizedType in types
+            val matchesSearch = browseState.query.isBlank() || lesson.searchableText()
+                .contains(browseState.query.trim(), ignoreCase = true)
+            val matchesDifficulty = browseState.difficulties.isEmpty() ||
+                lesson.normalizedDifficulty in browseState.difficulties
+            val matchesType = browseState.types.isEmpty() ||
+                lesson.normalizedType in browseState.types
             matchesSearch && matchesDifficulty && matchesType
         }
     }
     val hasActiveSearchOrFilters =
-        query.isNotBlank() || difficulties.isNotEmpty() || types.isNotEmpty()
+        browseState.query.isNotBlank() ||
+            browseState.difficulties.isNotEmpty() ||
+            browseState.types.isNotEmpty()
     val visibleEntries = if (hasActiveSearchOrFilters) {
         filteredEntries
     } else {
         filteredEntries.take(visibleCount)
     }
-    val gridState = rememberLazyGridState()
+    val gridState = browseState.gridState
+    val resetGridPosition = {
+        scope.launch { gridState.scrollToItem(0) }
+    }
     val openLesson: (LessonCatalogueEntry, Boolean) -> Unit = { lesson, fromCommunity ->
         if (lesson.access == CatalogueAccess.LOCKED) {
             lockedLesson = lesson
@@ -400,10 +411,6 @@ internal fun BrowseLessonScreen(
         }
     }
 
-    LaunchedEffect(query, difficulties, types) {
-        gridState.scrollToItem(0)
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -430,10 +437,14 @@ internal fun BrowseLessonScreen(
                 }
             }
             SearchField(
-                query = query,
-                onQueryChange = { query = it },
+                query = browseState.query,
+                onQueryChange = {
+                    browseState.query = it
+                    resetGridPosition()
+                },
                 filtersOpen = filtersOpen,
-                activeFilterCount = difficulties.size + types.size,
+                activeFilterCount =
+                    browseState.difficulties.size + browseState.types.size,
                 onToggleFilters = { filtersOpen = !filtersOpen }
             )
             Spacer(Modifier.height(8.dp))
@@ -710,9 +721,11 @@ internal fun BrowseLessonScreen(
                 )
                 FilterRow(
                     options = listOf("Easy", "Intermediate", "Expert"),
-                    selected = difficulties,
+                    selected = browseState.difficulties,
                     onSelected = { option ->
-                        difficulties = difficulties.toggle(option)
+                        browseState.difficulties =
+                            browseState.difficulties.toggle(option)
+                        resetGridPosition()
                     }
                 )
                 Text(
@@ -723,9 +736,10 @@ internal fun BrowseLessonScreen(
                 )
                 FilterRow(
                     options = listOf("Sikku", "Pulli", "Rangoli"),
-                    selected = types,
+                    selected = browseState.types,
                     onSelected = { option ->
-                        types = types.toggle(option)
+                        browseState.types = browseState.types.toggle(option)
+                        resetGridPosition()
                     }
                 )
             }
