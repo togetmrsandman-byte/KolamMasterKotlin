@@ -421,31 +421,40 @@ private fun notificationsAllowed(context: android.content.Context): Boolean =
 @Composable
 internal fun LanguageSettingsScreen(
     activeLanguage: String,
-    onSelect: (String) -> Unit,
-    onBack: () -> Unit
+    onSelect: (String) -> Unit
 ) {
-    LandingArtworkFrame {
-        Spacer(Modifier.height(18.dp))
+    LandingArtworkFrame(
+        decorationPictureCount = 6,
+        evenlySpaceSixDecorations = true
+    ) {
+        Spacer(Modifier.height(8.dp))
         Text(
             text = "Choose Your Language",
             modifier = Modifier.offset(y = LanguageMenuSectionVerticalOffset),
             color = KolamText,
-            fontSize = 24.sp,
+            fontSize = 21.sp,
             fontWeight = FontWeight.Bold
         )
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(10.dp))
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                .weight(1f)
                 .offset(y = LanguageMenuLanguageOptionsVerticalOffset),
-            horizontalAlignment = Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(3.dp)
         ) {
             supportedLanguages.forEach { (identifier, nativeName) ->
                 Button(
                     onClick = { onSelect(identifier) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 8.dp, vertical = 3.dp),
+                        .weight(1f)
+                        .padding(horizontal = 8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                        horizontal = 8.dp,
+                        vertical = 0.dp
+                    ),
                     colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                 ) {
                     Text(
@@ -457,7 +466,7 @@ internal fun LanguageSettingsScreen(
                 }
             }
         }
-        Spacer(Modifier.height(LanguageMenuLanguageOptionsToImmediateTextSpacing))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = "Language changes apply immediately.",
             modifier = Modifier.offset(y = LanguageMenuImmediateTextVerticalOffset),
@@ -465,22 +474,13 @@ internal fun LanguageSettingsScreen(
             fontSize = 13.sp,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(LanguageMenuImmediateTextToBackSpacing))
-        Button(
-            onClick = onBack,
-            modifier = Modifier.offset(y = LanguageMenuBackButtonVerticalOffset),
-            colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-        ) { Text("Back") }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(10.dp))
     }
 }
 
 private val LanguageMenuSectionVerticalOffset = 0.dp
 private val LanguageMenuLanguageOptionsVerticalOffset = 0.dp
-private val LanguageMenuLanguageOptionsToImmediateTextSpacing = 16.dp
 private val LanguageMenuImmediateTextVerticalOffset = 0.dp
-private val LanguageMenuImmediateTextToBackSpacing = 8.dp
-private val LanguageMenuBackButtonVerticalOffset = 0.dp
 
 internal data class AccountProfile(
     val name: String,

@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
@@ -123,15 +124,20 @@ internal val supportedLanguages = listOf(
     "English" to "English",
     "Tamil" to "தமிழ்",
     "Hindi" to "हिन्दी",
-    "Telugu" to "తెలుగు",
     "Kannada" to "ಕನ್ನಡ",
-    "Malayalam" to "മലയാളം"
+    "Telugu" to "తెలుగు",
+    "Malayalam" to "മലയാളം",
+    "Thai" to "ไทย",
+    "Chinese (Simplified)" to "简体中文",
+    "Vietnamese" to "Tiếng Việt",
+    "Malay" to "Bahasa Melayu",
+    "Japanese" to "日本語",
+    "Korean" to "한국어"
 )
 
 @Composable
 internal fun LanguageSelectionScreen(
-    onSelected: (String) -> Unit,
-    onBack: () -> Unit
+    onSelected: (String) -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -139,52 +145,43 @@ internal fun LanguageSelectionScreen(
             .background(KolamBackground)
             .padding(horizontal = 28.dp, vertical = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
-        Image(
-            bitmap = rememberAssetImage("kolam-logo.png"),
-            contentDescription = "Kolam logo",
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .size(LanguageLogoSize)
-                .offset(y = LanguageLogoVerticalOffset)
+        Text(
+            text = "Choose Your Language",
+            color = KolamGold,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(LanguageLogoToSectionSpacing))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "You can change this later from Language Settings.",
+            color = KolamMutedText,
+            fontSize = 12.sp,
+            maxLines = 1,
+            softWrap = false,
+            textAlign = TextAlign.Center
+        )
+        Spacer(Modifier.height(12.dp))
         Column(
-            modifier = Modifier.offset(y = LanguageSectionVerticalOffset),
-            horizontalAlignment = Alignment.CenterHorizontally
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            Text(
-                text = "Choose Your Language",
-                color = KolamGold,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "You can change this later from My Folders.",
-                color = KolamMutedText,
-                fontSize = 16.sp,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(20.dp))
             supportedLanguages.forEach { (languageId, displayName) ->
                 Button(
                     onClick = { onSelected(languageId) },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(vertical = 4.dp),
+                        .weight(1f),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = Gold)
                 ) {
-                    Text(displayName, color = KolamButtonText, fontSize = 18.sp)
+                    Text(displayName, color = KolamButtonText, fontSize = 16.sp, maxLines = 1)
                 }
             }
-            Spacer(Modifier.height(12.dp))
-            Button(
-                onClick = onBack,
-                colors = ButtonDefaults.buttonColors(containerColor = Gold)
-            ) { Text("Back", color = KolamButtonText, fontSize = 16.sp) }
         }
     }
 }
@@ -358,10 +355,6 @@ internal fun InitialAssetSetupScreen(
     }
 }
 
-private val LanguageLogoSize = 200.dp
-private val LanguageLogoVerticalOffset = 0.dp
-private val LanguageLogoToSectionSpacing = 12.dp
-private val LanguageSectionVerticalOffset = 0.dp
 private val SignInLogoSize = 310.dp
 private val SignInLogoVerticalOffset = (-50).dp
 private val SignInLogoToContentSpacing = 6.dp
@@ -632,6 +625,8 @@ internal fun LandingPageFrame(
 internal fun LandingArtworkFrame(
     showBrandArtwork: Boolean = true,
     showDecorations: Boolean = true,
+    decorationPictureCount: Int = 4,
+    evenlySpaceSixDecorations: Boolean = false,
     horizontalPadding: Dp = 58.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -643,11 +638,15 @@ internal fun LandingArtworkFrame(
         if (showDecorations) {
             LandingDecoration(
                 Modifier.align(Alignment.CenterStart).padding(start = 8.dp),
-                mirrored = false
+                mirrored = false,
+                pictureCount = decorationPictureCount,
+                evenlySpaceSix = evenlySpaceSixDecorations
             )
             LandingDecoration(
                 Modifier.align(Alignment.CenterEnd).padding(end = 8.dp),
-                mirrored = true
+                mirrored = true,
+                pictureCount = decorationPictureCount,
+                evenlySpaceSix = evenlySpaceSixDecorations
             )
         }
         Column(
@@ -822,10 +821,11 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
 private fun LandingDecoration(
     modifier: Modifier,
     mirrored: Boolean,
-    pictureCount: Int = 4
+    pictureCount: Int = 4,
+    evenlySpaceSix: Boolean = false
 ) {
     val image = rememberAssetImage("kolam-border.png")
-    if (pictureCount == 6) {
+    if (pictureCount == 6 && !evenlySpaceSix) {
         BoxWithConstraints(modifier = modifier.width(48.dp).fillMaxHeight()) {
             val oldTopPosition =
                 24.dp + (maxHeight - 48.dp - 460.dp) / 6
@@ -855,7 +855,7 @@ private fun LandingDecoration(
             modifier = modifier
                 .width(48.dp)
                 .fillMaxHeight()
-                .padding(vertical = 34.dp),
+                .padding(vertical = if (evenlySpaceSix) 12.dp else 34.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceEvenly
         ) {

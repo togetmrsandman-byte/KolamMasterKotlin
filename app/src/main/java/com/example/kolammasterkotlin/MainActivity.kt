@@ -2286,7 +2286,7 @@ private fun AppScreenContent(
     onMenuAction: (DrawerAction) -> Unit
 ) {
     when (screen) {
-        AppScreen.ChooseLanguage -> LanguageSelectionScreen(onLanguageSelected, onLanguageBack)
+        AppScreen.ChooseLanguage -> LanguageSelectionScreen(onLanguageSelected)
         AppScreen.SignInInvitation -> SignInInvitationScreen(
             onGoogleSignIn = onGoogleSignIn,
             onSkip = onContinueAsGuest,
@@ -2361,8 +2361,7 @@ private fun AppScreenContent(
         )
         AppScreen.Language -> LanguageSettingsScreen(
             activeLanguage = activeLanguage,
-            onSelect = onLanguageChange,
-            onBack = onGoBack
+            onSelect = onLanguageChange
         )
         AppScreen.ContactUs -> {
             if (isContactSignedIn && selectedContactConversationId != null) {
@@ -2495,4 +2494,4 @@ private fun AppScreenContent(
     }
 }
 
-private val supportedLanguageNames = setOf("English", "Tamil", "Hindi", "Telugu", "Kannada", "Malayalam")
+private val supportedLanguageNames = supportedLanguages.mapTo(mutableSetOf()) { it.first }

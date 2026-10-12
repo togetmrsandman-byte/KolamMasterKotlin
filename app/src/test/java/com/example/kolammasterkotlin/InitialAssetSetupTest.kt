@@ -2,7 +2,6 @@ package com.kolammaster.app
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -31,20 +30,15 @@ class InitialAssetSetupTest {
     }
 
     @Test
-    fun failedDownloadCanRetryWithoutRepeatingSuccessfulDownloads() = runBlocking {
+    fun failedImageDownloadDoesNotBlockOnboardingAndIsReported() = runBlocking {
         val harness = Harness().apply { failLastThumbnailOnce = true }
+        val progress = mutableListOf<AssetSetupProgress>()
 
-        assertFalse(harness.setup.run {})
-        assertFalse(harness.isComplete)
-        assertEquals(59, harness.cachedThumbnails.size)
-        assertTrue(harness.cachedCommunityImages.isEmpty())
-
-        assertTrue(harness.setup.run {})
-
-        assertEquals(60, harness.cachedThumbnails.size)
-        assertEquals(61, harness.thumbnailDownloadCount)
-        assertEquals(2, harness.cachedCommunityImages.size)
+        assertTrue(harness.setup.run { progress += it })
         assertTrue(harness.isComplete)
+        assertEquals(59, harness.cachedThumbnails.size)
+        assertEquals(2, harness.cachedCommunityImages.size)
+        assertEquals("Setup complete; missing images can load later", progress.last().message)
     }
 
     @Test
