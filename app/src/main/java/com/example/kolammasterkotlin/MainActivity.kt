@@ -1790,6 +1790,8 @@ private fun KolamMasterApp(
             AppScreen.Community,
             AppScreen.History,
             is AppScreen.PublishReady -> KolamBackground
+            is AppScreen.SikkuReady,
+            is AppScreen.RangoliReady -> Color.White
             else -> MaterialTheme.colorScheme.surface
         }
     ) { insets ->

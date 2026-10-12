@@ -2,6 +2,7 @@ package com.kolammaster.app
 
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
@@ -113,12 +114,39 @@ internal fun LessonActionButton(
     contentColor: androidx.compose.ui.graphics.Color? = null,
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding
 ) {
+    val animatedContainerColor = if (shining && containerColor != null) {
+        val transition = rememberInfiniteTransition(label = "publish button color")
+        val progress by transition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(600, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "publish button color"
+        )
+        KolamAccent.copy(
+            red = KolamAccent.red + (KolamButtonYellow.red - KolamAccent.red) * progress,
+            green = KolamAccent.green +
+                (KolamButtonYellow.green - KolamAccent.green) * progress,
+            blue = KolamAccent.blue +
+                (KolamButtonYellow.blue - KolamAccent.blue) * progress
+        )
+    } else {
+        null
+    }
+
     Box(modifier = modifier) {
         Button(
             onClick = onClick,
             enabled = enabled,
             modifier = Modifier.fillMaxWidth(),
-            colors = if (containerColor != null) {
+            colors = if (animatedContainerColor != null) {
+                ButtonDefaults.buttonColors(
+                    containerColor = animatedContainerColor,
+                    contentColor = contentColor ?: MaterialTheme.colorScheme.onPrimary
+                )
+            } else if (containerColor != null) {
                 ButtonDefaults.buttonColors(
                     containerColor = containerColor,
                     contentColor = contentColor ?: MaterialTheme.colorScheme.onPrimary
