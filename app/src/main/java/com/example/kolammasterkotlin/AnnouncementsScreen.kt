@@ -58,6 +58,8 @@ internal fun AnnouncementsDestination(
     selectedAnnouncement: Announcement?,
     isMarkingAllRead: Boolean,
     onRetry: () -> Unit,
+    networkRetryAction: (() -> Unit)? = null,
+    onDismissNetworkDialog: () -> Unit = {},
     onAnnouncementSelected: (Announcement) -> Unit,
     onBackFromDetail: () -> Unit,
     onMarkAllRead: () -> Unit
@@ -93,6 +95,15 @@ internal fun AnnouncementsDestination(
                 onBack = onBackFromDetail
             )
         }
+    }
+    networkRetryAction?.let { retry ->
+        NetworkRetryDialog(
+            onRetry = {
+                onDismissNetworkDialog()
+                retry()
+            },
+            onClose = onDismissNetworkDialog
+        )
     }
 }
 

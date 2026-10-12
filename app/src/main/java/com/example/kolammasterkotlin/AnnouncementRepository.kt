@@ -64,6 +64,7 @@ private fun parseAnnouncementInstant(value: String): Instant? =
     }
 
 private const val MAX_ANNOUNCEMENTS = 15
+private const val ANNOUNCEMENT_OPERATION_TIMEOUT_MILLIS = 20_000L
 private val UUID_PATTERN = Regex(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
@@ -134,63 +135,73 @@ internal class AnnouncementRepository(
         }
     }
 
-    suspend fun refresh(): List<Announcement> = refreshMutex.withLock {
-        withContext(Dispatchers.IO) {
-            val account = auth.currentAccount()
-                ?: throw IllegalStateException("There is no authenticated Supabase account.")
-            require(account.id.isNotBlank()) {
-                "The authenticated Supabase account has no user ID."
-            }
-            val accountCreatedAt = account.createdAt
-                ?: throw IllegalStateException("The Supabase account has no creation timestamp.")
-            if (parseAnnouncementInstant(accountCreatedAt) == null) {
-                throw IllegalStateException("The Supabase account creation timestamp is invalid.")
-            }
-            val accessToken = auth.accessTokenFor(account.id)
-            val announcementResponse = request(
-                method = "GET",
-                path = "/rest/v1/announcements?select=id,subject,message,image_url,created_at" +
-                    "&order=created_at.desc",
-                accessToken = accessToken
-            )
-            val records = parseAnnouncements(announcementResponse)
-            val visible = filterVisibleAnnouncements(records, accountCreatedAt)
-
-            val readAtByAnnouncementId = if (visible.isEmpty()) {
-                emptyMap()
-            } else {
-                val ids = visible.joinToString(",") { it.id }
-                val query = "announcement_id=in.($ids)&user_id=eq.${encode(account.id)}" +
-                    "&select=announcement_id,read_at"
-                parseReadRows(
-                    request(
+    suspend fun refresh(): List<Announcement> =
+        runBoundedNetworkOperation(ANNOUNCEMENT_OPERATION_TIMEOUT_MILLIS) {
+            refreshMutex.withLock {
+                withContext(Dispatchers.IO) {
+                    val account = auth.currentAccount()
+                        ?: throw IllegalStateException(
+                            "There is no authenticated Supabase account."
+                        )
+                    require(account.id.isNotBlank()) {
+                        "The authenticated Supabase account has no user ID."
+                    }
+                    val accountCreatedAt = account.createdAt
+                        ?: throw IllegalStateException(
+                            "The Supabase account has no creation timestamp."
+                        )
+                    if (parseAnnouncementInstant(accountCreatedAt) == null) {
+                        throw IllegalStateException(
+                            "The Supabase account creation timestamp is invalid."
+                        )
+                    }
+                    val accessToken = auth.accessTokenFor(account.id)
+                    val announcementResponse = request(
                         method = "GET",
-                        path = "/rest/v1/announcement_reads?$query",
+                        path = "/rest/v1/announcements?select=id,subject,message,image_url,created_at" +
+                            "&order=created_at.desc",
                         accessToken = accessToken
                     )
-                )
-            }
-            val result = visible.map { announcement ->
-                announcement.copy(readAt = readAtByAnnouncementId[announcement.id])
-            }
+                    val records = parseAnnouncements(announcementResponse)
+                    val visible = filterVisibleAnnouncements(records, accountCreatedAt)
 
-            requireSameAccount(account.id)
-            saveCache(account.id, result)
-            val announcementUnreadCount = result.count { !it.isRead }
-            PendingAnnouncementStore.reconcile(
-                applicationContext,
-                announcementUnreadCount,
-                result.map(Announcement::id).toSet()
-            )
-            SupportUnreadStore.useAccount(applicationContext, account.id)
-            LauncherBadgeHelper.updateExistingNotification(
-                applicationContext,
-                PendingAnnouncementStore.count(applicationContext) +
-                    SupportUnreadStore.unreadMessageCount(applicationContext)
-            )
-            result
+                    val readAtByAnnouncementId = if (visible.isEmpty()) {
+                        emptyMap()
+                    } else {
+                        val ids = visible.joinToString(",") { it.id }
+                        val query =
+                            "announcement_id=in.($ids)&user_id=eq.${encode(account.id)}" +
+                                "&select=announcement_id,read_at"
+                        parseReadRows(
+                            request(
+                                method = "GET",
+                                path = "/rest/v1/announcement_reads?$query",
+                                accessToken = accessToken
+                            )
+                        )
+                    }
+                    val result = visible.map { announcement ->
+                        announcement.copy(readAt = readAtByAnnouncementId[announcement.id])
+                    }
+
+                    requireSameAccount(account.id)
+                    saveCache(account.id, result)
+                    val announcementUnreadCount = result.count { !it.isRead }
+                    PendingAnnouncementStore.reconcile(
+                        applicationContext,
+                        announcementUnreadCount,
+                        result.map(Announcement::id).toSet()
+                    )
+                    SupportUnreadStore.useAccount(applicationContext, account.id)
+                    LauncherBadgeHelper.updateExistingNotification(
+                        applicationContext,
+                        PendingAnnouncementStore.count(applicationContext) +
+                            SupportUnreadStore.unreadMessageCount(applicationContext)
+                    )
+                    result
+                }
+            }
         }
-    }
 
     suspend fun markAsRead(announcementId: String): String =
         upsertReadRows(listOf(announcementId))
@@ -199,57 +210,61 @@ internal class AnnouncementRepository(
         upsertReadRows(announcementIds)
 
     private suspend fun upsertReadRows(announcementIds: List<String>): String =
-        withContext(Dispatchers.IO) {
-            val ids = announcementIds
-                .filter { UUID_PATTERN.matches(it) }
-                .distinct()
-            val timestamp = currentTimestamp()
-            if (ids.isEmpty()) return@withContext timestamp
-            val account = auth.currentAccount()
-                ?: throw IllegalStateException("There is no authenticated Supabase account.")
-            require(account.id.isNotBlank()) {
-                "The authenticated Supabase account has no user ID."
-            }
-            val accessToken = auth.accessTokenFor(account.id)
-            val body = JSONArray().apply {
-                ids.forEach { id ->
-                    put(
-                        JSONObject()
-                            .put("announcement_id", id)
-                            .put("user_id", account.id)
-                            .put("read_at", timestamp)
+        runBoundedNetworkOperation(ANNOUNCEMENT_OPERATION_TIMEOUT_MILLIS) {
+            withContext(Dispatchers.IO) {
+                val ids = announcementIds
+                    .filter { UUID_PATTERN.matches(it) }
+                    .distinct()
+                val timestamp = currentTimestamp()
+                if (ids.isEmpty()) return@withContext timestamp
+                val account = auth.currentAccount()
+                    ?: throw IllegalStateException(
+                        "There is no authenticated Supabase account."
                     )
+                require(account.id.isNotBlank()) {
+                    "The authenticated Supabase account has no user ID."
                 }
-            }.toString()
-            val response = request(
-                method = "POST",
-                path = "/rest/v1/announcement_reads?on_conflict=announcement_id,user_id",
-                accessToken = accessToken,
-                body = body,
-                prefer = "resolution=merge-duplicates,return=minimal"
-            )
-            check(response.statusCode in 200..299) {
-                "Supabase announcement read update failed with HTTP ${response.statusCode}."
+                val accessToken = auth.accessTokenFor(account.id)
+                val body = JSONArray().apply {
+                    ids.forEach { id ->
+                        put(
+                            JSONObject()
+                                .put("announcement_id", id)
+                                .put("user_id", account.id)
+                                .put("read_at", timestamp)
+                        )
+                    }
+                }.toString()
+                val response = request(
+                    method = "POST",
+                    path = "/rest/v1/announcement_reads?on_conflict=announcement_id,user_id",
+                    accessToken = accessToken,
+                    body = body,
+                    prefer = "resolution=merge-duplicates,return=minimal"
+                )
+                check(response.statusCode in 200..299) {
+                    "Supabase announcement read update failed with HTTP ${response.statusCode}."
+                }
+                requireSameAccount(account.id)
+                val cached = loadCached(account)
+                val updated = cached.map { item ->
+                    if (item.id in ids) item.copy(readAt = timestamp) else item
+                }
+                saveCache(account.id, updated)
+                PendingAnnouncementStore.reconcile(
+                    applicationContext,
+                    updated.count { !it.isRead },
+                    updated.map(Announcement::id).toSet(),
+                    resolvedIds = ids.toSet()
+                )
+                SupportUnreadStore.useAccount(applicationContext, account.id)
+                LauncherBadgeHelper.updateExistingNotification(
+                    applicationContext,
+                    PendingAnnouncementStore.count(applicationContext) +
+                        SupportUnreadStore.unreadMessageCount(applicationContext)
+                )
+                timestamp
             }
-            requireSameAccount(account.id)
-            val cached = loadCached(account)
-            val updated = cached.map { item ->
-                if (item.id in ids) item.copy(readAt = timestamp) else item
-            }
-            saveCache(account.id, updated)
-            PendingAnnouncementStore.reconcile(
-                applicationContext,
-                updated.count { !it.isRead },
-                updated.map(Announcement::id).toSet(),
-                resolvedIds = ids.toSet()
-            )
-            SupportUnreadStore.useAccount(applicationContext, account.id)
-            LauncherBadgeHelper.updateExistingNotification(
-                applicationContext,
-                PendingAnnouncementStore.count(applicationContext) +
-                    SupportUnreadStore.unreadMessageCount(applicationContext)
-            )
-            timestamp
         }
 
     private suspend fun requireSameAccount(userId: String) {

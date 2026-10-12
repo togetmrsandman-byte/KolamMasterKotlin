@@ -8,6 +8,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -61,6 +62,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -72,6 +74,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
@@ -92,7 +95,11 @@ import androidx.core.content.ContextCompat
 import androidx.core.app.NotificationManagerCompat
 import com.kolammaster.app.notifications.SupportUnreadStore
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
+import java.io.IOException
+import java.net.URL
+import javax.net.ssl.HttpsURLConnection
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -488,6 +495,22 @@ internal fun ProfileDestination(
     account: AccountProfile? = null,
     onSignOut: () -> Unit = {}
 ) {
+    var avatarRetryKey by remember(account?.avatarUrl) { mutableIntStateOf(0) }
+    var profilePhoto by remember(account?.avatarUrl) { mutableStateOf<ImageBitmap?>(null) }
+    var showOfflineDialog by remember(account?.avatarUrl) { mutableStateOf(false) }
+    LaunchedEffect(account?.avatarUrl, avatarRetryKey) {
+        val avatarUrl = account?.avatarUrl?.takeIf(String::isNotBlank)
+            ?: return@LaunchedEffect
+        try {
+            profilePhoto = withContext(Dispatchers.IO) {
+                loadProfileThumbnail(avatarUrl)
+            }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            if (NetworkErrors.isNetworkFailure(exception)) showOfflineDialog = true
+        }
+    }
     LandingArtworkFrame {
         Spacer(Modifier.height(18.dp))
         Column(
@@ -510,15 +533,7 @@ internal fun ProfileDestination(
                     colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
                 ) { Text("Back") }
             } else {
-                val photo by produceState<ImageBitmap?>(
-                    initialValue = null,
-                    account.avatarUrl
-                ) {
-                    value = account.avatarUrl
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { url -> withContext(Dispatchers.IO) { loadThumbnail(url) } }
-                }
-                photo?.let { image ->
+                profilePhoto?.let { image ->
                     Image(
                         bitmap = image,
                         contentDescription = "Profile photo",
@@ -558,6 +573,30 @@ internal fun ProfileDestination(
         }
         Spacer(Modifier.weight(1f))
     }
+    if (showOfflineDialog) {
+        NetworkRetryDialog(
+            onRetry = {
+                showOfflineDialog = false
+                avatarRetryKey++
+            },
+            onClose = { showOfflineDialog = false }
+        )
+    }
+}
+
+private fun loadProfileThumbnail(url: String): ImageBitmap? {
+    val connection = URL(url).openConnection() as? HttpsURLConnection
+        ?: throw IOException("Profile image URL must use HTTPS.")
+    return try {
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 15_000
+        if (connection.responseCode !in 200..299) return null
+        connection.inputStream.use { input ->
+            BitmapFactory.decodeStream(input)?.asImageBitmap()
+        }
+    } finally {
+        connection.disconnect()
+    }
 }
 
 private val ProfileLogoSize = 270.dp
@@ -580,6 +619,10 @@ internal fun ContactUsDestination(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    var networkDialogDismissed by remember { mutableStateOf(false) }
+    LaunchedEffect(errorMessage) {
+        if (errorMessage != NetworkErrors.DISPLAY_TEXT) networkDialogDismissed = false
+    }
     val listState = rememberLazyListState()
     val orderedConversations =
         orderContactConversations(conversations, unreadConversationIds)
@@ -642,6 +685,33 @@ internal fun ContactUsDestination(
                         .testTag("contact-conversation-list"),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
+                    if (errorMessage != null && conversations.isNotEmpty()) {
+                        item {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = KolamCoolSilver
+                                ),
+                                border = BorderStroke(1.dp, KolamSilverBorder)
+                            ) {
+                                Column(
+                                    modifier = Modifier.fillMaxWidth().padding(12.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text(
+                                        "Could not refresh conversations. Showing saved conversations.",
+                                        color = KolamContainerSecondary,
+                                        textAlign = TextAlign.Center
+                                    )
+                                    TextButton(
+                                        onClick = onRetry,
+                                        colors = kolamStandardButtonColors()
+                                    ) { Text("Retry") }
+                                }
+                            }
+                        }
+                    }
                     when {
                         isLoading && conversations.isEmpty() -> item {
                             Card(
@@ -665,7 +735,7 @@ internal fun ContactUsDestination(
                                 }
                             }
                         }
-                        errorMessage != null -> item {
+                        errorMessage != null && conversations.isEmpty() -> item {
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
@@ -776,6 +846,15 @@ internal fun ContactUsDestination(
                 }
             }
         }
+    }
+    if (errorMessage == NetworkErrors.DISPLAY_TEXT && !networkDialogDismissed) {
+        NetworkRetryDialog(
+            onRetry = {
+                networkDialogDismissed = true
+                onRetry()
+            },
+            onClose = { networkDialogDismissed = true }
+        )
     }
 }
 

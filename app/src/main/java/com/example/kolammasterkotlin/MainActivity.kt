@@ -1361,18 +1361,38 @@ private fun KolamMasterApp(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val browseCatalogueState = remember { BrowseCatalogueState() }
+    val contactAccountId = account?.takeUnless { it.isGuest }?.id
+    val contactLocalCache = remember(context) { ContactLocalCache(context) }
     var storeDialog by remember { mutableStateOf<String?>(null) }
     var drawerOpen by remember { mutableStateOf(false) }
     var settingsExpanded by remember { mutableStateOf(false) }
-    var contactConversations by remember {
-        mutableStateOf<List<ContactConversation>>(emptyList())
+    var contactConversations by remember(contactAccountId, contactLocalCache) {
+        mutableStateOf(
+            contactAccountId?.let(contactLocalCache::loadConversations)?.value.orEmpty()
+        )
     }
-    var isContactLoading by remember { mutableStateOf(false) }
-    var contactLoadError by remember { mutableStateOf<String?>(null) }
-    var contactSignInRequired by remember { mutableStateOf(false) }
+    var isContactLoading by remember(contactAccountId, contactLocalCache) {
+        mutableStateOf(
+            screen == AppScreen.ContactUs &&
+                contactAccountId != null &&
+                contactLocalCache.loadConversations(contactAccountId) == null
+        )
+    }
+    var contactLoadError by remember(contactAccountId) { mutableStateOf<String?>(null) }
+    var contactSignInRequired by remember(contactAccountId) { mutableStateOf(false) }
     var contactRefreshKey by remember { mutableIntStateOf(0) }
-    var isNewContactConversation by remember { mutableStateOf(false) }
-    var selectedContactConversationId by remember { mutableStateOf<String?>(null) }
+    var contactRetryKey by remember(contactAccountId) { mutableIntStateOf(0) }
+    var lastContactRetryKey by remember(contactAccountId) { mutableIntStateOf(0) }
+    var lastContactForegroundRefreshKey by remember(contactAccountId) {
+        mutableIntStateOf(-1)
+    }
+    var lastContactSupportMessageVersion by remember(contactAccountId) {
+        mutableStateOf(supportMessageVersion)
+    }
+    var isNewContactConversation by remember(contactAccountId) { mutableStateOf(false) }
+    var selectedContactConversationId by remember(contactAccountId) {
+        mutableStateOf<String?>(null)
+    }
     var contactDetailRefreshKey by remember { mutableIntStateOf(0) }
     var observedSupportMessageVersion by remember {
         mutableStateOf(supportMessageVersion)
@@ -1380,7 +1400,9 @@ private fun KolamMasterApp(
     var observedSupportUnreadVersion by remember {
         mutableStateOf(SupportUnreadStore.unreadVersion(context))
     }
-    val contactRepository = remember { ContactRepository() }
+    val contactRepository = remember(contactLocalCache) {
+        ContactRepository(localCache = contactLocalCache)
+    }
     val announcementRepository = remember(context) { AnnouncementRepository(context) }
     val communityRepository = remember(context) { CommunityRepository(context) }
     var communitySubmissions by remember(communityRepository) {
@@ -1401,6 +1423,10 @@ private fun KolamMasterApp(
     var announcementLoading by remember(account?.id) { mutableStateOf(account != null) }
     var announcementError by remember(account?.id) { mutableStateOf<String?>(null) }
     var announcementActionError by remember(account?.id) { mutableStateOf<String?>(null) }
+    var announcementNetworkRetryAction by remember(account?.id) {
+        mutableStateOf<(() -> Unit)?>(null)
+    }
+    var announcementMarkReadRetryKey by remember(account?.id) { mutableIntStateOf(0) }
     var isMarkingAllAnnouncementsRead by remember(account?.id) { mutableStateOf(false) }
     var selectedAnnouncementId by remember(account?.id) { mutableStateOf<String?>(null) }
     var announcementDataLoaded by remember(account?.id) { mutableStateOf(false) }
@@ -1499,6 +1525,7 @@ private fun KolamMasterApp(
             announcementLoading = true
         }
         announcementError = null
+        announcementNetworkRetryAction = null
         try {
             announcements = announcementRepository.refresh()
             announcementUnread = announcements.any { !it.isRead }
@@ -1507,7 +1534,20 @@ private fun KolamMasterApp(
             throw exception
         } catch (exception: Exception) {
             if (announcements.isEmpty()) {
-                announcementError = "Could not load announcements. Please try again."
+                announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    NetworkErrors.DISPLAY_TEXT
+                } else {
+                    "Could not load announcements. Please try again."
+                }
+            } else {
+                announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    "Could not refresh announcements. Showing saved announcements."
+                } else {
+                    null
+                }
+            }
+            if (NetworkErrors.isNetworkFailure(exception)) {
+                announcementNetworkRetryAction = { announcementRefreshKey++ }
             }
         } finally {
             announcementLoading = false
@@ -1541,12 +1581,23 @@ private fun KolamMasterApp(
                 announcements = announcementRepository.refresh()
                 announcementUnread = announcements.any { !it.isRead }
                 announcementDataLoaded = true
+                announcementNetworkRetryAction = null
                 matchingAnnouncement = announcements.firstOrNull { it.id == announcementId }
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 if (announcements.isEmpty()) {
-                    announcementError = "Could not load announcements. Please try again."
+                    announcementError = if (NetworkErrors.isNetworkFailure(exception)) {
+                        NetworkErrors.DISPLAY_TEXT
+                    } else {
+                        "Could not load announcements. Please try again."
+                    }
+                } else if (NetworkErrors.isNetworkFailure(exception)) {
+                    announcementError =
+                        "Could not refresh announcements. Showing saved announcements."
+                }
+                if (NetworkErrors.isNetworkFailure(exception)) {
+                    announcementNetworkRetryAction = { announcementRefreshKey++ }
                 }
             } finally {
                 announcementLoading = false
@@ -1558,11 +1609,16 @@ private fun KolamMasterApp(
         onAnnouncementNotificationHandled()
     }
 
-    LaunchedEffect(selectedAnnouncementId, account?.id) {
+    LaunchedEffect(
+        selectedAnnouncementId,
+        account?.id,
+        announcementMarkReadRetryKey
+    ) {
         val currentAccount = account ?: return@LaunchedEffect
         val selected = announcements.firstOrNull { it.id == selectedAnnouncementId }
             ?: return@LaunchedEffect
         if (selected.isRead) return@LaunchedEffect
+        announcementNetworkRetryAction = null
         try {
             val readAt = announcementRepository.markAsRead(selected.id)
             announcements = announcements.map { item ->
@@ -1571,17 +1627,27 @@ private fun KolamMasterApp(
             announcementUnread = announcements.any { !it.isRead }
             announcementError = null
             announcementActionError = null
+            announcementNetworkRetryAction = null
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            announcementActionError = "Could not mark this announcement as read."
+            announcementActionError = if (NetworkErrors.isNetworkFailure(exception)) {
+                NetworkErrors.DISPLAY_TEXT
+            } else {
+                "Could not mark this announcement as read."
+            }
+            announcementNetworkRetryAction = if (NetworkErrors.isNetworkFailure(exception)) {
+                { announcementMarkReadRetryKey++ }
+            } else {
+                null
+            }
         }
     }
-    val contactAccountId = account?.takeUnless { it.isGuest }?.id
     LaunchedEffect(
         screen,
         contactAccountId,
         contactRefreshKey,
+        contactRetryKey,
         contactForegroundRefreshKey,
         observedSupportMessageVersion
     ) {
@@ -1595,15 +1661,49 @@ private fun KolamMasterApp(
             return@LaunchedEffect
         }
 
+        val cacheSnapshot = contactLocalCache.loadConversations(contactAccountId)
+        if (cacheSnapshot != null && contactConversations.isEmpty()) {
+            contactConversations = cacheSnapshot.value
+        }
+        cacheSnapshot?.let { snapshot ->
+            scope.launch {
+                contactRepository.cacheMessagesForConversations(
+                    contactAccountId,
+                    snapshot.value
+                )
+            }
+        }
+        val hasExplicitRefresh = contactRetryKey != lastContactRetryKey ||
+            contactForegroundRefreshKey != lastContactForegroundRefreshKey ||
+            observedSupportMessageVersion != lastContactSupportMessageVersion
+        lastContactRetryKey = contactRetryKey
+        lastContactForegroundRefreshKey = contactForegroundRefreshKey
+        lastContactSupportMessageVersion = observedSupportMessageVersion
+        if (!hasExplicitRefresh &&
+            cacheSnapshot != null &&
+            contactLocalCache.isFresh(cacheSnapshot.savedAtMillis)
+        ) {
+            contactLoadError = null
+            isContactLoading = false
+            return@LaunchedEffect
+        }
+
         isContactLoading = true
         contactLoadError = null
         contactSignInRequired = false
         try {
-            contactConversations = contactRepository.getCurrentUserContactConversations()
+            val refreshedConversations =
+                contactRepository.getCurrentUserContactConversations()
+            contactConversations = refreshedConversations
+            scope.launch {
+                contactRepository.cacheMessagesForConversations(
+                    contactAccountId,
+                    refreshedConversations
+                )
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            contactConversations = emptyList()
             if (exception is ContactSignInRequiredException) {
                 contactSignInRequired = true
             } else {
@@ -1725,6 +1825,40 @@ private fun KolamMasterApp(
             isNewContactConversation = false
         }
     }
+
+    fun submitMarkAllAnnouncementsRead(announcementIds: List<String>) {
+        if (announcementIds.isEmpty() || isMarkingAllAnnouncementsRead) return
+        scope.launch {
+            isMarkingAllAnnouncementsRead = true
+            announcementNetworkRetryAction = null
+            try {
+                val readAt = announcementRepository.markAllAsRead(announcementIds)
+                announcements = announcements.map { item ->
+                    if (item.id in announcementIds) item.copy(readAt = readAt) else item
+                }
+                announcementUnread = announcements.any { !it.isRead }
+                announcementError = null
+                announcementActionError = null
+                announcementNetworkRetryAction = null
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                announcementActionError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    NetworkErrors.DISPLAY_TEXT
+                } else {
+                    "Could not mark announcements as read."
+                }
+                if (NetworkErrors.isNetworkFailure(exception)) {
+                    announcementNetworkRetryAction = {
+                        submitMarkAllAnnouncementsRead(announcementIds)
+                    }
+                }
+            } finally {
+                isMarkingAllAnnouncementsRead = false
+            }
+        }
+    }
+
     val myFoldersSelectedFolderId = remember(account?.takeUnless { it.isGuest }?.id) {
         mutableStateOf<String?>(null)
     }
@@ -1865,6 +1999,8 @@ private fun KolamMasterApp(
                         },
                         onPublishLesson = onPublishLesson,
                         onPublishSuccess = { publishSuccessActive = true },
+                        contactAccountId = contactAccountId,
+                        contactLocalCache = contactLocalCache,
                         contactForegroundRefreshKey = contactForegroundRefreshKey,
                         supportMessageVersion = supportMessageVersion,
                         contactDetailRefreshKey = contactDetailRefreshKey,
@@ -1876,7 +2012,7 @@ private fun KolamMasterApp(
                         contactLoadError = contactLoadError,
                         isContactSignedIn = contactAccountId != null &&
                             !contactSignInRequired,
-                        onRetryContactLoad = { contactRefreshKey++ },
+                        onRetryContactLoad = { contactRetryKey++ },
                         isNewContactConversation = isNewContactConversation,
                         selectedContactConversationId = selectedContactConversationId,
                         onContactConversationSelected = {
@@ -1894,6 +2030,10 @@ private fun KolamMasterApp(
                         announcementsLoading = announcementLoading,
                         announcementsError = announcementError,
                         announcementsActionError = announcementActionError,
+                        announcementNetworkRetryAction = announcementNetworkRetryAction,
+                        onDismissAnnouncementNetworkError = {
+                            announcementNetworkRetryAction = null
+                        },
                         selectedAnnouncement = announcements.firstOrNull {
                             it.id == selectedAnnouncementId
                         },
@@ -1906,34 +2046,9 @@ private fun KolamMasterApp(
                         onAnnouncementSelected = { selectedAnnouncementId = it.id },
                         onAnnouncementDetailBack = handleAnnouncementDetailBack,
                         onMarkAllAnnouncementsRead = {
-                            val announcementIds = announcementIdsForMarkAll(announcements)
-                            if (announcementIds.isNotEmpty() && !isMarkingAllAnnouncementsRead) {
-                                scope.launch {
-                                    isMarkingAllAnnouncementsRead = true
-                                    try {
-                                        val readAt =
-                                            announcementRepository.markAllAsRead(announcementIds)
-                                        announcements = announcements.map { item ->
-                                            if (item.id in announcementIds) {
-                                                item.copy(readAt = readAt)
-                                            } else {
-                                                item
-                                            }
-                                        }
-                                        announcementUnread =
-                                            announcements.any { !it.isRead }
-                                        announcementError = null
-                                        announcementActionError = null
-                                    } catch (exception: CancellationException) {
-                                        throw exception
-                                    } catch (exception: Exception) {
-                                        announcementActionError =
-                                            "Could not mark announcements as read."
-                                    } finally {
-                                        isMarkingAllAnnouncementsRead = false
-                                    }
-                                }
-                            }
+                            submitMarkAllAnnouncementsRead(
+                                announcementIdsForMarkAll(announcements)
+                            )
                         },
                         onNewContactConversation = {
                             if (contactAccountId != null) {
@@ -2128,6 +2243,8 @@ private fun AppScreenContent(
     communityLessonRequestId: String?,
     onCommunityLessonRequest: (String) -> Unit,
     onCommunityLessonRequestHandled: () -> Unit,
+    contactAccountId: String?,
+    contactLocalCache: ContactLocalCache,
     contactForegroundRefreshKey: Int,
     supportMessageVersion: Long,
     contactDetailRefreshKey: Int,
@@ -2153,6 +2270,8 @@ private fun AppScreenContent(
     announcementsLoading: Boolean,
     announcementsError: String?,
     announcementsActionError: String?,
+    announcementNetworkRetryAction: (() -> Unit)?,
+    onDismissAnnouncementNetworkError: () -> Unit,
     selectedAnnouncement: Announcement?,
     communitySubmissions: List<CommunitySubmission>,
     communityLoading: Boolean,
@@ -2249,6 +2368,8 @@ private fun AppScreenContent(
             if (isContactSignedIn && selectedContactConversationId != null) {
                 ContactConversationDetailDestination(
                     conversationId = selectedContactConversationId,
+                    accountId = contactAccountId,
+                    localCache = contactLocalCache,
                     onLoadConversation = onLoadContactConversation,
                     onLoadMessages = onLoadContactMessages,
                     onSendMessage = onSendContactMessage,
@@ -2283,6 +2404,8 @@ private fun AppScreenContent(
             selectedAnnouncement = selectedAnnouncement,
             isMarkingAllRead = isMarkingAllAnnouncementsRead,
             onRetry = onRetryAnnouncements,
+            networkRetryAction = announcementNetworkRetryAction,
+            onDismissNetworkDialog = onDismissAnnouncementNetworkError,
             onAnnouncementSelected = onAnnouncementSelected,
             onBackFromDetail = onAnnouncementDetailBack,
             onMarkAllRead = onMarkAllAnnouncementsRead

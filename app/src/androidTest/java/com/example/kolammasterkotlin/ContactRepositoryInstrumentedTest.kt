@@ -15,6 +15,43 @@ import java.net.UnknownHostException
 @RunWith(AndroidJUnit4::class)
 class ContactRepositoryInstrumentedTest {
     @Test
+    fun contactCachePersistsConversationAndMessagesPerAccount() {
+        val context = androidx.test.platform.app.InstrumentationRegistry
+            .getInstrumentation().targetContext
+        val cache = ContactLocalCache(context)
+        val userId = java.util.UUID.randomUUID().toString()
+        val conversation = ContactConversation(
+            id = java.util.UUID.randomUUID().toString(),
+            userId = userId,
+            email = "user@example.com",
+            phone = "",
+            subject = "Cached help",
+            status = "OPEN",
+            createdAt = "2026-10-01T00:00:00Z",
+            updatedAt = "2026-10-02T00:00:00Z",
+            latestMessageCreatedAt = "2026-10-02T00:00:00Z",
+            latestMessagePreview = "Cached message"
+        )
+        val message = ContactMessage(
+            id = java.util.UUID.randomUUID().toString(),
+            conversationId = conversation.id,
+            sender = "USER",
+            message = "Cached message",
+            imageUrl = null,
+            createdAt = "2026-10-02T00:00:00Z"
+        )
+
+        cache.saveConversations(userId, listOf(conversation))
+        cache.saveConversation(userId, conversation)
+        cache.saveMessages(userId, conversation.id, listOf(message))
+
+        assertEquals(conversation.id, cache.loadConversations(userId)?.value?.single()?.id)
+        assertEquals(conversation.subject, cache.loadConversation(userId, conversation.id)?.value?.subject)
+        assertEquals(message, cache.loadMessages(userId, conversation.id)?.value?.single())
+        assertNull(cache.loadConversations(java.util.UUID.randomUUID().toString()))
+    }
+
+    @Test
     fun mapsContactConversationAndMessageResponses() {
         val conversation = ContactJson.decodeConversation(
             JSONObject(

@@ -2,7 +2,11 @@ package com.kolammaster.app
 
 import com.kolammaster.app.auth.SupabaseAccount
 import com.kolammaster.app.auth.SupabaseGuestAuth
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONException
@@ -12,6 +16,7 @@ import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.concurrent.ConcurrentHashMap
 import java.util.UUID
 
 internal class ContactSignInRequiredException :
@@ -51,8 +56,11 @@ private object SupabaseContactAuthDataSource : ContactAuthDataSource {
 internal class ContactRepository(
     private val auth: ContactAuthDataSource = SupabaseContactAuthDataSource,
     private val http: ContactHttpTransport = UrlConnectionContactHttpTransport,
-    private val supabaseUrl: String = BuildConfig.SUPABASE_URL
+    private val supabaseUrl: String = BuildConfig.SUPABASE_URL,
+    private val localCache: ContactLocalCache? = null
 ) {
+    private val messageFetchLocks = ConcurrentHashMap<String, Mutex>()
+
     suspend fun getCurrentUserContactConversations(): List<ContactConversation> =
         withContext(Dispatchers.IO) {
             val account = requireSignedInAccount()
@@ -63,6 +71,7 @@ internal class ContactRepository(
                 "&order=updated_at.desc&limit=$CONVERSATION_LIMIT"
             parseArray(request("GET", "$supabaseUrl/rest/v1/contact_conversations?$query", token))
                 .toContactConversations()
+                .also { localCache?.saveConversations(account.id, it) }
         }
 
     suspend fun getContactConversation(conversationId: String): ContactConversation =
@@ -81,7 +90,9 @@ internal class ContactRepository(
             )
             val conversationRow = rows.optJSONObject(0)
                 ?: throw ContactConversationNotFoundException(conversationId)
-            ContactJson.decodeConversation(conversationRow)
+            ContactJson.decodeConversation(conversationRow).also {
+                localCache?.saveConversation(account.id, it)
+            }
         }
 
     suspend fun getContactConversationIdForMessage(messageId: String): String =
@@ -123,26 +134,68 @@ internal class ContactRepository(
         withContext(Dispatchers.IO) {
             require(conversationId.isNotBlank()) { "Conversation ID must not be empty." }
             val account = requireSignedInAccount()
-            val token = auth.accessTokenFor(account.id)
-            val ownershipQuery = "id=eq.${encode(conversationId)}" +
-                "&user_id=eq.${encode(account.id)}&select=id&limit=1"
-            val ownedConversations = parseArray(
-                request(
-                    "GET",
-                    "$supabaseUrl/rest/v1/contact_conversations?$ownershipQuery",
-                    token
-                )
-            )
-            if (ownedConversations.length() == 0) {
-                throw ContactConversationNotFoundException(conversationId)
+            messageFetchLock(account.id, conversationId).withLock {
+                fetchContactMessages(account, conversationId)
             }
-
-            val query = "conversation_id=eq.${encode(conversationId)}" +
-                "&select=$MESSAGE_COLUMNS&order=created_at.asc"
-            parseArray(
-                request("GET", "$supabaseUrl/rest/v1/contact_messages?$query", token)
-            ).toContactMessages()
         }
+
+    suspend fun cacheMessagesForConversations(
+        userId: String,
+        conversations: List<ContactConversation>
+    ) = withContext(Dispatchers.IO) {
+        for (conversation in conversations) {
+            if (conversation.userId != userId) continue
+            try {
+                val account = requireSignedInAccount()
+                if (account.id != userId) return@withContext
+                messageFetchLock(userId, conversation.id).withLock {
+                    val latestAccount = requireSignedInAccount()
+                    if (latestAccount.id != userId) return@withLock
+                    val cachedMessages = localCache?.loadMessages(userId, conversation.id)
+                    if (cachedMessages != null &&
+                        localCache?.isFresh(cachedMessages.savedAtMillis) == true
+                    ) {
+                        return@withLock
+                    }
+                    fetchContactMessages(latestAccount, conversation.id)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.w(TAG, "Could not cache messages for Contact Us conversation.", exception)
+            }
+        }
+    }
+
+    private suspend fun fetchContactMessages(
+        account: SupabaseAccount,
+        conversationId: String
+    ): List<ContactMessage> {
+        val token = auth.accessTokenFor(account.id)
+        val ownershipQuery = "id=eq.${encode(conversationId)}" +
+            "&user_id=eq.${encode(account.id)}&select=id&limit=1"
+        val ownedConversations = parseArray(
+            request(
+                "GET",
+                "$supabaseUrl/rest/v1/contact_conversations?$ownershipQuery",
+                token
+            )
+        )
+        if (ownedConversations.length() == 0) {
+            throw ContactConversationNotFoundException(conversationId)
+        }
+
+        val query = "conversation_id=eq.${encode(conversationId)}" +
+            "&select=$MESSAGE_COLUMNS&order=created_at.asc"
+        return parseArray(
+            request("GET", "$supabaseUrl/rest/v1/contact_messages?$query", token)
+        ).toContactMessages().also {
+            localCache?.saveMessages(account.id, conversationId, it)
+        }
+    }
+
+    private fun messageFetchLock(userId: String, conversationId: String): Mutex =
+        messageFetchLocks.computeIfAbsent("$userId:$conversationId") { Mutex() }
 
     suspend fun createContactConversation(
         email: String?,
@@ -183,7 +236,6 @@ internal class ContactRepository(
         if (decodedConversation.userId != account.id) {
             throw ContactDataException("Supabase returned a conversation for another user.")
         }
-
         val initialImageUrl = initialImageBytes?.let { uploadContactImage(it) }
         request(
             "POST",
@@ -196,6 +248,15 @@ internal class ContactRepository(
             ),
             prefer = "return=minimal"
         )
+        val createdAt = java.time.Instant.now().toString()
+        val cachedConversation = decodedConversation.copy(
+            updatedAt = createdAt,
+            latestMessageCreatedAt = createdAt,
+            latestMessagePreview = trimmedMessage.takeIf(String::isNotBlank)
+                ?: initialImageUrl?.let { "Image attachment" }
+        )
+        localCache?.upsertConversation(account.id, cachedConversation)
+        localCache?.saveConversation(account.id, cachedConversation)
         decodedConversation
     }
 
@@ -223,7 +284,9 @@ internal class ContactRepository(
         )
         val row = parseArray(response).optJSONObject(0)
             ?: throw ContactDataException("Supabase did not return the created contact message.")
-        ContactJson.decodeMessage(row)
+        ContactJson.decodeMessage(row).also {
+            localCache?.upsertMessage(account.id, it)
+        }
     }
 
     suspend fun uploadContactImage(imageBytes: ByteArray): String =
@@ -363,6 +426,7 @@ internal class ContactRepository(
         }
 
     private companion object {
+        const val TAG = "ContactRepository"
         const val CONVERSATION_COLUMNS =
             "id,user_id,email,phone,subject,status,created_at,updated_at"
         const val CONVERSATION_LIST_COLUMNS =

@@ -90,6 +90,7 @@ import java.util.UUID
 import javax.net.ssl.HttpsURLConnection
 
 internal const val MAX_CONTACT_IMAGE_BYTES = 10 * 1024 * 1024
+private const val CONTACT_SEND_RECONCILIATION_WINDOW_MILLIS = 5 * 60 * 1000L
 
 private enum class ContactMessageDelivery {
     Sending,
@@ -117,33 +118,100 @@ internal fun ContactConversationDetailDestination(
     onLoadMessages: suspend (String) -> List<ContactMessage>,
     onSendMessage: suspend (String, String, String?) -> ContactMessage,
     onUploadImage: suspend (ByteArray) -> String,
+    accountId: String? = null,
+    localCache: ContactLocalCache? = null,
     foregroundRefreshKey: Int = 0,
     externalRefreshKey: Int = 0
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var conversation by remember(conversationId) {
-        mutableStateOf<ContactConversation?>(null)
+    val cachedConversation = remember(accountId, conversationId, localCache) {
+        accountId?.let { localCache?.loadConversation(it, conversationId) }
     }
-    var messages by remember(conversationId) {
-        mutableStateOf<List<ContactThreadMessage>>(emptyList())
+    val cachedMessages = remember(accountId, conversationId, localCache) {
+        accountId?.let { localCache?.loadMessages(it, conversationId) }
     }
-    var isLoading by remember(conversationId) { mutableStateOf(true) }
-    var hasLoaded by remember(conversationId) { mutableStateOf(false) }
-    var retryKey by remember(conversationId) { mutableIntStateOf(0) }
-    var isSending by remember(conversationId) { mutableStateOf(false) }
-    var isImageBatchActive by remember(conversationId) { mutableStateOf(false) }
-    var messageText by remember(conversationId) { mutableStateOf("") }
-    var uploadProgress by remember(conversationId) { mutableStateOf<String?>(null) }
+    var conversation by remember(accountId, conversationId) {
+        mutableStateOf(cachedConversation?.value)
+    }
+    var messages by remember(accountId, conversationId) {
+        mutableStateOf(
+            cachedMessages?.value.orEmpty().map {
+                ContactThreadMessage(it.id, it, ContactMessageDelivery.Sent)
+            }
+        )
+    }
+    var isLoading by remember(accountId, conversationId) {
+        mutableStateOf(cachedMessages == null)
+    }
+    var hasLoaded by remember(accountId, conversationId) {
+        mutableStateOf(cachedMessages != null)
+    }
+    var initialLoadFailed by remember(accountId, conversationId) {
+        mutableStateOf(false)
+    }
+    var initialLoadWasNetworkFailure by remember(accountId, conversationId) {
+        mutableStateOf(false)
+    }
+    var loadError by remember(accountId, conversationId) { mutableStateOf<String?>(null) }
+    var retryKey by remember(accountId, conversationId) { mutableIntStateOf(0) }
+    var lastHandledRetryKey by remember(accountId, conversationId) {
+        mutableIntStateOf(0)
+    }
+    var lastHandledForegroundRefreshKey by remember(accountId, conversationId) {
+        mutableIntStateOf(foregroundRefreshKey)
+    }
+    var lastHandledExternalRefreshKey by remember(accountId, conversationId) {
+        mutableIntStateOf(0)
+    }
+    var isSending by remember(accountId, conversationId) { mutableStateOf(false) }
+    var isImageBatchActive by remember(accountId, conversationId) { mutableStateOf(false) }
+    var messageText by remember(accountId, conversationId) { mutableStateOf("") }
+    var uploadProgress by remember(accountId, conversationId) { mutableStateOf<String?>(null) }
     var showAttachmentOptions by remember { mutableStateOf(false) }
     var errorTitle by remember { mutableStateOf<String?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var networkRetryAction by remember(accountId, conversationId) {
+        mutableStateOf<(() -> Unit)?>(null)
+    }
     var cameraUri by remember { mutableStateOf<Uri?>(null) }
     var imageViewerUrl by remember { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     val isImeVisible = WindowInsets.ime.getBottom(LocalDensity.current) > 0
 
-    LaunchedEffect(conversationId, retryKey, foregroundRefreshKey, externalRefreshKey) {
+    LaunchedEffect(
+        accountId,
+        conversationId,
+        retryKey,
+        foregroundRefreshKey,
+        externalRefreshKey
+    ) {
+        val latestCachedConversation =
+            accountId?.let { localCache?.loadConversation(it, conversationId) }
+        val latestCachedMessages = accountId?.let {
+            localCache?.loadMessages(it, conversationId)
+        }
+        if (conversation == null) conversation = latestCachedConversation?.value
+        if (messages.isEmpty() && latestCachedMessages != null) {
+            messages = latestCachedMessages.value.map {
+                ContactThreadMessage(it.id, it, ContactMessageDelivery.Sent)
+            }
+        }
+        if (latestCachedMessages != null) hasLoaded = true
+        val mustRefresh = retryKey != lastHandledRetryKey ||
+            foregroundRefreshKey != lastHandledForegroundRefreshKey ||
+            externalRefreshKey != lastHandledExternalRefreshKey
+        lastHandledRetryKey = retryKey
+        lastHandledForegroundRefreshKey = foregroundRefreshKey
+        lastHandledExternalRefreshKey = externalRefreshKey
+        if (!mustRefresh &&
+            latestCachedMessages != null &&
+            localCache?.isFresh(latestCachedMessages.savedAtMillis) == true
+        ) {
+            isLoading = false
+            return@LaunchedEffect
+        }
+
         isLoading = true
         try {
             val latestConversation = onLoadConversation(conversationId)
@@ -155,12 +223,32 @@ internal fun ContactConversationDetailDestination(
                 it.delivery != ContactMessageDelivery.Sent
             }
             hasLoaded = true
+            initialLoadFailed = false
+            initialLoadWasNetworkFailure = false
+            loadError = null
+            networkRetryAction = null
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
-            showContactLoadError(exception) { title, body ->
-                errorTitle = title
-                errorMessage = body
+            if (NetworkErrors.isNetworkFailure(exception)) {
+                errorTitle = NetworkErrors.TITLE
+                errorMessage = NetworkErrors.MESSAGE
+                networkRetryAction = { retryKey++ }
+            }
+            if (hasLoaded) {
+                loadError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    NetworkErrors.DISPLAY_TEXT
+                } else {
+                    "Could not refresh this conversation. Showing saved messages."
+                }
+            } else {
+                initialLoadFailed = true
+                initialLoadWasNetworkFailure =
+                    NetworkErrors.isNetworkFailure(exception)
+                showContactLoadError(exception) { title, body ->
+                    errorTitle = title
+                    errorMessage = body
+                }
             }
         } finally {
             isLoading = false
@@ -174,10 +262,78 @@ internal fun ContactConversationDetailDestination(
         }
     }
 
-    fun reportFailure(exception: Exception, fallback: String) {
+    fun reportFailure(
+        exception: Exception,
+        fallback: String,
+        retry: (() -> Unit)? = null
+    ) {
         val networkFailure = NetworkErrors.isNetworkFailure(exception)
         errorTitle = if (networkFailure) NetworkErrors.TITLE else "Contact Us"
         errorMessage = if (networkFailure) NetworkErrors.MESSAGE else fallback
+        networkRetryAction = retry.takeIf { networkFailure }
+    }
+
+    suspend fun retryFailedContactMessage(
+        localId: String,
+        text: String,
+        imageUrl: String?,
+        localCreatedAt: String
+    ) {
+        if (isSending) return
+        isSending = true
+        try {
+            val localCreatedAtMillis = localCreatedAt.toLongOrNull()
+            val refreshedMessages = onLoadMessages(conversationId)
+            val alreadyDelivered = refreshedMessages.firstOrNull {
+                it.sender.equals("USER", ignoreCase = true) &&
+                    it.message == text &&
+                    it.imageUrl == imageUrl &&
+                    localCreatedAtMillis != null &&
+                    runCatching {
+                        kotlin.math.abs(
+                            java.time.Instant.parse(it.createdAt).toEpochMilli() -
+                                localCreatedAtMillis
+                        ) <= CONTACT_SEND_RECONCILIATION_WINDOW_MILLIS
+                    }.getOrDefault(false)
+            }
+            if (alreadyDelivered != null) {
+                messages = messages.map {
+                    if (it.localId == localId) {
+                        ContactThreadMessage(
+                            alreadyDelivered.id,
+                            alreadyDelivered,
+                            ContactMessageDelivery.Sent
+                        )
+                    } else {
+                        it
+                    }
+                }
+            } else {
+                val saved = sendSupportReplyAndClearUnread(context, conversationId) {
+                    onSendMessage(conversationId, text, imageUrl)
+                }
+                messages = messages.map {
+                    if (it.localId == localId) {
+                        ContactThreadMessage(saved.id, saved, ContactMessageDelivery.Sent)
+                    } else {
+                        it
+                    }
+                }.sortedBy { it.message.createdAt }
+            }
+            errorTitle = null
+            errorMessage = null
+            networkRetryAction = null
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            reportFailure(exception, "Your message was not sent. Please try again.") {
+                scope.launch {
+                    retryFailedContactMessage(localId, text, null, localCreatedAt)
+                }
+            }
+        } finally {
+            isSending = false
+        }
     }
 
     suspend fun sendTextMessage() {
@@ -190,13 +346,14 @@ internal fun ContactConversationDetailDestination(
             return
         }
         val localId = "local-${UUID.randomUUID()}"
+        val localCreatedAt = System.currentTimeMillis().toString()
         val localMessage = ContactMessage(
             id = localId,
             conversationId = conversationId,
             sender = "USER",
             message = trimmed,
             imageUrl = null,
-            createdAt = System.currentTimeMillis().toString()
+            createdAt = localCreatedAt
         )
         messages = messages + ContactThreadMessage(
             localId,
@@ -224,7 +381,16 @@ internal fun ContactConversationDetailDestination(
                 if (it.localId == localId) it.copy(delivery = ContactMessageDelivery.Failed)
                 else it
             }
-            reportFailure(exception, "Your message was not sent. Please try again.")
+            reportFailure(exception, "Your message was not sent. Please try again.") {
+                scope.launch {
+                    retryFailedContactMessage(
+                        localId,
+                        trimmed,
+                        null,
+                        localCreatedAt
+                    )
+                }
+            }
             if (exception is ContactConversationClosedException) retryKey++
         } finally {
             isSending = false
@@ -241,6 +407,8 @@ internal fun ContactConversationDetailDestination(
         isSending = true
         uploadProgress = "Preparing image ${index + 1} of $total..."
         var localId: String? = null
+        var localCreatedAt: String? = null
+        var uploadedImageUrl: String? = null
         try {
             val currentConversation = onLoadConversation(conversationId)
             conversation = currentConversation
@@ -253,15 +421,18 @@ internal fun ContactConversationDetailDestination(
             }
             uploadProgress = "Uploading image ${index + 1} of $total..."
             val imageUrl = onUploadImage(bytes)
+            uploadedImageUrl = imageUrl
             val localMessageId = "local-${UUID.randomUUID()}"
             localId = localMessageId
+            val createdAt = System.currentTimeMillis().toString()
+            localCreatedAt = createdAt
             val localMessage = ContactMessage(
                 id = localMessageId,
                 conversationId = conversationId,
                 sender = "USER",
                 message = "",
                 imageUrl = imageUrl,
-                createdAt = System.currentTimeMillis().toString()
+                createdAt = createdAt
             )
             messages = messages + ContactThreadMessage(
                 localMessageId,
@@ -289,7 +460,26 @@ internal fun ContactConversationDetailDestination(
                     else it
                 }
             }
-            reportFailure(exception, "The image was not sent. Please try again.")
+            reportFailure(exception, "The image was not sent. Please try again.") {
+                scope.launch {
+                    val failedId = localId
+                    val failedCreatedAt = localCreatedAt
+                    val imageUrl = uploadedImageUrl
+                    if (failedId != null &&
+                        failedCreatedAt != null &&
+                        imageUrl != null
+                    ) {
+                        retryFailedContactMessage(
+                            failedId,
+                            "",
+                            imageUrl,
+                            failedCreatedAt
+                        )
+                    } else {
+                        uploadBitmap(bitmap, index, total, batchItem)
+                    }
+                }
+            }
             if (exception is ContactConversationClosedException ||
                 exception.message == "This conversation has been closed."
             ) retryKey++
@@ -407,6 +597,30 @@ internal fun ContactConversationDetailDestination(
                 modifier = Modifier.padding(bottom = 8.dp)
             )
         }
+        loadError?.let { message ->
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (message == NetworkErrors.DISPLAY_TEXT) {
+                        "No internet. Showing saved messages."
+                    } else {
+                        message
+                    },
+                    color = KolamContainerSecondary,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    onClick = { retryKey++ },
+                    colors = kolamStandardButtonColors()
+                ) {
+                    Text("Retry")
+                }
+            }
+        }
         PullToRefreshBox(
             isRefreshing = isLoading && hasLoaded,
             onRefresh = { retryKey++ },
@@ -428,7 +642,7 @@ internal fun ContactConversationDetailDestination(
                         )
                     }
                 }
-            } else if (!hasLoaded && errorMessage != null) {
+            } else if (!hasLoaded && (errorMessage != null || initialLoadFailed)) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -442,7 +656,9 @@ internal fun ContactConversationDetailDestination(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                if (errorTitle == NetworkErrors.TITLE) {
+                                if (errorTitle == NetworkErrors.TITLE ||
+                                    (errorTitle == null && initialLoadWasNetworkFailure)
+                                ) {
                                     NetworkErrors.DISPLAY_TEXT
                                 } else {
                                     "Could not load this conversation."
@@ -483,7 +699,8 @@ internal fun ContactConversationDetailDestination(
                     items(messages, key = ContactThreadMessage::localId) { item ->
                         ContactMessageBubble(
                             item = item,
-                            onImageClick = { imageViewerUrl = it }
+                            onImageClick = { imageViewerUrl = it },
+                            localCache = localCache
                         )
                     }
                 }
@@ -581,7 +798,25 @@ internal fun ContactConversationDetailDestination(
         )
     }
 
-    if (errorTitle != null && errorMessage != null) {
+    if (errorTitle == NetworkErrors.TITLE &&
+        errorMessage != null &&
+        networkRetryAction != null
+    ) {
+        NetworkRetryDialog(
+            onRetry = {
+                val retry = networkRetryAction
+                errorTitle = null
+                errorMessage = null
+                networkRetryAction = null
+                retry?.invoke()
+            },
+            onClose = {
+                errorTitle = null
+                errorMessage = null
+                networkRetryAction = null
+            }
+        )
+    } else if (errorTitle != null && errorMessage != null) {
         AlertDialog(
             onDismissRequest = {
                 errorTitle = null
@@ -610,7 +845,8 @@ internal fun ContactConversationDetailDestination(
 @Composable
 private fun ContactMessageBubble(
     item: ContactThreadMessage,
-    onImageClick: (String) -> Unit
+    onImageClick: (String) -> Unit,
+    localCache: ContactLocalCache?
 ) {
     val isUserMessage = item.message.sender.equals("USER", ignoreCase = true)
     Row(
@@ -639,7 +875,11 @@ private fun ContactMessageBubble(
                     Text(item.message.message, color = KolamText, fontSize = 16.sp)
                 }
                 item.message.imageUrl?.let { url ->
-                    ContactMessageImage(url, onClick = { onImageClick(url) })
+                    ContactMessageImage(
+                        url = url,
+                        onClick = { onImageClick(url) },
+                        localCache = localCache
+                    )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -679,14 +919,34 @@ internal fun ContactMessageImage(
     onClick: () -> Unit,
     loadImage: suspend (String) -> ImageBitmap? = { imageUrl ->
         withContext(Dispatchers.IO) { loadThumbnail(imageUrl) }
-    }
+    },
+    retryImage: suspend (String) -> ImageBitmap? = { imageUrl ->
+        withContext(Dispatchers.IO) { loadThumbnail(imageUrl) }
+    },
+    localCache: ContactLocalCache? = null
 ) {
+    var retryAttempt by remember(url) { mutableIntStateOf(0) }
     val imageState by produceState<ContactMessageImageState>(
         initialValue = ContactMessageImageState.Loading,
-        url
+        url,
+        retryAttempt,
+        localCache
     ) {
-        value = loadImage(url)?.let(ContactMessageImageState::Loaded)
-            ?: ContactMessageImageState.Unavailable
+        value = try {
+            val image = if (localCache != null) {
+                localCache.loadImage(url, retry = retryAttempt > 0)
+            } else if (retryAttempt > 0) {
+                retryImage(url)
+            } else {
+                loadImage(url)
+            }
+            image?.let(ContactMessageImageState::Loaded)
+                ?: ContactMessageImageState.Unavailable
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            ContactMessageImageState.Unavailable
+        }
     }
     Box(
         modifier = Modifier
@@ -708,8 +968,17 @@ internal fun ContactMessageImage(
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
-            ContactMessageImageState.Unavailable ->
+            ContactMessageImageState.Unavailable -> Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
                 Text("Image not available", color = Color.White.copy(alpha = 0.75f))
+                TextButton(
+                    onClick = { retryAttempt++ },
+                    colors = kolamStandardButtonColors()
+                ) {
+                    Text("Retry image")
+                }
+            }
         }
     }
 }

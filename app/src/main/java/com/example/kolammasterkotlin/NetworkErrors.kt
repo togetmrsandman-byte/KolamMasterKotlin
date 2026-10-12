@@ -1,5 +1,9 @@
 package com.kolammaster.app
 
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import io.github.jan.supabase.exceptions.HttpRequestException as SupabaseHttpRequestException
@@ -53,6 +57,7 @@ internal object NetworkErrors {
         if (causes.any { it is HttpStatusFailureException || it is SupabaseRestException }) {
             return false
         }
+
         if (causes.any { it is ResponseException }) {
             return causes.any(::hasTransportCause)
         }
@@ -110,5 +115,30 @@ internal object NetworkErrors {
         "socket timed out",
         "request timeout",
         "transport failure"
+    )
+}
+
+@Composable
+internal fun NetworkRetryDialog(
+    onRetry: () -> Unit,
+    onClose: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onClose,
+        title = { Text(NetworkErrors.TITLE) },
+        text = { Text(NetworkErrors.MESSAGE) },
+        confirmButton = {
+            TextButton(
+                onClick = onRetry,
+                colors = kolamStandardButtonColors()
+            ) { Text("Retry") }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onClose,
+                colors = kolamStandardButtonColors()
+            ) { Text("Close") }
+        },
+        containerColor = KolamCoolSilver
     )
 }
