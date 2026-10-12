@@ -182,6 +182,7 @@ class MainActivity : ComponentActivity() {
     private val notificationPermissionLauncher =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) {
             if (onboardingPermissionFlow.onPermissionRequestFinished()) {
+                clearAuthProcessing()
                 startInitialAssetSetup()
             }
         }
@@ -202,12 +203,12 @@ class MainActivity : ComponentActivity() {
             googleChooserTimeoutJob?.cancel()
             googleChooserTimeoutJob = null
             if (result.resultCode != Activity.RESULT_OK && result.data == null) {
-                isAuthProcessing = false
-                authLoadingMessage = null
+                clearAuthProcessing()
                 authError = null
                 pendingPublishLesson = null
                 return@registerForActivityResult
             }
+            authLoadingMessage = "Signing you in, please wait..."
             try {
                 val account = GoogleSignIn.getSignedInAccountFromIntent(result.data)
                     .getResult(ApiException::class.java)
@@ -457,15 +458,16 @@ class MainActivity : ComponentActivity() {
                     restoreLessonUnlocks(currentAccount)
                     openPendingPublishAfterSignIn(currentAccount)
                     if (screenState == AppScreen.SignInInvitation) {
-                        continueOnboardingAfterPermission()
+                        val waitingForPermission = continueOnboardingAfterPermission()
+                        if (waitingForPermission) return@launch
                     }
-                    isAuthProcessing = false
-                    authLoadingMessage = null
+                    clearAuthProcessing()
                     return@launch
                 }
                 runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     SupabaseGuestAuth.getOrCreateGuestUserId()
                 }
+                authLoadingMessage = null
                 googleSignInAwaitingResult = true
                 googleSignInLauncher.launch(googleSignInClient.signInIntent)
                 googleChooserTimeoutJob = lifecycleScope.launch {
@@ -492,7 +494,9 @@ class MainActivity : ComponentActivity() {
 
     private fun finishGoogleSignIn(idToken: String) {
         lifecycleScope.launch {
+            var waitingForPermission = false
             try {
+                authLoadingMessage = "Signing you in, please wait..."
                 val (previousAccount, newAccount) =
                     runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     SupabaseGuestAuth.currentAccount() to
@@ -526,7 +530,7 @@ class MainActivity : ComponentActivity() {
                 restoreLessonUnlocks(newAccount)
                 openPendingPublishAfterSignIn(newAccount)
                 if (screenState == AppScreen.SignInInvitation) {
-                    continueOnboardingAfterPermission()
+                    waitingForPermission = continueOnboardingAfterPermission()
                 }
             } catch (exception: CancellationException) {
                 pendingPublishLesson = null
@@ -535,7 +539,7 @@ class MainActivity : ComponentActivity() {
                 pendingPublishLesson = null
                 showGoogleSignInError(exception)
             } finally {
-                clearAuthProcessing()
+                if (!waitingForPermission) clearAuthProcessing()
             }
         }
     }
@@ -543,8 +547,10 @@ class MainActivity : ComponentActivity() {
     private fun continueAsGuest() {
         if (isAuthProcessing) return
         isAuthProcessing = true
+        authLoadingMessage = "Continuing as a guest, please wait..."
         authError = null
         lifecycleScope.launch {
+            var waitingForPermission = false
             try {
                 runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
                     val currentAccount = SupabaseGuestAuth.currentAccount()
@@ -558,13 +564,13 @@ class MainActivity : ComponentActivity() {
                         registerFcmToken(it)
                     }
                 }
-                continueOnboardingAfterPermission()
+                waitingForPermission = continueOnboardingAfterPermission()
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 showAuthError(exception)
             } finally {
-                clearAuthProcessing()
+                if (!waitingForPermission) clearAuthProcessing()
             }
         }
     }
@@ -622,7 +628,7 @@ class MainActivity : ComponentActivity() {
         } == true
     }
 
-    private fun continueOnboardingAfterPermission() {
+    private fun continueOnboardingAfterPermission(): Boolean {
         setInitialAssetAuthComplete(true)
         val preferences = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
         val permissionGranted =
@@ -638,14 +644,21 @@ class MainActivity : ComponentActivity() {
                 )
             )
         if (onboardingPermissionFlow.completeSetup(shouldRequest)) {
-                startInitialAssetSetup()
-            return
+            startInitialAssetSetup()
+            return false
         }
 
         preferences.edit()
             .putBoolean(NOTIFICATIONS_PERMISSION_REQUESTED_KEY, true)
             .commit()
-        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        authLoadingMessage = null
+        try {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } catch (exception: Exception) {
+            onboardingPermissionFlow.onPermissionRequestFinished()
+            throw exception
+        }
+        return true
     }
 
     private fun isInitialAssetSetupComplete(): Boolean =
@@ -681,7 +694,6 @@ class MainActivity : ComponentActivity() {
         assetSetupJob = lifecycleScope.launch {
             try {
                 val catalogueRepository = LessonCatalogueRepository(this@MainActivity)
-                val communityRepository = CommunityRepository(this@MainActivity)
                 val setup = InitialAssetSetup(
                     isComplete = ::isInitialAssetSetupComplete,
                     markComplete = {
@@ -700,17 +712,6 @@ class MainActivity : ComponentActivity() {
                         )
                         entries
                     },
-                    loadCommunityImages = {
-                        communityRepository.loadApprovedSubmissions()
-                            .flatMap(CommunitySubmission::images)
-                            .take(100)
-                            .also { images ->
-                                CommunityGalleryImageCache.reconcile(
-                                    this@MainActivity,
-                                    images
-                                )
-                            }
-                    },
                     cacheLessonThumbnails = { urls, reportProgress ->
                         LessonThumbnailCache.prefetch(
                             this@MainActivity,
@@ -721,16 +722,6 @@ class MainActivity : ComponentActivity() {
                                 }
                             }
                         )
-                    },
-                    cacheCommunityImages = { images, reportProgress ->
-                        CommunityGalleryImageCache.prefetch(
-                            this@MainActivity,
-                            images
-                        ) { completed, total ->
-                            withContext(Dispatchers.Main.immediate) {
-                                reportProgress(completed, total)
-                            }
-                        }
                     }
                 )
                 val completed = setup.run { progress ->

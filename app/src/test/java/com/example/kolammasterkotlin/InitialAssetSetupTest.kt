@@ -7,15 +7,17 @@ import org.junit.Test
 
 class InitialAssetSetupTest {
     @Test
-    fun downloadsBothCollectionsBeforeMarkingSetupComplete() = runBlocking {
+    fun downloadsInitialLessonThumbnailsWithoutLoadingCommunityImages() = runBlocking {
         val harness = Harness()
+        val progress = mutableListOf<AssetSetupProgress>()
 
-        assertTrue(harness.setup.run {})
+        assertTrue(harness.setup.run { progress += it })
 
         assertEquals(60, harness.cachedThumbnails.size)
-        assertEquals(2, harness.cachedCommunityImages.size)
+        assertEquals(60, progress.last().total)
+        assertEquals(60, progress.last().completed)
         assertTrue(harness.isComplete)
-        assertEquals(listOf("lessons", "community", "complete"), harness.events)
+        assertEquals(listOf("lessons", "complete"), harness.events)
     }
 
     @Test
@@ -26,7 +28,6 @@ class InitialAssetSetupTest {
 
         assertTrue(harness.events.isEmpty())
         assertTrue(harness.cachedThumbnails.isEmpty())
-        assertTrue(harness.cachedCommunityImages.isEmpty())
     }
 
     @Test
@@ -37,31 +38,14 @@ class InitialAssetSetupTest {
         assertTrue(harness.setup.run { progress += it })
         assertTrue(harness.isComplete)
         assertEquals(59, harness.cachedThumbnails.size)
-        assertEquals(2, harness.cachedCommunityImages.size)
         assertEquals("Setup complete; missing images can load later", progress.last().message)
-    }
-
-    @Test
-    fun emptyCommunityGalleryIsAValidCompletedSetup() = runBlocking {
-        val harness = Harness().apply { communityImages = emptyList() }
-
-        assertTrue(harness.setup.run {})
-
-        assertTrue(harness.isComplete)
-        assertEquals(60, harness.cachedThumbnails.size)
-        assertEquals(0, harness.cachedCommunityImages.size)
     }
 
     private class Harness {
         var isComplete = false
         var failLastThumbnailOnce = false
         var thumbnailDownloadCount = 0
-        var communityImages = listOf(
-            CommunitySubmissionImage("image-1", "key-1", "https://example.test/1.png", 1),
-            CommunitySubmissionImage("image-2", "key-2", "https://example.test/2.png", 2)
-        )
         val cachedThumbnails = mutableSetOf<String>()
-        val cachedCommunityImages = mutableSetOf<String>()
         val events = mutableListOf<String>()
         private var failureUsed = false
 
@@ -74,10 +58,6 @@ class InitialAssetSetupTest {
             loadLessons = {
                 events += "lessons"
                 List(60) { index -> lesson(index) }
-            },
-            loadCommunityImages = {
-                events += "community"
-                communityImages
             },
             cacheLessonThumbnails = { urls, reportProgress ->
                 var completed = 0
@@ -96,13 +76,6 @@ class InitialAssetSetupTest {
                     reportProgress(completed, urls.size)
                 }
                 successful
-            },
-            cacheCommunityImages = { images, reportProgress ->
-                images.forEachIndexed { index, image ->
-                    cachedCommunityImages += image.id
-                    reportProgress(index + 1, images.size)
-                }
-                true
             }
         )
 

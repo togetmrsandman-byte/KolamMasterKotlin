@@ -14,13 +14,8 @@ internal class InitialAssetSetup(
     private val isComplete: () -> Boolean,
     private val markComplete: () -> Unit,
     private val loadLessons: suspend () -> List<LessonCatalogueEntry>,
-    private val loadCommunityImages: suspend () -> List<CommunitySubmissionImage>,
     private val cacheLessonThumbnails: suspend (
         List<String>,
-        suspend (Int, Int) -> Unit
-    ) -> Boolean,
-    private val cacheCommunityImages: suspend (
-        List<CommunitySubmissionImage>,
         suspend (Int, Int) -> Unit
     ) -> Boolean
 ) {
@@ -36,10 +31,7 @@ internal class InitialAssetSetup(
             "One or more initial lessons do not have a thumbnail URL."
         }
         val uniqueThumbnailUrls = thumbnailUrls.distinct()
-        val images = loadCommunityImages().distinctBy {
-            listOf(it.id, it.imageKey.orEmpty(), it.imageUrl).joinToString("\u0000")
-        }.take(INITIAL_COMMUNITY_IMAGE_LIMIT)
-        val total = uniqueThumbnailUrls.size + images.size
+        val total = uniqueThumbnailUrls.size
         onProgress(AssetSetupProgress(0, total, "Preparing Learn thumbnails"))
 
         val thumbnailsReady = withTimeoutOrNull(IMAGE_CACHE_TIMEOUT_MILLIS) {
@@ -61,31 +53,12 @@ internal class InitialAssetSetup(
             }
         } ?: false
 
-        val communityReady = withTimeoutOrNull(IMAGE_CACHE_TIMEOUT_MILLIS) {
-            try {
-                cacheCommunityImages(images) { completed, _ ->
-                    onProgress(
-                        AssetSetupProgress(
-                            completed = uniqueThumbnailUrls.size + completed,
-                            total = total,
-                            message = "Downloading Community images"
-                        )
-                    )
-                }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                Log.w(TAG, "Some Community images could not be cached during onboarding.", exception)
-                false
-            }
-        } ?: false
-
         markComplete()
         onProgress(
             AssetSetupProgress(
                 total,
                 total,
-                if (thumbnailsReady && communityReady) {
+                if (thumbnailsReady) {
                     "Setup complete"
                 } else {
                     "Setup complete; missing images can load later"
@@ -99,6 +72,5 @@ internal class InitialAssetSetup(
         const val TAG = "InitialAssetSetup"
         const val IMAGE_CACHE_TIMEOUT_MILLIS = 30_000L
         const val INITIAL_LESSON_COUNT = 60
-        const val INITIAL_COMMUNITY_IMAGE_LIMIT = 100
     }
 }
