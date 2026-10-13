@@ -6,6 +6,7 @@
     <string name="language_changes_apply">ಭಾಷೆಯ ಬದಲಾವಣೆಗಳು ತಕ್ಷಣ ಅನ್ವಯಿಸುತ್ತವೆ</string>
     <string name="back">ಹಿಂದೆ</string>
     <string name="home">ಮುಖಪುಟ</string>
+    <string name="learn">ಕಲಿಯಿರಿ</string>
     <string name="profile">ಪ್ರೊಫೈಲ್</string>
     <string name="my_folders">ನನ್ನ ಫೋಲ್ಡರ್‌ಗಳು</string>
     <string name="contact_us">ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">ನಿಮ್ಮ ಕೋಲಂಗಳನ್ನು ಕೋಲಂ ಸಮುದಾಯದಲ್ಲಿ ಪ್ರಕಟಿಸಿ</string>
     <string name="preparing_app">Kolam Master ಸಿದ್ಧವಾಗುತ್ತಿದೆ</string>
     <string name="preparing_images">ಚಿತ್ರಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ</string>
-    <string name="preparing_learn_thumbnails">Learn ಥಂಬ್‌ನೇಲ್‌ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ</string>
-    <string name="downloading_learn_thumbnails">Learn ಥಂಬ್‌ನೇಲ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ</string>
+    <string name="preparing_learn_thumbnails">ಕಲಿಕೆಯ ಥಂಬ್‌ನೇಲ್‌ಗಳನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ</string>
+    <string name="downloading_learn_thumbnails">ಕಲಿಕೆಯ ಥಂಬ್‌ನೇಲ್‌ಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ</string>
     <string name="setup_complete">ಸೆಟಪ್ ಪೂರ್ಣಗೊಂಡಿದೆ</string>
     <string name="setup_complete_missing_images">ಸೆಟಪ್ ಪೂರ್ಣಗೊಂಡಿದೆ; ಕಾಣೆಯಾದ ಚಿತ್ರಗಳನ್ನು ನಂತರ ಲೋಡ್ ಮಾಡಬಹುದು</string>
     <string name="some_images_failed">ಕೆಲವು ಚಿತ್ರಗಳನ್ನು ಡೌನ್‌ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ಸಂಪರ್ಕ ಪರಿಶೀಲಿಸಿ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">ನೀವು ಪ್ರಸ್ತುತ Kolam Master ಅನ್ನು ಅತಿಥಿಯಾಗಿ ಬಳಸುತ್ತಿದ್ದೀರಿ.</string>
     <string name="sign_in_new_conversation">ಹೊಸ ಸಂಭಾಷಣೆ ಪ್ರಾರಂಭಿಸಲು ಸೈನ್ ಇನ್ ಮಾಡಿ.</string>
     <string name="new_conversation_title">ಹೊಸ ಸಂಭಾಷಣೆ</string>
+    <string name="new_conversation_description">ಹೊಸ ಸಂಭಾಷಣೆಯನ್ನು ಪ್ರಾರಂಭಿಸಿ</string>
     <string name="save">ಉಳಿಸಿ</string>
     <string name="view_folder">ವೀಕ್ಷಿಸಿ</string>
     <string name="preview">ಮುನ್ನೋಟ</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us ಫೋಟೋ ತೆಗೆಯಲು ಕ್ಯಾಮೆರಾ ಅನುಮತಿಸಿ.</string>
     <string name="announcement_alert_title">ಹೊಸ ಪ್ರಕಟಣೆ ಬಂದಿದೆ</string>
     <string name="announcement_alert_message">ಇದನ್ನು ಈಗ ತೆರೆಯಲು ಬಯಸುವಿರಾ?</string>
-    <string name="support_alert_title">Support ನಿಂದ ಹೊಸ ಸಂದೇಶ ಬಂದಿದೆ</string>
+    <string name="support_alert_title">Support ನಿಂದ ನಿಮಗೆ ಹೊಸ ಸಂದೇಶ ಬಂದಿದೆ.</string>
     <string name="open">ತೆರೆಯಿರಿ</string>
     <string name="later">ನಂತರ</string>
     <string name="notifications_channel">ಅಧಿಸೂಚನೆಗಳು</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d ಚಿತ್ರಗಳು</item></plurals>
     <string name="onboarding_kolam_history">ಸಂಗಮ ಸಾಹಿತ್ಯದಲ್ಲಿ ಉಲ್ಲೇಖಿತವಾದ ಕೋಲಂನ ಇತಿಹಾಸ ಕ್ರಿ.ಪೂ. 500ರವರೆಗೆ ಹೋಗುತ್ತದೆ.</string>
     <string name="onboarding_begin">ಪ್ರಾರಂಭಿಸಿ</string>
-    <string name="history_title">ಇತಿಹಾಸ</string>
+    <string name="history_title">ಕೋಲಂ ಇತಿಹಾಸ</string>
     <string name="history_intro">ಕೋಲಂನ ಮೂರು ಮುಖ್ಯ ವಿಧಗಳು Sikku Kolam, Pulli Kolam ಮತ್ತು Rangoli.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">ಸಿಕ್ಕು ಕೋಲಂ &amp; ಪುಳ್ಳಿ ಕೋಲಂ</string>
     <string name="history_sikku_origin_location">ಇವುಗಳ ಮೂಲಸ್ಥಳ: ತಮಿಳುನಾಡು (ದಕ್ಷಿಣ ಭಾರತ).</string>
     <string name="history_sikku_origin_story">ಮೂಲಕಥೆ: ಪ್ರಾಚೀನ ತಮಿಳಕಂನ ಇತಿಹಾಸಪೂರ್ವ ಬುಡಕಟ್ಟು ಮತ್ತು ಆರಂಭಿಕ ಕೃಷಿ ಸಮುದಾಯಗಳಲ್ಲಿ ಈ ಪದ್ಧತಿಗಳು ಹುಟ್ಟಿಕೊಂಡವು. ಪರಿಸರ ಮತ್ತು ಗಣಿತದ ಅಗತ್ಯದಿಂದ ಅವು ಆರಂಭವಾದವು.</string>
     <string name="history_ancient_dot_grids">ಇರುವೆ ಮತ್ತು ಪಕ್ಷಿಗಳಿಗೆ ಆಹಾರ ನೀಡಲು ಪ್ರಾಚೀನ ತಮಿಳರು ತಿನ್ನಬಹುದಾದ ಅಕ್ಕಿಹಿಟ್ಟಿನಿಂದ ಚುಕ್ಕೆಗಳ ಜಾಲ (Pulli) ಬಿಡಿಸುತ್ತಿದ್ದರು.</string>
     <string name="history_loop_belief">ಮುಚ್ಚಿದ ಗೆರೆಗಳು ದುಷ್ಟಶಕ್ತಿಗಳನ್ನು ಮನೆಬಾಗಿಲಲ್ಲಿ ಬಂಧಿಸಿ ಒಳಗೆ ಬರದಂತೆ ತಡೆಯುತ್ತವೆ ಎಂದು ಅವರು ನಂಬಿದ್ದರಿಂದ ಚುಕ್ಕೆಗಳನ್ನು ಗೆರೆಗಳಿಂದ ಜೋಡಿಸುತ್ತಿದ್ದರು ಅಥವಾ ಸುತ್ತುತ್ತಿದ್ದರು.</string>
     <string name="history_sikku_description">Sikku (ಅಥವಾ Kambi) Kolam: ಚುಕ್ಕೆಗಳನ್ನು ಇಡಿ, ಆದರೆ ಗೆರೆಗಳು ಅವುಗಳನ್ನು ಮುಟ್ಟದಿರಲಿ. ಬದಲಾಗಿ, ಒಂದೇ ನಿರಂತರ ಗೆರೆ ಚುಕ್ಕೆಗಳ ಸುತ್ತ ತಿರುಗಿ ಸುತ್ತುತ್ತದೆ; ಅದು ಎಲ್ಲಿಯೂ ಮುರಿಯುವುದಿಲ್ಲ.</string>
     <string name="history_pulli_description">Pulli Kolam: ಚುಕ್ಕೆಗಳ ಜಾಲವನ್ನು ಬಿಡಿಸಿ, ನಕ್ಷತ್ರಗಳು, ಚೌಕಗಳು ಅಥವಾ ಹೂಗಳನ್ನು ರೂಪಿಸಲು ಅವುಗಳನ್ನು ನೇರ ಅಥವಾ ಜ್ಯಾಮಿತೀಯ ಗೆರೆಗಳಿಂದ ಜೋಡಿಸಿ.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">ರಂಗೋಲಿ</string>
     <string name="history_rangoli_origin_location">ಇದರ ಮೂಲಸ್ಥಳ: ಮಹಾರಾಷ್ಟ್ರ ಮತ್ತು ಮಧ್ಯಪ್ರದೇಶ (ಮಧ್ಯ ಭಾರತ).</string>
     <string name="history_rangoli_origin_story">ಮೂಲಕಥೆ: ಮಧ್ಯ ಭಾರತದ ಪ್ರಾಚೀನ ಪಶುಪಾಲಕ ಮತ್ತು ರಾಜವಂಶದ ಸಮುದಾಯಗಳಲ್ಲಿ ಈ ಪದ್ಧತಿ ಹುಟ್ಟಿತು. ದುಷ್ಟಶಕ್ತಿಗಳನ್ನು ತಡೆಯುವ ಗೆರೆಗಳ ಬದಲು, ಹಬ್ಬಗಳು ಮತ್ತು ರಾಜೋತ್ಸವಗಳಿಗಾಗಿ ಅಂಗಳಗಳನ್ನು ಅಲಂಕರಿಸುವ ನೆಲಚಿತ್ರವಾಗಿ (dhuli citra) ಇದು ಬೆಳೆದಿತು. ನಿಗದಿತ ಚುಕ್ಕೆಗಳ ಜಾಲವಿಲ್ಲದೆ, ಜನರು ಬೆರಳುಗಳಿಂದ ಪ್ರಾಣಿಗಳು, ಹೂಗಳು ಮತ್ತು ಚಿಹ್ನೆಗಳನ್ನು ಬಿಡಿಸಿ, ರಾಜಮನೆತನದ ಹಾಸುಗಳಂತೆ ಕಾಣಲು ಅವುಗಳಿಗೆ ಬಣ್ಣದ ಪುಡಿಯನ್ನು ತುಂಬುತ್ತಿದ್ದರು.</string>
     <string name="history_sangam_title">ಸಂಗಮ ಸಾಹಿತ್ಯದ ಉಲ್ಲೇಖ</string>

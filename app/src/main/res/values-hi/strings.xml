@@ -6,6 +6,7 @@
     <string name="language_changes_apply">भाषा परिवर्तन तुरंत लागू होते हैं</string>
     <string name="back">वापस</string>
     <string name="home">होम</string>
+    <string name="learn">सीखें</string>
     <string name="profile">प्रोफ़ाइल</string>
     <string name="my_folders">मेरे फ़ोल्डर</string>
     <string name="contact_us">हमसे संपर्क करें</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">अपने कोलम को कोलम समुदाय में प्रकाशित करें</string>
     <string name="preparing_app">Kolam Master तैयार हो रहा है</string>
     <string name="preparing_images">चित्र तैयार हो रहे हैं</string>
-    <string name="preparing_learn_thumbnails">Learn थंबनेल तैयार हो रहे हैं</string>
-    <string name="downloading_learn_thumbnails">Learn थंबनेल डाउनलोड हो रहे हैं</string>
+    <string name="preparing_learn_thumbnails">सीखने के थंबनेल तैयार हो रहे हैं</string>
+    <string name="downloading_learn_thumbnails">सीखने के थंबनेल डाउनलोड हो रहे हैं</string>
     <string name="setup_complete">सेटअप पूरा हुआ</string>
     <string name="setup_complete_missing_images">सेटअप पूरा हुआ; छूटे हुए चित्र बाद में लोड किए जा सकते हैं</string>
     <string name="some_images_failed">कुछ चित्र डाउनलोड नहीं हो सके। कनेक्शन जाँचें और फिर कोशिश करें।</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">आप अभी Kolam Master को अतिथि के रूप में उपयोग कर रहे हैं।</string>
     <string name="sign_in_new_conversation">नई बातचीत शुरू करने के लिए साइन इन करें।</string>
     <string name="new_conversation_title">नई बातचीत</string>
+    <string name="new_conversation_description">नई बातचीत शुरू करें</string>
     <string name="save">सहेजें</string>
     <string name="view_folder">देखें</string>
     <string name="preview">पूर्वावलोकन</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us फ़ोटो लेने के लिए कैमरा अनुमति दें।</string>
     <string name="announcement_alert_title">नई घोषणा प्राप्त हुई है</string>
     <string name="announcement_alert_message">क्या आप इसे अभी खोलना चाहते हैं?</string>
-    <string name="support_alert_title">Support से नया संदेश आया है</string>
+    <string name="support_alert_title">Support से आपका एक नया संदेश आया है।</string>
     <string name="open">खोलें</string>
     <string name="later">बाद में</string>
     <string name="notifications_channel">सूचनाएँ</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d चित्र</item></plurals>
     <string name="onboarding_kolam_history">संगम साहित्य में उल्लिखित कोलम का इतिहास 500 ईसा पूर्व तक जाता है।</string>
     <string name="onboarding_begin">शुरू करें</string>
-    <string name="history_title">इतिहास</string>
+    <string name="history_title">कोलम का इतिहास</string>
     <string name="history_intro">कोलम की तीन मुख्य श्रेणियाँ हैं: Sikku Kolam, Pulli Kolam और Rangoli।</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">सिक्कू कोलम &amp; पुल्ली कोलम</string>
     <string name="history_sikku_origin_location">इनकी शुरुआत कहाँ हुई: तमिलनाडु (दक्षिण भारत)।</string>
     <string name="history_sikku_origin_story">उत्पत्ति की कहानी: ये परंपराएँ प्राचीन तमिलकम के प्रागैतिहासिक जनजातीय और शुरुआती कृषि समुदायों में शुरू हुईं। इनकी शुरुआत पारिस्थितिक और गणितीय आवश्यकता के रूप में हुई।</string>
     <string name="history_ancient_dot_grids">चींटियों और पक्षियों को भोजन देने के लिए प्राचीन तमिल लोग खाने योग्य चावल के आटे से बिंदुओं की जालियाँ (Pulli) बनाते थे।</string>
     <string name="history_loop_belief">उनका विश्वास था कि बंद आकृतियाँ बुरी आत्माओं को चौखट पर रोक देती हैं और उन्हें घर में प्रवेश नहीं करने देतीं, इसलिए वे बिंदुओं को जोड़ते या उनके चारों ओर रेखाएँ बनाते थे।</string>
     <string name="history_sikku_description">Sikku (या Kambi) Kolam: बिंदु रखें, पर रेखाओं को उन्हें छूने न दें। इसके बजाय, एक लगातार चलती रेखा बिना टूटे बिंदुओं के चारों ओर मुड़ती और घूमती है।</string>
     <string name="history_pulli_description">Pulli Kolam: बिंदुओं की जाली बनाकर उन्हें सीधी या ज्यामितीय रेखाओं से जोड़ें और तारे, वर्ग या फूल बनाएँ।</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">रंगोली</string>
     <string name="history_rangoli_origin_location">इसकी शुरुआत कहाँ हुई: महाराष्ट्र और मध्य प्रदेश (मध्य भारत)।</string>
     <string name="history_rangoli_origin_story">उत्पत्ति की कहानी: यह परंपरा मध्य भारत के प्राचीन पशुपालक और राजसी समुदायों में शुरू हुई। आत्माओं को रोकने वाली रेखाएँ बनाने के बजाय, यह त्योहारों और शाही उत्सवों के लिए आँगन सजाने वाली फर्श-कला (dhuli citra) के रूप में विकसित हुई। तय बिंदु-जाली के बिना, लोग उँगलियों से पशु, फूल और प्रतीक बनाते और उन्हें चमकीले रंगीन चूर्ण से भरकर शाही कालीनों जैसा रूप देते थे।</string>
     <string name="history_sangam_title">संगम साहित्य का संदर्भ</string>

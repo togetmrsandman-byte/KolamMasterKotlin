@@ -105,6 +105,11 @@ class ContactNewConversationInstrumentedTest {
         composeRule.onNodeWithText("Phone number").performTextInput("9876543210")
         composeRule.onNodeWithText("\uD83C\uDDEE\uD83C\uDDF3").assertExists()
         composeRule.onNodeWithText("+91").assertExists()
+        val attachImageBounds = composeRule.onNodeWithText("Attach Image")
+            .fetchSemanticsNode().boundsInRoot
+        val sendBounds = composeRule.onNodeWithText("Send")
+            .fetchSemanticsNode().boundsInRoot
+        assertTrue(kotlin.math.abs(attachImageBounds.center.y - sendBounds.center.y) < 20f)
         composeRule.onNodeWithText("Send").performClick()
         composeRule.waitUntil(5_000) { createCalls == 1 }
 

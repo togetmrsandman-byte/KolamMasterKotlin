@@ -5,6 +5,9 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kolammaster.app.ContactComposeTestActivity
+import com.kolammaster.app.R
+import com.kolammaster.app.supportedLanguageIdentifiers
+import com.kolammaster.app.withAppLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -23,12 +26,15 @@ class SupportForegroundAlertInstrumentedTest {
         composeRule.setContent {
             SupportForegroundAlertDialog(
                 alert = alert,
+                languageIdentifier = "English",
                 onOpen = { opened = alert },
                 onLater = { deferred = true }
             )
         }
 
-        composeRule.onNodeWithText("You have a new message from Support").assertExists()
+        composeRule.onNodeWithText("You have a new message from Support.")
+            .assertExists()
+        composeRule.onNodeWithText("Would you like to open it now?").assertExists()
         composeRule.onNodeWithText("Open").performClick()
 
         composeRule.runOnIdle {
@@ -44,6 +50,7 @@ class SupportForegroundAlertInstrumentedTest {
         composeRule.setContent {
             SupportForegroundAlertDialog(
                 alert = SupportUnreadStore.ForegroundAlert("conversation-2", "message-2"),
+                languageIdentifier = "English",
                 onOpen = { opened = true },
                 onLater = { deferred = true }
             )
@@ -54,6 +61,30 @@ class SupportForegroundAlertInstrumentedTest {
         composeRule.runOnIdle {
             assertEquals(false, opened)
             assertEquals(true, deferred)
+        }
+    }
+
+    @Test
+    fun sharedDialogButtonsUseTheCurrentlySelectedLanguage() {
+        val baseContext = composeRule.activity
+        val alert = SupportUnreadStore.ForegroundAlert("conversation-3", "message-3")
+
+        supportedLanguageIdentifiers.forEach { language ->
+            val localizedContext = baseContext.withAppLanguage(language)
+            val expectedOpen = localizedContext.getString(R.string.open)
+            val expectedLater = localizedContext.getString(R.string.later)
+
+            composeRule.setContent {
+                SupportForegroundAlertDialog(
+                    alert = alert,
+                    languageIdentifier = language,
+                    onOpen = {},
+                    onLater = {}
+                )
+            }
+
+            composeRule.onNodeWithText(expectedOpen).assertExists()
+            composeRule.onNodeWithText(expectedLater).assertExists()
         }
     }
 }

@@ -36,12 +36,13 @@ class AnnouncementForegroundAlertInstrumentedTest {
         composeRule.setContent {
             AnnouncementForegroundAlertDialog(
                 announcementId = "announcement-1",
+                languageIdentifier = "English",
                 onOpen = { openedAnnouncementId = it },
                 onLater = {}
             )
         }
 
-        composeRule.onNodeWithText("A new announcement has been received").assertExists()
+        composeRule.onNodeWithText("A new announcement has been received.").assertExists()
         composeRule.onNodeWithText("Open").performClick()
 
         composeRule.runOnIdle {
@@ -56,6 +57,7 @@ class AnnouncementForegroundAlertInstrumentedTest {
         composeRule.setContent {
             AnnouncementForegroundAlertDialog(
                 announcementId = "announcement-2",
+                languageIdentifier = "English",
                 onOpen = { opened = true },
                 onLater = { deferred = true }
             )

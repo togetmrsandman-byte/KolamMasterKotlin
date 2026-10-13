@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -2131,6 +2132,7 @@ private fun KolamMasterApp(
 
     publishPickerLesson?.let { lesson ->
         GalleryPublishPickerSheet(
+            languageIdentifier = activeLanguage,
             onDismiss = onDismissPublishPicker,
             onProceed = {
                 onPublishImagesSelected(lesson, emptyList(), emptySet())
@@ -2171,6 +2173,7 @@ private fun KolamMasterApp(
     foregroundSupportAlert?.let { alert ->
         SupportForegroundAlertDialog(
             alert = alert,
+            languageIdentifier = activeLanguage,
             onOpen = {
                 SupportUnreadStore.dismissForegroundAlert(context, alert.messageId)
                 foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
@@ -2186,6 +2189,7 @@ private fun KolamMasterApp(
         foregroundAnnouncementAlert?.let { alert ->
             AnnouncementForegroundAlertDialog(
                 announcementId = alert.announcementId,
+                languageIdentifier = activeLanguage,
                 onOpen = { announcementId ->
                     ForegroundAnnouncementAlertStore.dismiss(context, alert)
                     foregroundAnnouncementAlert = null
@@ -2469,32 +2473,8 @@ private fun AppScreenContent(
             onDismissLessonOpenError = onDismissCommunityLessonOpenError
         )
         AppScreen.History -> HistoryScreen(Modifier.fillMaxSize())
-        AppScreen.Loading -> androidx.compose.material3.Text(
-            text = stringResource(R.string.loading_lesson),
-            color = KolamText,
-            modifier = Modifier.padding(24.dp)
-        )
-        AppScreen.LessonDownloading -> Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(KolamSurface),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                androidx.compose.material3.CircularProgressIndicator(
-                    modifier = Modifier.size(24.dp),
-                    color = KolamBronze,
-                    strokeWidth = 2.dp
-                )
-                androidx.compose.material3.Text(
-                    text = stringResource(R.string.downloading_lesson),
-                    color = KolamText
-                )
-            }
-        }
+        AppScreen.Loading -> LessonLoadingScreen(R.string.loading_lesson)
+        AppScreen.LessonDownloading -> LessonLoadingScreen(R.string.downloading_lesson)
         is AppScreen.SikkuReady -> SikkuLessonScreen(
             lesson = screen.lesson,
             onPublish = { onPublishLesson(screen.publishLesson) },
@@ -2541,6 +2521,37 @@ private fun AppScreenContent(
             androidx.compose.material3.Button(onClick = onGoBack) {
                 androidx.compose.material3.Text(stringResource(R.string.back))
             }
+        }
+    }
+}
+
+@Composable
+private fun LessonLoadingScreen(messageResource: Int) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(KolamSurface),
+        contentAlignment = androidx.compose.ui.Alignment.Center
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+        ) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(24.dp),
+                color = KolamBronze,
+                strokeWidth = 2.dp
+            )
+            androidx.compose.material3.Text(
+                text = stringResource(messageResource),
+                modifier = Modifier.weight(1f),
+                color = KolamText,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                lineHeight = 22.sp
+            )
         }
     }
 }

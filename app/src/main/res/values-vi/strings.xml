@@ -6,6 +6,7 @@
     <string name="language_changes_apply">Thay đổi ngôn ngữ được áp dụng ngay</string>
     <string name="back">Quay lại</string>
     <string name="home">Trang chủ</string>
+    <string name="learn">Học</string>
     <string name="profile">Hồ sơ</string>
     <string name="my_folders">Thư mục của tôi</string>
     <string name="contact_us">Liên hệ</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">Đăng kolam của bạn lên cộng đồng</string>
     <string name="preparing_app">Đang chuẩn bị Kolam Master</string>
     <string name="preparing_images">Đang chuẩn bị hình ảnh</string>
-    <string name="preparing_learn_thumbnails">Đang chuẩn bị hình thu nhỏ Learn</string>
-    <string name="downloading_learn_thumbnails">Đang tải hình thu nhỏ Learn</string>
+    <string name="preparing_learn_thumbnails">Đang chuẩn bị hình thu nhỏ bài học</string>
+    <string name="downloading_learn_thumbnails">Đang tải hình thu nhỏ bài học</string>
     <string name="setup_complete">Đã hoàn tất thiết lập</string>
     <string name="setup_complete_missing_images">Đã hoàn tất thiết lập; hình ảnh còn thiếu có thể tải sau</string>
     <string name="some_images_failed">Không thể tải một số hình ảnh. Hãy kiểm tra kết nối rồi thử lại.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">Bạn hiện đang sử dụng Kolam Master với tư cách khách.</string>
     <string name="sign_in_new_conversation">Đăng nhập để bắt đầu cuộc trò chuyện mới.</string>
     <string name="new_conversation_title">Cuộc trò chuyện mới</string>
+    <string name="new_conversation_description">Bắt đầu cuộc trò chuyện mới</string>
     <string name="save">Lưu</string>
     <string name="view_folder">Xem</string>
     <string name="preview">Xem trước</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Cho phép dùng máy ảnh để chụp ảnh Contact Us.</string>
     <string name="announcement_alert_title">Bạn vừa nhận được thông báo mới</string>
     <string name="announcement_alert_message">Bạn có muốn mở ngay không?</string>
-    <string name="support_alert_title">Bạn có tin nhắn mới từ Support</string>
+    <string name="support_alert_title">Bạn có tin nhắn mới từ Support.</string>
     <string name="open">Mở</string>
     <string name="later">Để sau</string>
     <string name="notifications_channel">Thông báo</string>
@@ -279,16 +281,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d hình ảnh</item></plurals>
     <string name="onboarding_kolam_history">Kolam có lịch sử từ năm 500 trước Công nguyên và được nhắc đến trong văn học Sangam.</string>
     <string name="onboarding_begin">Bắt đầu</string>
-    <string name="history_title">Lịch sử</string>
+    <string name="history_title">Lịch sử Kolam</string>
     <string name="history_intro">Kolam có ba loại chính: Sikku Kolam, Pulli Kolam và Rangoli.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">Sích-ku Kolam &amp; Pul-li Kolam</string>
     <string name="history_sikku_origin_location">Nơi khởi nguồn: Tamil Nadu (miền Nam Ấn Độ).</string>
     <string name="history_sikku_origin_story">Câu chuyện khởi nguồn: Những phong tục này bắt nguồn từ các cộng đồng bộ lạc tiền sử và nông nghiệp sơ khai ở Tamilakam cổ đại. Chúng ra đời từ nhu cầu sinh thái và toán học.</string>
     <string name="history_ancient_dot_grids">Người Tamil cổ đại dùng bột gạo ăn được để vẽ lưới chấm (Pulli), làm thức ăn cho kiến và chim.</string>
     <string name="history_loop_belief">Họ tin rằng các vòng khép kín sẽ giữ tà ma ở ngưỡng cửa, ngăn chúng vào nhà, nên họ nối các chấm hoặc vẽ đường vòng quanh chúng.</string>
     <string name="history_sikku_description">Sikku (hay Kambi) Kolam: Đặt các chấm nhưng không để nét vẽ chạm vào chúng. Thay vào đó, một nét liền mạch uốn lượn quanh các chấm mà không bị đứt.</string>
     <string name="history_pulli_description">Pulli Kolam: Tạo một lưới chấm rồi nối chúng bằng các đường thẳng hoặc hình học để tạo thành ngôi sao, hình vuông hay bông hoa.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">Rangôli</string>
     <string name="history_rangoli_origin_location">Nơi khởi nguồn: Maharashtra và Madhya Pradesh (miền Trung Ấn Độ).</string>
     <string name="history_rangoli_origin_story">Câu chuyện khởi nguồn: Phong tục này bắt nguồn từ các cộng đồng chăn nuôi và hoàng gia thời xưa ở miền Trung Ấn Độ. Thay vì vẽ đường để ngăn tà ma, nó phát triển thành nghệ thuật vẽ sàn (dhuli citra), trang trí sân nhà vào lễ hội và dịp mừng của hoàng gia. Không dùng một lưới chấm cố định, mọi người dùng ngón tay vẽ tự do các con vật, hoa và biểu tượng rồi tô bột màu rực rỡ để mô phỏng thảm cung đình.</string>
     <string name="history_sangam_title">Dấu tích trong văn học Sangam</string>

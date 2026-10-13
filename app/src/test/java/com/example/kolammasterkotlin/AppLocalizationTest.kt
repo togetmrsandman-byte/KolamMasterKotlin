@@ -127,6 +127,71 @@ class AppLocalizationTest {
     }
 
     @Test
+    fun requestedLandingProgressCompletionAndCategoryCopyIsLocalized() {
+        val resourceRoot = File("src/main/res")
+        val directories = mapOf(
+            "English" to "values",
+            "Tamil" to "values-ta",
+            "Hindi" to "values-hi",
+            "Kannada" to "values-kn",
+            "Telugu" to "values-te",
+            "Malayalam" to "values-ml",
+            "Thai" to "values-th",
+            "Chinese (Simplified)" to "values-zh-rCN",
+            "Vietnamese" to "values-vi",
+            "Malay" to "values-ms",
+            "Japanese" to "values-ja",
+            "Korean" to "values-ko"
+        )
+        val keys = setOf(
+            "learn",
+            "my_folders",
+            "community",
+            "history_title",
+            "preparing_learn_thumbnails",
+            "downloading_learn_thumbnails",
+            "signing_in",
+            "continuing_as_guest",
+            "loading_lesson",
+            "downloading_lesson",
+            "congratulations",
+            "your_kolam_is_complete",
+            "share_kolam_community",
+            "continue_finished_kolam",
+            "proceed",
+            "cancel",
+            "announcement_alert_title",
+            "announcement_alert_message",
+            "support_alert_title",
+            "open",
+            "later",
+            "history_sikku_pulli_title",
+            "history_rangoli_title",
+            "new_conversation_description"
+        )
+        val categoryHeadings = setOf(
+            "history_sikku_pulli_title",
+            "history_rangoli_title"
+        )
+        val english = resourceValues(File(resourceRoot, "values/strings.xml"))
+
+        directories.forEach { (language, directory) ->
+            val localized = resourceValues(File(resourceRoot, "$directory/strings.xml"))
+            keys.forEach { key ->
+                assertTrue("$language is missing $key", key in localized)
+                assertTrue("$language/$key is blank", localized.getValue(key).isNotBlank())
+                if (language != "English" && key !in categoryHeadings) {
+                    assertNotEquals(
+                        "$language/$key is still English",
+                        english.getValue(key),
+                        localized.getValue(key)
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun nonEnglishLocalesAreDistinctAndEnglishRemainsTheFallback() {
         assertNotEquals(localeTagForLanguage("English"), localeTagForLanguage("Tamil"))
         assertNotEquals(localeTagForLanguage("English"), localeTagForLanguage("Japanese"))

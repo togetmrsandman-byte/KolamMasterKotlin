@@ -6,6 +6,7 @@
     <string name="language_changes_apply">மொழி மாற்றங்கள் உடனடியாகப் பயன்படுத்தப்படும்</string>
     <string name="back">பின்</string>
     <string name="home">முகப்பு</string>
+    <string name="learn">கற்க</string>
     <string name="profile">சுயவிவரம்</string>
     <string name="my_folders">எனது கோப்புறைகள்</string>
     <string name="contact_us">எங்களைத் தொடர்புகொள்ளவும்</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">உங்கள் கோலங்களை கோலம் சமூகத்தில் வெளியிடவும்</string>
     <string name="preparing_app">Kolam Master தயாராகிறது</string>
     <string name="preparing_images">படங்கள் தயாராகின்றன</string>
-    <string name="preparing_learn_thumbnails">Learn சிறுபடங்கள் தயாராகின்றன</string>
-    <string name="downloading_learn_thumbnails">Learn சிறுபடங்கள் பதிவிறக்கப்படுகின்றன</string>
+    <string name="preparing_learn_thumbnails">கற்றல் சிறுபடங்கள் தயாராகின்றன</string>
+    <string name="downloading_learn_thumbnails">கற்றல் சிறுபடங்கள் பதிவிறக்கப்படுகின்றன</string>
     <string name="setup_complete">அமைவு முடிந்தது</string>
     <string name="setup_complete_missing_images">அமைவு முடிந்தது; விடுபட்ட படங்களைப் பின்னர் ஏற்றலாம்</string>
     <string name="some_images_failed">சில படங்களைப் பதிவிறக்க முடியவில்லை. இணைப்பைச் சரிபார்த்து மீண்டும் முயற்சிக்கவும்.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">நீங்கள் தற்போது Kolam Master-ஐ விருந்தினராகப் பயன்படுத்துகிறீர்கள்.</string>
     <string name="sign_in_new_conversation">புதிய உரையாடலைத் தொடங்க உள்நுழைக.</string>
     <string name="new_conversation_title">புதிய உரையாடல்</string>
+    <string name="new_conversation_description">புதிய உரையாடலைத் தொடங்கவும்</string>
     <string name="save">சேமி</string>
     <string name="view_folder">பார்</string>
     <string name="preview">முன்னோட்டம்</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us புகைப்படம் எடுக்க கேமரா அணுகலை அனுமதிக்கவும்.</string>
     <string name="announcement_alert_title">புதிய அறிவிப்பு வந்துள்ளது</string>
     <string name="announcement_alert_message">இப்போது திறக்க விரும்புகிறீர்களா?</string>
-    <string name="support_alert_title">Support-இலிருந்து புதிய செய்தி வந்துள்ளது</string>
+    <string name="support_alert_title">Support-இலிருந்து உங்களுக்கு ஒரு புதிய செய்தி வந்துள்ளது.</string>
     <string name="open">திற</string>
     <string name="later">பின்னர்</string>
     <string name="notifications_channel">அறிவிப்புகள்</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d படங்கள்</item></plurals>
     <string name="onboarding_kolam_history">சங்க இலக்கியங்களில் குறிப்பிடப்படும் கோலம், கி.மு. 500 காலத்திலிருந்தே வழக்கில் உள்ளது.</string>
     <string name="onboarding_begin">தொடங்கு</string>
-    <string name="history_title">வரலாறு</string>
+    <string name="history_title">கோலத்தின் வரலாறு</string>
     <string name="history_intro">கோலத்தில் சிக்கு கோலம், புள்ளி கோலம், ரங்கோலி என மூன்று முக்கிய வகைகள் உள்ளன.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">சிக்கு கோலம் &amp; புள்ளி கோலம்</string>
     <string name="history_sikku_origin_location">தோன்றிய இடம்: தமிழ்நாடு (தென்னிந்தியா).</string>
     <string name="history_sikku_origin_story">தோற்றம்: பழங்காலத் தமிழகம் பகுதியில் இருந்த வரலாற்றுக்கு முந்தைய பழங்குடி மற்றும் தொடக்ககால வேளாண் சமூகங்களில் இவ்வழக்கங்கள் தோன்றின. சூழலியல் மற்றும் கணிதத் தேவைகளால் அவை உருவாயின.</string>
     <string name="history_ancient_dot_grids">பறவைகளுக்கும் எறும்புகளுக்கும் உணவளிக்க, பண்டைய தமிழர்கள் அரிசி மாவால் புள்ளிக் கோலங்களை வரைந்தனர்.</string>
     <string name="history_loop_belief">மூடிய கோடுகள் தீய ஆவிகளை வீட்டு வாசலில் சிறைபிடித்து உள்ளே வராமல் தடுக்கும் என்று நம்பியதால், புள்ளிகளைச் சுற்றி கோடுகளை இணைத்தனர்.</string>
     <string name="history_sikku_description">Sikku (அல்லது Kambi) Kolam: புள்ளிகளை இடுங்கள்; கோடுகள் அவற்றைத் தொடக்கூடாது. இடைவிடாத ஒரே கோடு புள்ளிகளைச் சுற்றி வளைந்து செல்லும்.</string>
     <string name="history_pulli_description">Pulli Kolam: புள்ளி கட்டத்தை அமைத்து, நேர்கோடுகள் அல்லது வடிவியல் கோடுகளால் இணைத்து நட்சத்திரங்கள், சதுரங்கள் அல்லது மலர்களை உருவாக்குங்கள்.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">ரங்கோலி</string>
     <string name="history_rangoli_origin_location">தோன்றிய இடம்: மகாராஷ்டிரா மற்றும் மத்தியப் பிரதேசம் (மத்திய இந்தியா).</string>
     <string name="history_rangoli_origin_story">தோற்றம்: மத்திய இந்தியாவின் கால்நடை வளர்ப்பு மற்றும் அரசக் குடும்பச் சமூகங்களில் இந்த வழக்கம் தோன்றியது. ஆவிகளைச் சிறைபிடிக்கும் கோடுகளுக்குப் பதிலாக, திருவிழாக்களிலும் அரச விழாக்களிலும் முற்றங்களை அலங்கரிக்கும் தரை ஓவியமாக (dhuli citra) இது வளர்ந்தது. நிலையான புள்ளி கட்டமின்றி, மக்கள் விரல்களால் விலங்குகள், மலர்கள், குறியீடுகளைச் சுதந்திரமாக வரைந்து, அரச கம்பளங்களைப் போல் வண்ணத் தூளால் நிரப்பினர்.</string>
     <string name="history_sangam_title">சங்க இலக்கியக் குறிப்பு</string>

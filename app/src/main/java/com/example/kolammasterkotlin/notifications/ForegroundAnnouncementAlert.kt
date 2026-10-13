@@ -5,9 +5,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import com.kolammaster.app.R
 import com.kolammaster.app.kolamStandardButtonColors
+import com.kolammaster.app.withAppLanguage
 
 internal data class ForegroundAnnouncementAlert(
     val announcementId: String?,
@@ -57,22 +59,49 @@ internal object ForegroundAnnouncementAlertStore {
 @Composable
 internal fun AnnouncementForegroundAlertDialog(
     announcementId: String?,
+    languageIdentifier: String,
     onOpen: (String?) -> Unit,
     onLater: () -> Unit
 ) {
+    ForegroundAlertDialog(
+        title = stringResource(R.string.announcement_alert_title),
+        message = stringResource(R.string.announcement_alert_message),
+        languageIdentifier = languageIdentifier,
+        onOpen = { onOpen(announcementId) },
+        onLater = onLater
+    )
+}
+
+@Composable
+internal fun ForegroundAlertDialog(
+    title: String,
+    message: String,
+    languageIdentifier: String,
+    onOpen: () -> Unit,
+    onLater: () -> Unit
+) {
+    val localizedContext = LocalContext.current.withAppLanguage(languageIdentifier)
+    val openLabel = localizedContext.getString(R.string.open)
+    val laterLabel = localizedContext.getString(R.string.later)
+
     AlertDialog(
         onDismissRequest = onLater,
-        title = { Text(stringResource(R.string.announcement_alert_title)) },
-        text = { Text(stringResource(R.string.announcement_alert_message)) },
+        title = { Text(title) },
+        text = { Text(message) },
         confirmButton = {
             TextButton(
-                onClick = { onOpen(announcementId) },
+                onClick = onLater,
                 colors = kolamStandardButtonColors()
-            ) { Text(stringResource(R.string.open)) }
+            ) {
+                Text(laterLabel)
+            }
         },
         dismissButton = {
-            TextButton(onClick = onLater, colors = kolamStandardButtonColors()) {
-                Text(stringResource(R.string.later))
+            TextButton(
+                onClick = onOpen,
+                colors = kolamStandardButtonColors()
+            ) {
+                Text(openLabel)
             }
         }
     )

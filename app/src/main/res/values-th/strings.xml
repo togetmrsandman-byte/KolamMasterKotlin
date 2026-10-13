@@ -6,6 +6,7 @@
     <string name="language_changes_apply">การเปลี่ยนภาษามีผลทันที</string>
     <string name="back">ย้อนกลับ</string>
     <string name="home">หน้าหลัก</string>
+    <string name="learn">เรียนรู้</string>
     <string name="profile">โปรไฟล์</string>
     <string name="my_folders">โฟลเดอร์ของฉัน</string>
     <string name="contact_us">ติดต่อเรา</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">เผยแพร่ลายโกลัมของคุณในชุมชน</string>
     <string name="preparing_app">กำลังเตรียม Kolam Master</string>
     <string name="preparing_images">กำลังเตรียมรูปภาพ</string>
-    <string name="preparing_learn_thumbnails">กำลังเตรียมภาพตัวอย่าง Learn</string>
-    <string name="downloading_learn_thumbnails">กำลังดาวน์โหลดภาพตัวอย่าง Learn</string>
+    <string name="preparing_learn_thumbnails">กำลังเตรียมภาพตัวอย่างบทเรียน</string>
+    <string name="downloading_learn_thumbnails">กำลังดาวน์โหลดภาพตัวอย่างบทเรียน</string>
     <string name="setup_complete">ตั้งค่าเสร็จแล้ว</string>
     <string name="setup_complete_missing_images">ตั้งค่าเสร็จแล้ว รูปภาพที่ขาดหายจะโหลดได้ภายหลัง</string>
     <string name="some_images_failed">ดาวน์โหลดรูปภาพบางรายการไม่สำเร็จ โปรดตรวจสอบการเชื่อมต่อแล้วลองอีกครั้ง</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">ขณะนี้คุณใช้ Kolam Master ในฐานะผู้เยี่ยมชม</string>
     <string name="sign_in_new_conversation">ลงชื่อเข้าใช้เพื่อเริ่มการสนทนาใหม่</string>
     <string name="new_conversation_title">การสนทนาใหม่</string>
+    <string name="new_conversation_description">เริ่มการสนทนาใหม่</string>
     <string name="save">บันทึก</string>
     <string name="view_folder">ดู</string>
     <string name="preview">ดูตัวอย่าง</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d จาก %2$d รูปภาพ</item></plurals>
     <string name="onboarding_kolam_history">ประวัติของโกลัมย้อนกลับไปถึง 500 ปีก่อนคริสตกาล และมีการกล่าวถึงในวรรณกรรมสังคัม</string>
     <string name="onboarding_begin">เริ่มต้น</string>
-    <string name="history_title">ประวัติ</string>
+    <string name="history_title">ประวัติโกลัม</string>
     <string name="history_intro">โกลัมมีสามประเภทหลัก ได้แก่ Sikku Kolam, Pulli Kolam และ Rangoli</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">ซิกกุ โกลัม &amp; พุลลิ โกลัม</string>
     <string name="history_sikku_origin_location">ต้นกำเนิด: รัฐทมิฬนาฑู (อินเดียตอนใต้)</string>
     <string name="history_sikku_origin_story">เรื่องราวต้นกำเนิด: ธรรมเนียมเหล่านี้เกิดขึ้นในชุมชนชนเผ่าก่อนประวัติศาสตร์และชุมชนเกษตรกรรมยุคแรกในทมิฬากัมโบราณ โดยเริ่มจากความจำเป็นด้านระบบนิเวศและคณิตศาสตร์</string>
     <string name="history_ancient_dot_grids">ชาวทมิฬโบราณวาดตารางจุด (Pulli) ด้วยแป้งข้าวเจ้าที่กินได้ เพื่อเป็นอาหารให้มดและนก</string>
     <string name="history_loop_belief">พวกเขาเชื่อว่าเส้นปิดจะกักวิญญาณร้ายไว้ที่ธรณีประตูและป้องกันไม่ให้เข้าบ้าน จึงเชื่อมเส้นหรือวาดวนรอบจุด</string>
     <string name="history_sikku_description">Sikku (หรือ Kambi) Kolam: วางจุดโดยไม่ให้เส้นสัมผัสจุดเหล่านั้น แต่ใช้เส้นต่อเนื่องเส้นเดียวบิดโค้งและวนรอบจุดโดยไม่ขาด</string>
     <string name="history_pulli_description">Pulli Kolam: วางตารางจุด แล้วเชื่อมด้วยเส้นตรงหรือเส้นเรขาคณิตให้เป็นดาว สี่เหลี่ยม หรือดอกไม้</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">รังโกลี</string>
     <string name="history_rangoli_origin_location">ต้นกำเนิด: รัฐมหาราษฏระและรัฐมัธยประเทศ (อินเดียตอนกลาง)</string>
     <string name="history_rangoli_origin_story">เรื่องราวต้นกำเนิด: ธรรมเนียมนี้เริ่มในชุมชนคนเลี้ยงสัตว์และชุมชนราชสำนักโบราณของอินเดียตอนกลาง แทนที่จะวาดเส้นเพื่อกักวิญญาณ ธรรมเนียมนี้พัฒนาเป็นภาพวาดบนพื้น (dhuli citra) เพื่อประดับลานบ้านในเทศกาลและงานเฉลิมฉลองของราชวงศ์ ผู้คนใช้นิ้ววาดสัตว์ ดอกไม้ และสัญลักษณ์อย่างอิสระโดยไม่ใช้ตารางจุดตายตัว แล้วเติมผงสีสดใสให้ดูคล้ายพรมหลวง</string>
     <string name="history_sangam_title">การกล่าวถึงในวรรณกรรมสังคัม</string>

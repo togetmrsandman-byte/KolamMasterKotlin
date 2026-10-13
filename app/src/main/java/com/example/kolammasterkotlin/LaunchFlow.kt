@@ -115,11 +115,11 @@ private val HeaderTitleStyle = TextStyle(
     )
 )
 
-internal enum class LandingDestination(val title: String) {
-    Browse("Learn Kolam"),
-    MyKolams("My Folders"),
-    Community("Community"),
-    History("Kolam History")
+internal enum class LandingDestination(val titleResource: Int) {
+    Browse(R.string.learn),
+    MyKolams(R.string.my_folders),
+    Community(R.string.community),
+    History(R.string.history_title)
 }
 
 internal val supportedLanguages = listOf(
@@ -388,6 +388,7 @@ private val SignInGoogleToSkipSpacing = 8.dp
 @Composable
 internal fun AuthLoadingOverlay(message: Int?) {
     if (message == null) return
+    val localizedMessage = stringResource(message)
 
     Dialog(
         onDismissRequest = {},
@@ -419,7 +420,7 @@ internal fun AuthLoadingOverlay(message: Int?) {
                 Spacer(Modifier.width(18.dp))
                 Text(
                     modifier = Modifier.weight(1f),
-                    text = stringResource(message),
+                    text = localizedMessage,
                     color = KolamText,
                     fontSize = 17.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -909,7 +910,7 @@ private fun LandingBubbles(
     ) {
         LandingDestination.entries.forEachIndexed { index, destination ->
             LandingBubble(
-                title = destination.title,
+                title = stringResource(destination.titleResource),
                 index = index,
                 modifier = Modifier
                     .padding(horizontal = 8.dp),

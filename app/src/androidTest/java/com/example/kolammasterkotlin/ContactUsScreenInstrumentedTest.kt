@@ -4,6 +4,7 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
@@ -57,7 +58,8 @@ class ContactUsScreenInstrumentedTest {
         composeRule.onNodeWithText("OPEN · 2026-10-02T00:00:00Z").assertDoesNotExist()
         composeRule.onNodeWithText("Sign in to start a new conversation.")
             .assertDoesNotExist()
-        composeRule.onNodeWithText("New Conversation").assertExists()
+        composeRule.onAllNodesWithContentDescription("Start a new conversation")
+            .assertCountEquals(1)
         composeRule.onNodeWithText("Help with my lesson").performClick()
         composeRule.runOnIdle { assertTrue(selectedConversationId == "conversation-1") }
     }
@@ -208,6 +210,7 @@ class ContactUsScreenInstrumentedTest {
 
     @Test
     fun loadingStateShowsProgressAndKeepsCreateAvailable() {
+        var createRequested = false
         composeRule.setContent {
             ContactUsDestination(
                 onSignIn = {},
@@ -216,12 +219,17 @@ class ContactUsScreenInstrumentedTest {
                 conversations = emptyList(),
                 isLoading = true,
                 errorMessage = null,
-                onRetry = {}
+                onRetry = {},
+                onNewConversation = { createRequested = true }
             )
         }
 
         composeRule.onNodeWithText("Loading conversations...").assertExists()
-        composeRule.onNodeWithText("New Conversation").assertExists()
+        composeRule.onAllNodesWithContentDescription("Start a new conversation")
+            .assertCountEquals(1)
+        composeRule.onNodeWithContentDescription("Start a new conversation")
+            .performClick()
+        composeRule.runOnIdle { assertTrue(createRequested) }
     }
 
     @Test

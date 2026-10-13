@@ -16,9 +16,10 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kolammaster.app.withAppLanguage
 
 private val publishSheetGold = KolamBronze
 private val publishSheetSurface = KolamSurface
@@ -26,9 +27,18 @@ private val publishSheetSurface = KolamSurface
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 internal fun GalleryPublishPickerSheet(
+    languageIdentifier: String,
     onDismiss: () -> Unit,
     onProceed: () -> Unit
 ) {
+    val localizedContext = LocalContext.current.withAppLanguage(languageIdentifier)
+    val congratulations = localizedContext.getString(R.string.congratulations)
+    val kolamComplete = localizedContext.getString(R.string.your_kolam_is_complete)
+    val shareKolam = localizedContext.getString(R.string.share_kolam_community)
+    val continueFinishedKolam = localizedContext.getString(R.string.continue_finished_kolam)
+    val proceed = localizedContext.getString(R.string.proceed)
+    val cancel = localizedContext.getString(R.string.cancel)
+
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
@@ -44,24 +54,24 @@ internal fun GalleryPublishPickerSheet(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = stringResource(R.string.congratulations),
+                text = congratulations,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = publishSheetGold
             )
             Text(
-                text = stringResource(R.string.your_kolam_is_complete),
+                text = kolamComplete,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = KolamText
             )
             Text(
-                text = stringResource(R.string.share_kolam_community),
+                text = shareKolam,
                 style = MaterialTheme.typography.bodyLarge,
                 color = KolamText
             )
             Text(
-                text = stringResource(R.string.continue_finished_kolam),
+                text = continueFinishedKolam,
                 style = MaterialTheme.typography.bodyMedium,
                 color = KolamMutedText
             )
@@ -73,14 +83,14 @@ internal fun GalleryPublishPickerSheet(
                     contentColor = KolamButtonText
                 )
             ) {
-                Text(stringResource(R.string.proceed))
+                Text(proceed)
             }
             OutlinedButton(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
                 colors = kolamStandardButtonColors()
             ) {
-                Text(stringResource(R.string.cancel))
+                Text(cancel)
             }
         }
     }

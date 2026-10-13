@@ -3,10 +3,13 @@ package com.kolammaster.app
 import android.graphics.Bitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlinx.coroutines.CompletableDeferred
@@ -51,7 +54,40 @@ class ContactConversationDetailInstrumentedTest {
         composeRule.onNodeWithText("First").assertExists()
         composeRule.onNodeWithText("Support").assertExists()
         composeRule.onNodeWithText("Reply").assertExists()
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
         composeRule.runOnIdle { assertEquals("selected-conversation-id", requestedConversationId) }
+    }
+
+    @Test
+    fun composerStaysVisibleWhileScrollingConversationMessages() {
+        composeRule.setContent {
+            ContactConversationDetailDestination(
+                conversationId = "conversation-id",
+                onLoadConversation = { conversation(it) },
+                onLoadMessages = { conversationId ->
+                    (0 until 40).map { index ->
+                        message(
+                            conversationId,
+                            "message-$index",
+                            if (index % 2 == 0) "USER" else "ADMIN",
+                            "Message $index",
+                            "2026-10-13T00:${index.toString().padStart(2, '0')}:00Z"
+                        )
+                    }
+                },
+                onSendMessage = { _, _, _ -> error("Not expected") },
+                onUploadImage = { error("Not expected") }
+            )
+        }
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Message 39").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
+        composeRule.onNodeWithTag("contact-conversation-messages").performScrollToIndex(0)
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
+        composeRule.onNodeWithTag("contact-conversation-messages").performScrollToIndex(39)
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
     }
 
     @Test
@@ -73,8 +109,38 @@ class ContactConversationDetailInstrumentedTest {
 
         composeRule.waitUntil(5_000) { requestStarted.isCompleted }
         composeRule.onNodeWithText("Conversation").assertExists()
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
         composeRule.onNodeWithText("No messages in this conversation yet.")
             .assertDoesNotExist()
+    }
+
+    @Test
+    fun composerRemainsInteractiveWhileConversationDetailsAreLoading() {
+        val conversationRequest = CompletableDeferred<ContactConversation>()
+        val sendStarted = CompletableDeferred<Unit>()
+        composeRule.setContent {
+            ContactConversationDetailDestination(
+                conversationId = "conversation-id",
+                onLoadConversation = { conversationRequest.await() },
+                onLoadMessages = { emptyList() },
+                onSendMessage = { conversationId, text, imageUrl ->
+                    assertEquals("conversation-id", conversationId)
+                    assertEquals("Message while loading", text)
+                    assertEquals(null, imageUrl)
+                    sendStarted.complete(Unit)
+                    message(conversationId, "sent-message", "USER", text, "2026-10-13")
+                },
+                onUploadImage = { error("Not expected") }
+            )
+        }
+
+        composeRule.onNodeWithContentDescription("Message input")
+            .performTextInput("Message while loading")
+        composeRule.onNodeWithContentDescription("Send message").performClick()
+        composeRule.waitUntil(5_000) { sendStarted.isCompleted }
+        composeRule.onNodeWithText("Message while loading").assertExists()
+        composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
+        conversationRequest.cancel()
     }
 
     @Test

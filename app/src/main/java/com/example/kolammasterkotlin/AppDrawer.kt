@@ -56,11 +56,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.produceState
@@ -633,6 +635,12 @@ internal fun ContactUsDestination(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
+    val contactUsTitle = stringResource(R.string.contact_us)
+    val newConversationDescription =
+        stringResource(R.string.new_conversation_description)
+    var contactTitleFontSize by remember(contactUsTitle) {
+        mutableFloatStateOf(24f)
+    }
     var networkDialogDismissed by remember { mutableStateOf(false) }
     LaunchedEffect(errorMessage) {
         if (errorMessage != NetworkErrors.DISPLAY_TEXT) networkDialogDismissed = false
@@ -664,18 +672,37 @@ internal fun ContactUsDestination(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                stringResource(R.string.contact_us),
+                contactUsTitle,
+                modifier = Modifier.weight(1f),
                 color = KolamGold,
-                fontSize = 24.sp,
-                fontWeight = FontWeight.Bold
+                fontSize = contactTitleFontSize.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                softWrap = false,
+                onTextLayout = { layout ->
+                    if (layout.didOverflowWidth && contactTitleFontSize > 16f) {
+                        contactTitleFontSize -= 1f
+                    }
+                }
             )
             if (signedIn) {
-                Button(onClick = onNewConversation) {
-                    Text(stringResource(R.string.new_conversation))
+                IconButton(
+                    onClick = onNewConversation,
+                    modifier = Modifier
+                        .size(48.dp)
+                        .semantics {
+                            contentDescription = newConversationDescription
+                        }
+                ) {
+                    Text(
+                        text = "+",
+                        color = KolamGold,
+                        fontSize = 28.sp,
+                        fontWeight = FontWeight.Medium
+                    )
                 }
             }
         }

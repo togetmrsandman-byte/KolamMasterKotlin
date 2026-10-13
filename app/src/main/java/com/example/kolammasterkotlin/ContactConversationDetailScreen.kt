@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
-import androidx.compose.foundation.layout.imeNestedScroll
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -66,6 +65,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -738,7 +738,7 @@ internal fun ContactConversationDetailDestination(
                     state = listState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .imeNestedScroll(),
+                        .testTag("contact-conversation-messages"),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(messages, key = ContactThreadMessage::localId) { item ->
@@ -751,78 +751,94 @@ internal fun ContactConversationDetailDestination(
                 }
             }
         }
-        if (!isClosed && conversation != null) {
-            uploadProgress?.let {
-                Text(
-                    it,
-                    color = KolamContainerSecondary,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(vertical = 6.dp)
-                )
-            }
-            Row(
+        if (!isClosed) {
+            Spacer(Modifier.height(8.dp))
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(
-                        KolamCoolSilver,
-                        RoundedCornerShape(28.dp)
-                    )
-                    .border(
-                        BorderStroke(1.dp, KolamSilverBorder),
-                        RoundedCornerShape(28.dp)
-                    )
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .testTag("contact-conversation-composer")
             ) {
-                TextButton(
-                    onClick = { showAttachmentOptions = true },
-                    enabled = !isSending && !isImageBatchActive,
-                    modifier = Modifier.size(44.dp),
-                    colors = kolamStandardButtonColors()
-                ) {
-                    Text("+", fontSize = 26.sp, color = KolamButtonText)
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 8.dp, vertical = 10.dp)
-                ) {
-                    if (messageText.isEmpty()) {
-                        Text(stringResource(R.string.type_message), color = KolamContainerSecondary)
-                    }
-                    BasicTextField(
-                        value = messageText,
-                        onValueChange = { messageText = it },
-                        enabled = !isSending && !isImageBatchActive,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .semantics { contentDescription = context.getString(R.string.message_input) },
-                        textStyle = androidx.compose.ui.text.TextStyle(
-                            color = KolamText,
-                            fontSize = 16.sp
-                        ),
-                        maxLines = 5,
-                        keyboardOptions = KeyboardOptions(
-                            capitalization = KeyboardCapitalization.Sentences
-                        )
+                uploadProgress?.let {
+                    Text(
+                        it,
+                        color = KolamContainerSecondary,
+                        fontSize = 13.sp,
+                        modifier = Modifier.padding(vertical = 6.dp)
                     )
                 }
-                TextButton(
-                    onClick = { scope.launch { sendTextMessage() } },
-                    enabled = !isSending && !isImageBatchActive && messageText.isNotBlank(),
+                Row(
                     modifier = Modifier
-                        .size(44.dp)
-                        .semantics { contentDescription = context.getString(R.string.send_message) },
-                    colors = kolamStandardButtonColors()
-                ) {
-                    if (isSending && uploadProgress == null) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp,
-                            color = KolamButtonText
+                        .fillMaxWidth()
+                        .background(
+                            KolamCoolSilver,
+                            RoundedCornerShape(28.dp)
                         )
-                    } else {
-                        Text("➤", fontSize = 20.sp, color = KolamButtonText)
+                        .border(
+                            BorderStroke(1.dp, KolamSilverBorder),
+                            RoundedCornerShape(28.dp)
+                        )
+                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { showAttachmentOptions = true },
+                        enabled = !isSending && !isImageBatchActive,
+                        modifier = Modifier.size(44.dp),
+                        colors = kolamStandardButtonColors()
+                    ) {
+                        Text("+", fontSize = 26.sp, color = KolamButtonText)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                    ) {
+                        if (messageText.isEmpty()) {
+                            Text(
+                                stringResource(R.string.type_message),
+                                color = KolamContainerSecondary
+                            )
+                        }
+                        BasicTextField(
+                            value = messageText,
+                            onValueChange = { messageText = it },
+                            enabled = !isSending && !isImageBatchActive,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .semantics {
+                                    contentDescription = context.getString(R.string.message_input)
+                                },
+                            textStyle = androidx.compose.ui.text.TextStyle(
+                                color = KolamText,
+                                fontSize = 16.sp
+                            ),
+                            maxLines = 5,
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.Sentences
+                            )
+                        )
+                    }
+                    TextButton(
+                        onClick = { scope.launch { sendTextMessage() } },
+                        enabled = !isSending &&
+                            !isImageBatchActive &&
+                            messageText.isNotBlank(),
+                        modifier = Modifier
+                            .size(44.dp)
+                            .semantics {
+                                contentDescription = context.getString(R.string.send_message)
+                            },
+                        colors = kolamStandardButtonColors()
+                    ) {
+                        if (isSending && uploadProgress == null) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                strokeWidth = 2.dp,
+                                color = KolamButtonText
+                            )
+                        } else {
+                            Text("➤", fontSize = 20.sp, color = KolamButtonText)
+                        }
                     }
                 }
             }

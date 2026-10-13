@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -38,7 +39,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.roundToInt
@@ -166,6 +169,46 @@ internal fun LessonActionButton(
             )
         }
     }
+}
+
+@Composable
+internal fun PlaybackControlLabel(text: String) {
+    AutoFitSingleLineText(
+        text = text,
+        modifier = Modifier.fillMaxWidth(),
+        maxFontSize = 14f,
+        minFontSize = 10f
+    )
+}
+
+@Composable
+internal fun AutoFitSingleLineText(
+    text: String,
+    modifier: Modifier = Modifier,
+    maxFontSize: Float,
+    minFontSize: Float,
+    color: Color = Color.Unspecified,
+    fontWeight: androidx.compose.ui.text.font.FontWeight? = null,
+    textAlign: TextAlign = TextAlign.Center
+) {
+    var fontSize by remember(text, maxFontSize, minFontSize) {
+        mutableFloatStateOf(maxFontSize)
+    }
+    Text(
+        text = text,
+        modifier = modifier,
+        fontSize = fontSize.sp,
+        color = color,
+        fontWeight = fontWeight,
+        maxLines = 1,
+        softWrap = false,
+        textAlign = textAlign,
+        onTextLayout = { layout ->
+            if (layout.didOverflowWidth && fontSize > minFontSize) {
+                fontSize -= 1f
+            }
+        }
+    )
 }
 
 @Composable

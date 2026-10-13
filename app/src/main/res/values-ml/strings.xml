@@ -6,6 +6,7 @@
     <string name="language_changes_apply">ഭാഷാ മാറ്റങ്ങൾ ഉടൻ പ്രാബല്യത്തിൽ വരും</string>
     <string name="back">തിരികെ</string>
     <string name="home">ഹോം</string>
+    <string name="learn">പഠിക്കുക</string>
     <string name="profile">പ്രൊഫൈൽ</string>
     <string name="my_folders">എന്റെ ഫോൾഡറുകൾ</string>
     <string name="contact_us">ഞങ്ങളെ ബന്ധപ്പെടുക</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">നിങ്ങളുടെ കോലങ്ങൾ കോലം കമ്മ്യൂണിറ്റിയിൽ പ്രസിദ്ധീകരിക്കുക</string>
     <string name="preparing_app">Kolam Master തയ്യാറാക്കുന്നു</string>
     <string name="preparing_images">ചിത്രങ്ങൾ തയ്യാറാക്കുന്നു</string>
-    <string name="preparing_learn_thumbnails">Learn ലഘുചിത്രങ്ങൾ തയ്യാറാക്കുന്നു</string>
-    <string name="downloading_learn_thumbnails">Learn ലഘുചിത്രങ്ങൾ ഡൗൺലോഡ് ചെയ്യുന്നു</string>
+    <string name="preparing_learn_thumbnails">പഠന ലഘുചിത്രങ്ങൾ തയ്യാറാക്കുന്നു</string>
+    <string name="downloading_learn_thumbnails">പഠന ലഘുചിത്രങ്ങൾ ഡൗൺലോഡ് ചെയ്യുന്നു</string>
     <string name="setup_complete">സജ്ജീകരണം പൂർത്തിയായി</string>
     <string name="setup_complete_missing_images">സജ്ജീകരണം പൂർത്തിയായി; കാണാത്ത ചിത്രങ്ങൾ പിന്നീട് ലോഡ് ചെയ്യാം</string>
     <string name="some_images_failed">ചില ചിത്രങ്ങൾ ഡൗൺലോഡ് ചെയ്യാനായില്ല. കണക്ഷൻ പരിശോധിച്ച് വീണ്ടും ശ്രമിക്കുക.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">നിങ്ങൾ നിലവിൽ Kolam Master അതിഥിയായി ഉപയോഗിക്കുന്നു.</string>
     <string name="sign_in_new_conversation">പുതിയ സംഭാഷണം ആരംഭിക്കാൻ സൈൻ ഇൻ ചെയ്യുക.</string>
     <string name="new_conversation_title">പുതിയ സംഭാഷണം</string>
+    <string name="new_conversation_description">പുതിയ സംഭാഷണം ആരംഭിക്കുക</string>
     <string name="save">സേവ് ചെയ്യുക</string>
     <string name="view_folder">കാണുക</string>
     <string name="preview">പ്രിവ്യൂ</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us ഫോട്ടോ എടുക്കാൻ ക്യാമറ അനുമതി നൽകുക.</string>
     <string name="announcement_alert_title">പുതിയ അറിയിപ്പ് ലഭിച്ചു</string>
     <string name="announcement_alert_message">ഇപ്പോൾ തുറക്കണോ?</string>
-    <string name="support_alert_title">Support-ൽ നിന്ന് പുതിയ സന്ദേശം</string>
+    <string name="support_alert_title">Support-ൽ നിന്ന് നിങ്ങൾക്ക് ഒരു പുതിയ സന്ദേശമുണ്ട്.</string>
     <string name="open">തുറക്കുക</string>
     <string name="later">പിന്നീട്</string>
     <string name="notifications_channel">അറിയിപ്പുകൾ</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d ചിത്രങ്ങൾ</item></plurals>
     <string name="onboarding_kolam_history">സംഗം സാഹിത്യത്തിൽ പരാമർശിക്കുന്ന കോലത്തിന്റെ ചരിത്രം ക്രി.മു. 500 വരെ എത്തുന്നു.</string>
     <string name="onboarding_begin">തുടങ്ങുക</string>
-    <string name="history_title">ചരിത്രം</string>
+    <string name="history_title">കോലത്തിന്റെ ചരിത്രം</string>
     <string name="history_intro">കോലത്തിന് Sikku Kolam, Pulli Kolam, Rangoli എന്നിങ്ങനെ മൂന്ന് പ്രധാന വിഭാഗങ്ങളുണ്ട്.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">സിക്കു കോലം &amp; പുള്ളി കോലം</string>
     <string name="history_sikku_origin_location">ഉത്ഭവിച്ച സ്ഥലം: തമിഴ്നാട് (ദക്ഷിണേന്ത്യ).</string>
     <string name="history_sikku_origin_story">ഉത്ഭവകഥ: പുരാതന തമിഴകത്തിലെ ചരിത്രാതീത ഗോത്ര-ആദ്യകാല കാർഷിക സമൂഹങ്ങളിൽ ഈ ആചാരങ്ങൾ ആരംഭിച്ചു. പരിസ്ഥിതിയുടെയും ഗണിതത്തിന്റെയും ആവശ്യകതയിൽ നിന്നാണ് ഇവ ഉണ്ടായത്.</string>
     <string name="history_ancient_dot_grids">ഉറുമ്പുകൾക്കും പക്ഷികൾക്കും ഭക്ഷണം നൽകാൻ പുരാതന തമിഴർ ഭക്ഷ്യയോഗ്യമായ അരിപ്പൊടി ഉപയോഗിച്ച് കുത്തുകളുടെ നിരകൾ (Pulli) വരച്ചിരുന്നു.</string>
     <string name="history_loop_belief">അടഞ്ഞ വളയങ്ങൾ ദുഷ്ടാത്മാക്കളെ പടിക്കൽ കുടുക്കി വീട്ടിലേക്ക് കടക്കുന്നത് തടയുമെന്ന് അവർ വിശ്വസിച്ചതിനാൽ കുത്തുകളെ വരകളാൽ ബന്ധിപ്പിക്കുകയോ ചുറ്റിവരയ്ക്കുകയോ ചെയ്തു.</string>
     <string name="history_sikku_description">Sikku (അല്ലെങ്കിൽ Kambi) Kolam: കുത്തുകൾ ഇടുക, എന്നാൽ വരകൾ അവയെ തൊടരുത്. പകരം, ഒറ്റ തുടർച്ചയായ വര കുത്തുകൾക്കു ചുറ്റും വളഞ്ഞും തിരിഞ്ഞും മുറിയാതെ നീങ്ങുന്നു.</string>
     <string name="history_pulli_description">Pulli Kolam: കുത്തുകളുടെ നിര വരച്ച് അവയെ നേർവരകളാലോ ജ്യാമിതീയ വരകളാലോ ബന്ധിപ്പിച്ച് നക്ഷത്രങ്ങൾ, ചതുരങ്ങൾ, പൂക്കൾ എന്നിവ രൂപപ്പെടുത്തുക.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">രംഗോലി</string>
     <string name="history_rangoli_origin_location">ഉത്ഭവിച്ച സ്ഥലം: മഹാരാഷ്ട്രയും മധ്യപ്രദേശും (മധ്യേന്ത്യ).</string>
     <string name="history_rangoli_origin_story">ഉത്ഭവകഥ: മധ്യേന്ത്യയിലെ പുരാതന ഇടയ-രാജകീയ സമൂഹങ്ങളിൽ ഈ ആചാരം ആരംഭിച്ചു. ആത്മാക്കളെ തടയാനുള്ള വരകൾക്കു പകരം, ഉത്സവങ്ങൾക്കും രാജകീയ ആഘോഷങ്ങൾക്കുമായി മുറ്റങ്ങൾ അലങ്കരിക്കുന്ന തറച്ചിത്രമായി (dhuli citra) ഇത് വളർന്നു. നിശ്ചിത കുത്തുകളുടെ നിരയില്ലാതെ, ആളുകൾ വിരലുകൾകൊണ്ട് മൃഗങ്ങൾ, പൂക്കൾ, ചിഹ്നങ്ങൾ എന്നിവ വരച്ച് രാജകീയ പരവതാനികളെപ്പോലെ തിളങ്ങുന്ന നിറപ്പൊടി നിറച്ചിരുന്നു.</string>
     <string name="history_sangam_title">സംഗം സാഹിത്യത്തിലെ പരാമർശം</string>

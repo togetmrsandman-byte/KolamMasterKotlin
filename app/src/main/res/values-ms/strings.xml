@@ -6,6 +6,7 @@
     <string name="language_changes_apply">Perubahan bahasa digunakan serta-merta</string>
     <string name="back">Kembali</string>
     <string name="home">Laman Utama</string>
+    <string name="learn">Belajar</string>
     <string name="profile">Profil</string>
     <string name="my_folders">Folder Saya</string>
     <string name="contact_us">Hubungi Kami</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">Terbitkan kolam anda kepada komuniti</string>
     <string name="preparing_app">Menyediakan Kolam Master</string>
     <string name="preparing_images">Menyediakan imej</string>
-    <string name="preparing_learn_thumbnails">Menyediakan imej kecil Learn</string>
-    <string name="downloading_learn_thumbnails">Memuat turun imej kecil Learn</string>
+    <string name="preparing_learn_thumbnails">Menyediakan imej kecil pelajaran</string>
+    <string name="downloading_learn_thumbnails">Memuat turun imej kecil pelajaran</string>
     <string name="setup_complete">Persediaan selesai</string>
     <string name="setup_complete_missing_images">Persediaan selesai; imej yang tiada boleh dimuatkan kemudian</string>
     <string name="some_images_failed">Sesetengah imej gagal dimuat turun. Semak sambungan anda dan cuba lagi.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">Anda sedang menggunakan Kolam Master sebagai Tetamu.</string>
     <string name="sign_in_new_conversation">Log masuk untuk memulakan perbualan baharu.</string>
     <string name="new_conversation_title">Perbualan Baharu</string>
+    <string name="new_conversation_description">Mulakan perbualan baharu</string>
     <string name="save">Simpan</string>
     <string name="view_folder">Lihat</string>
     <string name="preview">Pratonton</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Benarkan akses kamera untuk mengambil foto Contact Us.</string>
     <string name="announcement_alert_title">Pengumuman baharu diterima</string>
     <string name="announcement_alert_message">Adakah anda mahu membukanya sekarang?</string>
-    <string name="support_alert_title">Anda menerima mesej baharu daripada Support</string>
+    <string name="support_alert_title">Anda menerima mesej baharu daripada Support.</string>
     <string name="open">Buka</string>
     <string name="later">Kemudian</string>
     <string name="notifications_channel">Pemberitahuan</string>
@@ -279,7 +281,7 @@
     <plurals name="image_count"><item quantity="other">%1$d daripada %2$d imej</item></plurals>
     <string name="onboarding_kolam_history">Sejarah Kolam bermula sejak 500 SM dan disebut dalam kesusasteraan Sangam.</string>
     <string name="onboarding_begin">Mula</string>
-    <string name="history_title">Sejarah</string>
+    <string name="history_title">Sejarah Kolam</string>
     <string name="history_intro">Kolam mempunyai tiga jenis utama: Sikku Kolam, Pulli Kolam dan Rangoli.</string>
     <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
     <string name="history_sikku_origin_location">Asal-usul: Tamil Nadu (India Selatan).</string>

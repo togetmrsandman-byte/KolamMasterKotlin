@@ -7,6 +7,7 @@
     <string name="language_changes_apply">Language changes apply immediately.</string>
     <string name="back">Back</string>
     <string name="home">Home</string>
+    <string name="learn">Learn</string>
     <string name="profile">Profile</string>
     <string name="my_folders">My Folders</string>
     <string name="contact_us">Contact Us</string>
@@ -102,6 +103,7 @@
     <string name="guest_account_message">You’re currently using Kolam Master as a Guest.</string>
     <string name="sign_in_new_conversation">Sign in to start a new conversation.</string>
     <string name="new_conversation_title">New Conversation</string>
+    <string name="new_conversation_description">Start a new conversation</string>
     <string name="save">Save</string>
     <string name="view_folder">View</string>
     <string name="preview">Preview</string>
@@ -182,9 +184,9 @@
     <string name="contact_image_batch_failed">A selected image could not be sent.</string>
     <string name="contact_camera_permission_title">Camera permission</string>
     <string name="contact_camera_permission_message">Allow camera access to take a Contact Us photo.</string>
-    <string name="announcement_alert_title">A new announcement has been received</string>
+    <string name="announcement_alert_title">A new announcement has been received.</string>
     <string name="announcement_alert_message">Would you like to open it now?</string>
-    <string name="support_alert_title">You have a new message from Support</string>
+    <string name="support_alert_title">You have a new message from Support.</string>
     <string name="open">Open</string>
     <string name="later">Later</string>
     <string name="notifications_channel">Notifications</string>
@@ -275,7 +277,7 @@
     <string name="kolam_logo_description">Kolam logo</string>
     <string name="navigation_menu_description">Open navigation menu</string>
     <string name="lesson_unlock_description">Lesson unlocked; protect your progress</string>
-    <string name="signing_in">Signing you in, please wait…</string>
+    <string name="signing_in">Signing in, please wait…</string>
     <string name="continuing_as_guest">Continuing as a guest, please wait…</string>
     <string name="signing_out">Signing you out, please wait…</string>
     <plurals name="image_count">
@@ -284,7 +286,7 @@
     </plurals>
     <string name="onboarding_kolam_history">Kolam dates back to 500 BCE, mentioned in Sangam literature.</string>
     <string name="onboarding_begin">Begin</string>
-    <string name="history_title">History</string>
+    <string name="history_title">Kolam History</string>
     <string name="history_intro">There are three main types of Kolam categories named Sikku Kolam, Pulli Kolam and Rangoli.</string>
     <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
     <string name="history_sikku_origin_location">Where they originated: Tamil Nadu (South India).</string>

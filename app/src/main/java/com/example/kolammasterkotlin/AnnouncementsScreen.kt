@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -128,17 +129,23 @@ private fun AnnouncementsList(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
+        AutoFitSingleLineText(
             text = stringResource(R.string.announcement),
             modifier = Modifier.weight(1f),
+            maxFontSize = 24f,
+            minFontSize = 16f,
             color = KolamGold,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Start
         )
         val hasUnreadAnnouncements = announcements.any { !it.isRead }
         Button(
             onClick = onMarkAllRead,
             enabled = hasUnreadAnnouncements && !isMarkingAllRead,
+            modifier = Modifier
+                .width(140.dp)
+                .height(40.dp),
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                 containerColor = KolamButtonYellow,
                 contentColor = KolamButtonText,
@@ -153,8 +160,11 @@ private fun AnnouncementsList(
                     color = KolamButtonText
                 )
             } else {
-                Text(
-                    stringResource(R.string.mark_all_read),
+                AutoFitSingleLineText(
+                    text = stringResource(R.string.mark_all_read),
+                    modifier = Modifier.fillMaxWidth(),
+                    maxFontSize = 14f,
+                    minFontSize = 9f,
                     color = KolamButtonText
                 )
             }
@@ -238,7 +248,9 @@ private fun AnnouncementsList(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = announcement.subject.ifBlank { "Announcement" },
+                            text = announcement.subject.ifBlank {
+                                stringResource(R.string.announcement)
+                            },
                             modifier = Modifier.weight(1f),
                             color = KolamText,
                             fontWeight = FontWeight.SemiBold,
@@ -287,7 +299,12 @@ private fun AnnouncementDetail(
     var showImage by remember(announcement.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
         TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
-            Text(stringResource(R.string.back_to_announcements))
+            AutoFitSingleLineText(
+                text = stringResource(R.string.back_to_announcements),
+                maxFontSize = 14f,
+                minFontSize = 10f,
+                color = KolamButtonText
+            )
         }
         Card(
             modifier = Modifier

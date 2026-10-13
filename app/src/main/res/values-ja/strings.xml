@@ -6,6 +6,7 @@
     <string name="language_changes_apply">言語の変更はすぐに反映されます</string>
     <string name="back">戻る</string>
     <string name="home">ホーム</string>
+    <string name="learn">学ぶ</string>
     <string name="profile">プロフィール</string>
     <string name="my_folders">マイフォルダー</string>
     <string name="contact_us">お問い合わせ</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">コーラムをコミュニティに公開</string>
     <string name="preparing_app">Kolam Masterを準備しています</string>
     <string name="preparing_images">画像を準備しています</string>
-    <string name="preparing_learn_thumbnails">Learnのサムネイルを準備しています</string>
-    <string name="downloading_learn_thumbnails">Learnのサムネイルをダウンロードしています</string>
+    <string name="preparing_learn_thumbnails">学習用サムネイルを準備しています</string>
+    <string name="downloading_learn_thumbnails">学習用サムネイルをダウンロードしています</string>
     <string name="setup_complete">セットアップが完了しました</string>
     <string name="setup_complete_missing_images">セットアップが完了しました。不足している画像は後で読み込めます</string>
     <string name="some_images_failed">一部の画像をダウンロードできませんでした。接続を確認して再試行してください。</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">現在 Kolam Master をゲストとして使用しています。</string>
     <string name="sign_in_new_conversation">新しい会話を始めるにはログインしてください。</string>
     <string name="new_conversation_title">新しい会話</string>
+    <string name="new_conversation_description">新しい会話を開始</string>
     <string name="save">保存</string>
     <string name="view_folder">表示</string>
     <string name="preview">プレビュー</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us の写真を撮るにはカメラへのアクセスを許可してください。</string>
     <string name="announcement_alert_title">新しいお知らせを受信しました</string>
     <string name="announcement_alert_message">今すぐ開きますか？</string>
-    <string name="support_alert_title">Support から新しいメッセージがあります</string>
+    <string name="support_alert_title">Support から新しいメッセージが届きました。</string>
     <string name="open">開く</string>
     <string name="later">後で</string>
     <string name="notifications_channel">通知</string>
@@ -279,16 +281,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d 枚の画像</item></plurals>
     <string name="onboarding_kolam_history">Kolam の歴史は紀元前 500 年までさかのぼり、Sangam 文学にも記されています。</string>
     <string name="onboarding_begin">始める</string>
-    <string name="history_title">歴史</string>
+    <string name="history_title">コーラムの歴史</string>
     <string name="history_intro">Kolam には、Sikku Kolam、Pulli Kolam、Rangoli の 3 つの主な種類があります。</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">シック・コーラム &amp; プッリ・コーラム</string>
     <string name="history_sikku_origin_location">発祥地：タミル・ナードゥ州（南インド）。</string>
     <string name="history_sikku_origin_story">起源の物語：これらの習慣は、古代 Tamilakam の先史時代の部族社会や初期農耕社会で生まれました。生態学的・数学的な必要性から始まったものです。</string>
     <string name="history_ancient_dot_grids">古代タミルの人々は、アリや鳥に食べ物を与えるため、食べられる米粉で点の格子（Pulli）を描きました。</string>
     <string name="history_loop_belief">閉じた輪が悪霊を玄関先に閉じ込め、家に入れないと信じられていたため、点を線で結んだり、その周りを囲んだりしました。</string>
     <string name="history_sikku_description">Sikku（または Kambi）Kolam：点を置きますが、線が点に触れないようにします。一本の途切れない線が点の周りを曲がりくねって巡ります。</string>
     <string name="history_pulli_description">Pulli Kolam：点の格子を作り、直線や幾何学的な線で結んで星や四角形、花を描きます。</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">ランゴーリ</string>
     <string name="history_rangoli_origin_location">発祥地：マハーラーシュトラ州とマディヤ・プラデーシュ州（中央インド）。</string>
     <string name="history_rangoli_origin_story">起源の物語：この習慣は、中央インドの古代の牧畜民や王族の共同体で始まりました。霊を閉じ込める線を描くのではなく、祭りや王室の祝典に中庭を飾る床絵（dhuli citra）として発展しました。決まった点の格子を使わず、指で動物や花、記号を自由に描き、鮮やかな色粉で塗って王室の絨毯のように仕上げました。</string>
     <string name="history_sangam_title">Sangam 文学の記述</string>

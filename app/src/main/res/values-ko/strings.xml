@@ -6,6 +6,7 @@
     <string name="language_changes_apply">언어 변경 사항이 즉시 적용됩니다</string>
     <string name="back">뒤로</string>
     <string name="home">홈</string>
+    <string name="learn">배우기</string>
     <string name="profile">프로필</string>
     <string name="my_folders">내 폴더</string>
     <string name="contact_us">문의하기</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">콜람 커뮤니티에 작품 게시</string>
     <string name="preparing_app">Kolam Master 준비 중</string>
     <string name="preparing_images">이미지 준비 중</string>
-    <string name="preparing_learn_thumbnails">Learn 썸네일 준비 중</string>
-    <string name="downloading_learn_thumbnails">Learn 썸네일 다운로드 중</string>
+    <string name="preparing_learn_thumbnails">학습 썸네일 준비 중</string>
+    <string name="downloading_learn_thumbnails">학습 썸네일 다운로드 중</string>
     <string name="setup_complete">설정 완료</string>
     <string name="setup_complete_missing_images">설정 완료. 누락된 이미지는 나중에 불러올 수 있습니다</string>
     <string name="some_images_failed">일부 이미지를 다운로드하지 못했습니다. 연결을 확인하고 다시 시도하세요.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">현재 Kolam Master를 게스트로 사용 중입니다.</string>
     <string name="sign_in_new_conversation">새 대화를 시작하려면 로그인하세요.</string>
     <string name="new_conversation_title">새 대화</string>
+    <string name="new_conversation_description">새 대화 시작</string>
     <string name="save">저장</string>
     <string name="view_folder">보기</string>
     <string name="preview">미리보기</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us 사진을 촬영하려면 카메라 접근을 허용하세요.</string>
     <string name="announcement_alert_title">새 공지를 받았습니다</string>
     <string name="announcement_alert_message">지금 열까요?</string>
-    <string name="support_alert_title">Support에서 새 메시지를 받았습니다</string>
+    <string name="support_alert_title">Support에서 새 메시지가 도착했습니다.</string>
     <string name="open">열기</string>
     <string name="later">나중에</string>
     <string name="notifications_channel">알림</string>
@@ -279,16 +281,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d개 이미지</item></plurals>
     <string name="onboarding_kolam_history">Kolam은 Sangam 문학에 언급되었으며, 그 역사는 기원전 500년까지 거슬러 올라갑니다.</string>
     <string name="onboarding_begin">시작</string>
-    <string name="history_title">역사</string>
+    <string name="history_title">콜람의 역사</string>
     <string name="history_intro">Kolam에는 Sikku Kolam, Pulli Kolam, Rangoli의 세 가지 주요 유형이 있습니다.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">시쿠 콜람 &amp; 풀리 콜람</string>
     <string name="history_sikku_origin_location">기원한 곳: 타밀나두(인도 남부).</string>
     <string name="history_sikku_origin_story">기원 이야기: 이 풍습은 고대 타밀라캄의 선사시대 부족 공동체와 초기 농경 공동체에서 시작되었습니다. 생태적·수학적 필요에서 비롯되었습니다.</string>
     <string name="history_ancient_dot_grids">고대 타밀 사람들은 개미와 새에게 먹이를 주기 위해 먹을 수 있는 쌀가루로 점 격자(Pulli)를 그렸습니다.</string>
     <string name="history_loop_belief">닫힌 고리가 악령을 문 앞에 가두어 집에 들어오지 못하게 한다고 믿었기 때문에 점을 선으로 잇거나 둘러 그렸습니다.</string>
     <string name="history_sikku_description">Sikku(또는 Kambi) Kolam: 점을 놓되 선이 점에 닿지 않게 합니다. 대신 끊어지지 않는 하나의 선이 점 주위를 구불구불하게 감아 돕니다.</string>
     <string name="history_pulli_description">Pulli Kolam: 점 격자를 놓고 직선이나 기하학적 선으로 연결해 별, 사각형 또는 꽃 모양을 만듭니다.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">랑골리</string>
     <string name="history_rangoli_origin_location">기원한 곳: 마하라슈트라주와 마디아프라데시주(인도 중부).</string>
     <string name="history_rangoli_origin_story">기원 이야기: 이 풍습은 인도 중부의 고대 목축 공동체와 왕실 공동체에서 시작되었습니다. 악령을 가두는 선을 그리는 대신, 축제와 왕실 행사를 위해 마당을 꾸미는 바닥 그림(dhuli citra)으로 발전했습니다. 정해진 점 격자 대신 손가락으로 동물, 꽃, 상징을 자유롭게 그리고 선명한 색가루를 채워 왕실 양탄자처럼 표현했습니다.</string>
     <string name="history_sangam_title">Sangam 문학의 기록</string>

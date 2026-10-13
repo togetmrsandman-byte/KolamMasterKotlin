@@ -6,6 +6,7 @@
     <string name="language_changes_apply">భాష మార్పులు వెంటనే అమలవుతాయి</string>
     <string name="back">వెనుకకు</string>
     <string name="home">హోమ్</string>
+    <string name="learn">నేర్చుకోండి</string>
     <string name="profile">ప్రొఫైల్</string>
     <string name="my_folders">నా ఫోల్డర్‌లు</string>
     <string name="contact_us">మమ్మల్ని సంప్రదించండి</string>
@@ -23,8 +24,8 @@
     <string name="benefit_publish_kolams">మీ కోలాలను కోలమ్ కమ్యూనిటీలో ప్రచురించండి</string>
     <string name="preparing_app">Kolam Master సిద్ధమవుతోంది</string>
     <string name="preparing_images">చిత్రాలను సిద్ధం చేస్తున్నాము</string>
-    <string name="preparing_learn_thumbnails">Learn సూక్ష్మచిత్రాలను సిద్ధం చేస్తున్నాము</string>
-    <string name="downloading_learn_thumbnails">Learn సూక్ష్మచిత్రాలను డౌన్‌లోడ్ చేస్తున్నాము</string>
+    <string name="preparing_learn_thumbnails">నేర్చుకునే సూక్ష్మచిత్రాలను సిద్ధం చేస్తున్నాము</string>
+    <string name="downloading_learn_thumbnails">నేర్చుకునే సూక్ష్మచిత్రాలను డౌన్‌లోడ్ చేస్తున్నాము</string>
     <string name="setup_complete">సెటప్ పూర్తయింది</string>
     <string name="setup_complete_missing_images">సెటప్ పూర్తయింది; మిస్ అయిన చిత్రాలను తర్వాత లోడ్ చేయవచ్చు</string>
     <string name="some_images_failed">కొన్ని చిత్రాలను డౌన్‌లోడ్ చేయలేకపోయాము. కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</string>
@@ -101,6 +102,7 @@
     <string name="guest_account_message">మీరు ప్రస్తుతం Kolam Masterను అతిథిగా ఉపయోగిస్తున్నారు.</string>
     <string name="sign_in_new_conversation">కొత్త సంభాషణ ప్రారంభించడానికి సైన్ ఇన్ చేయండి.</string>
     <string name="new_conversation_title">కొత్త సంభాషణ</string>
+    <string name="new_conversation_description">కొత్త సంభాషణను ప్రారంభించండి</string>
     <string name="save">సేవ్ చేయండి</string>
     <string name="view_folder">చూడండి</string>
     <string name="preview">ప్రివ్యూ</string>
@@ -183,7 +185,7 @@
     <string name="contact_camera_permission_message">Contact Us ఫోటో తీయడానికి కెమెరా అనుమతిని ఇవ్వండి.</string>
     <string name="announcement_alert_title">కొత్త ప్రకటన వచ్చింది</string>
     <string name="announcement_alert_message">దీన్ని ఇప్పుడే తెరవాలనుకుంటున్నారా?</string>
-    <string name="support_alert_title">Support నుంచి కొత్త సందేశం వచ్చింది</string>
+    <string name="support_alert_title">Support నుంచి మీకు కొత్త సందేశం వచ్చింది.</string>
     <string name="open">తెరవండి</string>
     <string name="later">తర్వాత</string>
     <string name="notifications_channel">నోటిఫికేషన్‌లు</string>
@@ -280,16 +282,16 @@
     <plurals name="image_count"><item quantity="other">%1$d / %2$d చిత్రాలు</item></plurals>
     <string name="onboarding_kolam_history">సంగం సాహిత్యంలో ప్రస్తావించిన కోలం చరిత్ర క్రీ.పూ. 500 వరకు వెళ్తుంది.</string>
     <string name="onboarding_begin">ప్రారంభించండి</string>
-    <string name="history_title">చరిత్ర</string>
+    <string name="history_title">కోలం చరిత్ర</string>
     <string name="history_intro">కోలంలో Sikku Kolam, Pulli Kolam, Rangoli అనే మూడు ప్రధాన రకాలు ఉన్నాయి.</string>
-    <string name="history_sikku_pulli_title">Sikku Kolam &amp; Pulli Kolam</string>
+    <string name="history_sikku_pulli_title">సిక్కు కోలం &amp; పుల్లి కోలం</string>
     <string name="history_sikku_origin_location">ఇవి పుట్టిన ప్రాంతం: తమిళనాడు (దక్షిణ భారతదేశం).</string>
     <string name="history_sikku_origin_story">ఆవిర్భావ కథ: ప్రాచీన తమిళకంలో చరిత్రపూర్వ గిరిజన, తొలి వ్యవసాయ సమాజాల్లో ఈ సంప్రదాయాలు పుట్టాయి. పర్యావరణ, గణిత అవసరాల వల్ల ఇవి ప్రారంభమయ్యాయి.</string>
     <string name="history_ancient_dot_grids">చీమలు, పక్షులకు ఆహారం అందించడానికి ప్రాచీన తమిళులు తినదగిన బియ్యపు పిండితో చుక్కల గళ్లను (Pulli) గీసేవారు.</string>
     <string name="history_loop_belief">మూసిన గీతలు చెడు ఆత్మలను గడప దగ్గర బంధించి ఇంట్లోకి రాకుండా చేస్తాయని నమ్మి, వారు చుక్కలను గీతలతో కలిపేవారు లేదా చుట్టేవారు.</string>
     <string name="history_sikku_description">Sikku (లేదా Kambi) Kolam: చుక్కలను ఉంచండి, కానీ గీతలు వాటిని తాకనివ్వకండి. బదులుగా, ఒకే నిరంతర గీత చుక్కల చుట్టూ మెలికలు తిరుగుతూ ఎక్కడా తెగకుండా సాగుతుంది.</string>
     <string name="history_pulli_description">Pulli Kolam: చుక్కల గళ్లను వేసి, నక్షత్రాలు, చతురస్రాలు లేదా పూలను రూపొందించడానికి వాటిని సరళ లేదా జ్యామితీయ గీతలతో కలపండి.</string>
-    <string name="history_rangoli_title">Rangoli</string>
+    <string name="history_rangoli_title">రంగోలి</string>
     <string name="history_rangoli_origin_location">ఇది పుట్టిన ప్రాంతం: మహారాష్ట్ర, మధ్యప్రదేశ్ (మధ్య భారతదేశం).</string>
     <string name="history_rangoli_origin_story">ఆవిర్భావ కథ: మధ్య భారతదేశంలోని ప్రాచీన పశుపాలక, రాజవంశ సమాజాల్లో ఈ సంప్రదాయం పుట్టింది. ఆత్మలను బంధించే గీతలకు బదులుగా, పండుగలు, రాజ వేడుకల కోసం ప్రాంగణాలను అలంకరించే నేలచిత్రంగా (dhuli citra) ఇది అభివృద్ధి చెందింది. స్థిరమైన చుక్కల గళ్లకు బదులుగా, ప్రజలు వేళ్లతో జంతువులు, పూలు, చిహ్నాలను స్వేచ్ఛగా గీసి, రాజ తివాచీలను పోలేలా ప్రకాశవంతమైన రంగు పొడితో నింపేవారు.</string>
     <string name="history_sangam_title">సంగం సాహిత్య ప్రస్తావన</string>

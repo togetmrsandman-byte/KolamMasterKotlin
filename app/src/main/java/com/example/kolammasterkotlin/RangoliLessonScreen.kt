@@ -148,7 +148,9 @@ internal fun RangoliLessonScreen(
                         }
                     },
                     enabled = complete || stepIndex > 0,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -160,7 +162,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text(stringResource(R.string.previous))
+                    PlaybackControlLabel(stringResource(R.string.previous))
                 }
                 Button(
                     onClick = {
@@ -173,7 +175,9 @@ internal fun RangoliLessonScreen(
                         }
                     },
                     enabled = complete || currentStep?.structuralLesson != null,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(40.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -185,7 +189,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    Text(stringResource(R.string.replay))
+                    PlaybackControlLabel(stringResource(R.string.replay))
                 }
                 PlaybackSpeedControl(
                     speed = playbackSpeed,

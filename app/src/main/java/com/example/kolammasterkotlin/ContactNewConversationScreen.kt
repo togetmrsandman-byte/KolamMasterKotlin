@@ -13,6 +13,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -255,6 +256,13 @@ internal fun ContactNewConversationDestination(
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
             )
+            validationError?.let {
+                Text(
+                    it,
+                    color = KolamError,
+                    textAlign = TextAlign.Center
+                )
+            }
             ContactNewConversationAttachment(
                 attachment = selectedAttachment,
                 enabled = !isSubmitting,
@@ -265,81 +273,87 @@ internal fun ContactNewConversationDestination(
                 onRemoveImage = {
                     selectedAttachment = null
                     validationError = null
-                }
-            )
-            validationError?.let {
-                Text(
-                    it,
-                    color = KolamError,
-                    textAlign = TextAlign.Center
-                )
-            }
-            Button(
-                onClick = {
-                    if (isSubmitting) return@Button
-                    val trimmedSubject = subject.trim()
-                    val trimmedMessage = message.trim()
-                    validationError = when {
-                        trimmedSubject.isEmpty() -> subjectRequired
-                        trimmedMessage.isEmpty() -> messageRequired
-                        !isValidLocalContactPhone(phone) ->
-                            phoneRequired
-                        else -> null
-                    }
-                    if (validationError != null) return@Button
+                },
+                submitButton = { modifier ->
+                    Button(
+                        onClick = {
+                            if (isSubmitting) return@Button
+                            val trimmedSubject = subject.trim()
+                            val trimmedMessage = message.trim()
+                            validationError = when {
+                                trimmedSubject.isEmpty() -> subjectRequired
+                                trimmedMessage.isEmpty() -> messageRequired
+                                !isValidLocalContactPhone(phone) -> phoneRequired
+                                else -> null
+                            }
+                            if (validationError != null) return@Button
 
-                    isSubmitting = true
-                    scope.launch {
-                        try {
-                            val imageBytes = selectedAttachment?.bitmap?.let { bitmap ->
-                                withContext(Dispatchers.Default) {
-                                    bitmap.toContactWebp()
-                                }.also { bytes ->
-                                    require(bytes.size <= MAX_CONTACT_IMAGE_BYTES) {
-                                        imageSizeLimit
+                            isSubmitting = true
+                            scope.launch {
+                                try {
+                                    val imageBytes = selectedAttachment?.bitmap?.let { bitmap ->
+                                        withContext(Dispatchers.Default) {
+                                            bitmap.toContactWebp()
+                                        }.also { bytes ->
+                                            require(bytes.size <= MAX_CONTACT_IMAGE_BYTES) {
+                                                imageSizeLimit
+                                            }
+                                        }
                                     }
+                                    onCreate(
+                                        internationalContactPhone(selectedCountry, phone),
+                                        trimmedSubject,
+                                        trimmedMessage,
+                                        imageBytes
+                                    )
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (exception: Exception) {
+                                    if (NetworkErrors.isNetworkFailure(exception)) {
+                                        errorTitle = NetworkErrors.TITLE
+                                        errorMessage = NetworkErrors.MESSAGE
+                                    } else {
+                                        errorTitle = contactUsTitle
+                                        errorMessage = sendFailed
+                                    }
+                                } finally {
+                                    isSubmitting = false
                                 }
                             }
-                            onCreate(
-                                internationalContactPhone(selectedCountry, phone),
-                                trimmedSubject,
-                                trimmedMessage,
-                                imageBytes
+                        },
+                        modifier = modifier,
+                        enabled = !isSubmitting,
+                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            disabledContainerColor = MaterialTheme.colorScheme.primary,
+                            disabledContentColor = KolamButtonText
+                        )
+                    ) {
+                        if (isSubmitting) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(18.dp),
+                                color = KolamButtonText,
+                                trackColor = KolamBorder,
+                                strokeWidth = 2.dp
                             )
-                        } catch (exception: CancellationException) {
-                            throw exception
-                        } catch (exception: Exception) {
-                            if (NetworkErrors.isNetworkFailure(exception)) {
-                                errorTitle = NetworkErrors.TITLE
-                                errorMessage = NetworkErrors.MESSAGE
-                            } else {
-                                errorTitle = contactUsTitle
-                                errorMessage = sendFailed
-                            }
-                        } finally {
-                            isSubmitting = false
+                            Spacer(Modifier.width(6.dp))
+                            AutoFitSingleLineText(
+                                text = stringResource(R.string.sending),
+                                maxFontSize = 14f,
+                                minFontSize = 10f,
+                                color = KolamButtonText
+                            )
+                        } else {
+                            AutoFitSingleLineText(
+                                text = stringResource(R.string.send),
+                                maxFontSize = 14f,
+                                minFontSize = 10f,
+                                color = KolamButtonText
+                            )
                         }
                     }
-                },
-                enabled = !isSubmitting,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = KolamButtonText
-                )
-            ) {
-                if (isSubmitting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        color = KolamButtonText,
-                        trackColor = KolamBorder,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(Modifier.width(6.dp))
-                    Text(stringResource(R.string.sending))
-                } else {
-                    Text(stringResource(R.string.send))
                 }
-            }
+            )
         }
     }
 
@@ -478,24 +492,43 @@ internal fun ContactNewConversationAttachment(
     attachment: ContactNewConversationImage?,
     enabled: Boolean,
     onPickImage: () -> Unit,
-    onRemoveImage: () -> Unit
+    onRemoveImage: () -> Unit,
+    submitButton: (@Composable (Modifier) -> Unit)? = null
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Button(
-            onClick = onPickImage,
-            enabled = enabled,
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = KolamButtonText,
-                disabledContainerColor = MaterialTheme.colorScheme.primary,
-                disabledContentColor = KolamButtonText
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(stringResource(R.string.attach_image))
+            Button(
+                onClick = onPickImage,
+                enabled = enabled,
+                modifier = if (submitButton == null) {
+                    Modifier.fillMaxWidth().height(48.dp)
+                } else {
+                    Modifier.weight(1f).height(48.dp)
+                },
+                shape = RoundedCornerShape(12.dp),
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 4.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = KolamButtonText,
+                    disabledContainerColor = MaterialTheme.colorScheme.primary,
+                    disabledContentColor = KolamButtonText
+                )
+            ) {
+                AutoFitSingleLineText(
+                    text = stringResource(R.string.attach_image),
+                    maxFontSize = 14f,
+                    minFontSize = 10f,
+                    color = KolamButtonText
+                )
+            }
+            submitButton?.invoke(Modifier.weight(1f).height(48.dp))
         }
         attachment?.let {
             Row(
