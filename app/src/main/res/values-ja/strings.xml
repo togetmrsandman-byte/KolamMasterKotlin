@@ -106,6 +106,7 @@
     <string name="save">保存</string>
     <string name="view_folder">表示</string>
     <string name="preview">プレビュー</string>
+    <string name="dots_order_heading">点の順序</string>
     <string name="start">開始</string>
     <string name="previous">前へ</string>
     <string name="replay">もう一度再生</string>

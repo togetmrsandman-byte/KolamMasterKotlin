@@ -167,7 +167,8 @@ class AppLocalizationTest {
             "later",
             "history_sikku_pulli_title",
             "history_rangoli_title",
-            "new_conversation_description"
+            "new_conversation_description",
+            "dots_order_heading"
         )
         val categoryHeadings = setOf(
             "history_sikku_pulli_title",

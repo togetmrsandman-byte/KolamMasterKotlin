@@ -106,6 +106,7 @@
     <string name="save">सहेजें</string>
     <string name="view_folder">देखें</string>
     <string name="preview">पूर्वावलोकन</string>
+    <string name="dots_order_heading">बिंदुओं का क्रम</string>
     <string name="start">शुरू करें</string>
     <string name="previous">पिछला</string>
     <string name="replay">फिर से चलाएँ</string>

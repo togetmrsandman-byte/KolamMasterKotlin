@@ -106,6 +106,7 @@
     <string name="save">저장</string>
     <string name="view_folder">보기</string>
     <string name="preview">미리보기</string>
+    <string name="dots_order_heading">점의 순서</string>
     <string name="start">시작</string>
     <string name="previous">이전</string>
     <string name="replay">다시 재생</string>

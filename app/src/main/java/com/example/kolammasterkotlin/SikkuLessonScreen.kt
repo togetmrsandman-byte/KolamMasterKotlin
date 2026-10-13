@@ -13,7 +13,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -111,7 +110,10 @@ internal fun SikkuLessonScreen(
             text = when {
                 complete -> stringResource(R.string.kolam_completed)
                 !started -> stringResource(R.string.preview)
-                inDotsStage -> lesson.dotInformation
+                inDotsStage -> dotsOrderStatusText(
+                    lesson.dotInformation,
+                    stringResource(R.string.dots_order_heading)
+                )
                 else -> stringResource(
                     R.string.step_progress,
                     lesson.steps[stepIndex].number,
@@ -159,9 +161,17 @@ internal fun SikkuLessonScreen(
             ) {
                 Text(stringResource(R.string.start))
             }
-            else -> Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            else -> PlaybackControlRow(
+                labels = listOf(
+                    stringResource(R.string.previous),
+                    stringResource(R.string.replay),
+                    *playbackSpeeds.map {
+                        stringResource(R.string.speed_label, playbackSpeedLabel(it))
+                    }.toTypedArray(),
+                    stringResource(R.string.next),
+                    stringResource(R.string.finish),
+                    stringResource(R.string.publish)
+                )
             ) {
                 Button(
                     onClick = {
@@ -175,7 +185,7 @@ internal fun SikkuLessonScreen(
                     enabled = complete || stepIndex >= 0,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
+                        .height(PlaybackControlHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -202,7 +212,7 @@ internal fun SikkuLessonScreen(
                     enabled = complete || stepIndex >= 0,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
+                        .height(PlaybackControlHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -219,7 +229,9 @@ internal fun SikkuLessonScreen(
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
                     onSpeedChange = { playbackSpeed = it },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(PlaybackControlHeight)
                 )
                 LessonActionButton(
                     text = when {
@@ -244,7 +256,9 @@ internal fun SikkuLessonScreen(
                     shining = complete,
                     containerColor = if (complete) KolamAccent else null,
                     contentColor = if (complete) KolamButtonText else null,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(PlaybackControlHeight),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 4.dp,
                         vertical = 10.dp

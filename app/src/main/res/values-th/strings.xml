@@ -106,6 +106,7 @@
     <string name="save">บันทึก</string>
     <string name="view_folder">ดู</string>
     <string name="preview">ดูตัวอย่าง</string>
+    <string name="dots_order_heading">ลำดับจุด</string>
     <string name="start">เริ่ม</string>
     <string name="previous">ก่อนหน้า</string>
     <string name="replay">เล่นอีกครั้ง</string>

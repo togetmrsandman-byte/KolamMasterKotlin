@@ -9,9 +9,11 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -23,6 +25,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -39,7 +43,11 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.PI
@@ -49,6 +57,9 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 internal val playbackSpeeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f)
+internal val PlaybackControlHeight = 40.dp
+private val DefaultPlaybackLabelFontSize = 14.sp
+private val LocalPlaybackLabelFontSize = compositionLocalOf { DefaultPlaybackLabelFontSize }
 
 internal fun playbackSpeedLabel(speed: Float): String =
     "${speed.toString().removeSuffix(".0")}×"
@@ -160,7 +171,7 @@ internal fun LessonActionButton(
             },
             contentPadding = contentPadding
         ) {
-            Text(text)
+            PlaybackControlLabel(text)
         }
         if (shining) {
             ShineOverlay(
@@ -172,13 +183,95 @@ internal fun LessonActionButton(
 }
 
 @Composable
-internal fun PlaybackControlLabel(text: String) {
-    AutoFitSingleLineText(
+internal fun PlaybackControlLabel(
+    text: String,
+    modifier: Modifier = Modifier,
+    onTextLayout: (androidx.compose.ui.text.TextLayoutResult) -> Unit = {}
+) {
+    PlaybackRowLabel(text, modifier, onTextLayout)
+}
+
+@Composable
+private fun PlaybackRowLabel(
+    text: String,
+    modifier: Modifier,
+    onTextLayout: (androidx.compose.ui.text.TextLayoutResult) -> Unit
+) {
+    Text(
         text = text,
-        modifier = Modifier.fillMaxWidth(),
-        maxFontSize = 14f,
-        minFontSize = 10f
+        modifier = modifier.fillMaxWidth(),
+        style = MaterialTheme.typography.labelLarge.copy(
+            fontSize = LocalPlaybackLabelFontSize.current,
+            lineHeight = (LocalPlaybackLabelFontSize.current.value * 1.25f).sp
+        ),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
+        textAlign = TextAlign.Center,
+        onTextLayout = onTextLayout
     )
+}
+
+@Composable
+internal fun PlaybackControlRow(
+    labels: List<String>,
+    modifier: Modifier = Modifier.fillMaxWidth(),
+    content: @Composable RowScope.() -> Unit
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val textMeasurer = rememberTextMeasurer()
+        val textStyle = MaterialTheme.typography.labelLarge
+        val density = LocalDensity.current
+        val labelFontSize = remember(labels, maxWidth, textStyle, textMeasurer, density) {
+            val contentWidth = (maxWidth - 12.dp) / 4 - 9.dp
+            val widthPx = with(density) { contentWidth.roundToPx() }.coerceAtLeast(0)
+            var candidate = DefaultPlaybackLabelFontSize.value
+            while (candidate > MIN_PLAYBACK_LABEL_FONT_SIZE &&
+                labels.any { label ->
+                    textMeasurer.measure(
+                        text = label,
+                        style = textStyle.copy(
+                            fontSize = candidate.sp,
+                            lineHeight = (candidate * 1.25f).sp
+                        ),
+                        maxLines = 1,
+                        softWrap = false,
+                        overflow = TextOverflow.Clip,
+                        constraints = Constraints(maxWidth = widthPx)
+                    ).didOverflowWidth
+                }
+            ) {
+                candidate -= PLAYBACK_LABEL_FONT_SIZE_STEP
+            }
+            candidate.sp
+        }
+        CompositionLocalProvider(LocalPlaybackLabelFontSize provides labelFontSize) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                content = content
+            )
+        }
+    }
+}
+
+private const val MIN_PLAYBACK_LABEL_FONT_SIZE = 1f
+private const val PLAYBACK_LABEL_FONT_SIZE_STEP = 0.5f
+
+internal fun dotsOrderStatusText(dotInformation: String?, localizedHeading: String): String {
+    if (dotInformation.isNullOrEmpty()) {
+        return localizedHeading
+    }
+    val englishHeading = "Dots Order"
+    if (dotInformation.equals(englishHeading, ignoreCase = true)) return localizedHeading
+
+    val hasDelimitedHeading = dotInformation.startsWith(englishHeading, ignoreCase = true) &&
+        dotInformation.length > englishHeading.length &&
+        dotInformation[englishHeading.length] in ":：-–—"
+    if (hasDelimitedHeading) {
+        return localizedHeading + dotInformation.substring(englishHeading.length)
+    }
+    return "$localizedHeading\n$dotInformation"
 }
 
 @Composable
@@ -254,7 +347,9 @@ internal fun PlaybackSpeedControl(
     Box(modifier) {
         Button(
             onClick = { expanded = true },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(PlaybackControlHeight),
             contentPadding = PaddingValues(
                 start = 4.dp,
                 top = 10.dp,
@@ -262,7 +357,7 @@ internal fun PlaybackSpeedControl(
                 bottom = 10.dp
             )
         ) {
-            Text(stringResource(R.string.speed_label, playbackSpeedLabel(speed)), maxLines = 1)
+            PlaybackControlLabel(stringResource(R.string.speed_label, playbackSpeedLabel(speed)))
         }
         DropdownMenu(
             expanded = expanded,

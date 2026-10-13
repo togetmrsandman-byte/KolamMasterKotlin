@@ -106,6 +106,7 @@
     <string name="save">保存</string>
     <string name="view_folder">查看</string>
     <string name="preview">预览</string>
+    <string name="dots_order_heading">点的顺序</string>
     <string name="start">开始</string>
     <string name="previous">上一步</string>
     <string name="replay">重播</string>

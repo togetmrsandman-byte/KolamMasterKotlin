@@ -107,6 +107,7 @@
     <string name="save">Save</string>
     <string name="view_folder">View</string>
     <string name="preview">Preview</string>
+    <string name="dots_order_heading">Dots Order</string>
     <string name="start">Start</string>
     <string name="previous">Previous</string>
     <string name="replay">Replay</string>

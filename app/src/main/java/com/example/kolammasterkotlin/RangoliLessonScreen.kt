@@ -14,7 +14,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -134,9 +133,17 @@ internal fun RangoliLessonScreen(
             ) {
                 Text(stringResource(R.string.start))
             }
-            else -> Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            else -> PlaybackControlRow(
+                labels = listOf(
+                    stringResource(R.string.previous),
+                    stringResource(R.string.replay),
+                    *playbackSpeeds.map {
+                        stringResource(R.string.speed_label, playbackSpeedLabel(it))
+                    }.toTypedArray(),
+                    stringResource(R.string.next),
+                    stringResource(R.string.finish),
+                    stringResource(R.string.publish)
+                )
             ) {
                 Button(
                     onClick = {
@@ -150,7 +157,7 @@ internal fun RangoliLessonScreen(
                     enabled = complete || stepIndex > 0,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
+                        .height(PlaybackControlHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -177,7 +184,7 @@ internal fun RangoliLessonScreen(
                     enabled = complete || currentStep?.structuralLesson != null,
                     modifier = Modifier
                         .weight(1f)
-                        .height(40.dp),
+                        .height(PlaybackControlHeight),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = KolamButtonYellow,
                         contentColor = KolamButtonText,
@@ -194,7 +201,9 @@ internal fun RangoliLessonScreen(
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
                     onSpeedChange = { playbackSpeed = it },
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(PlaybackControlHeight)
                 )
                 LessonActionButton(
                     text = when {
@@ -217,7 +226,9 @@ internal fun RangoliLessonScreen(
                     shining = complete,
                     containerColor = if (complete) KolamAccent else null,
                     contentColor = if (complete) KolamButtonText else null,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(PlaybackControlHeight),
                     contentPadding = androidx.compose.foundation.layout.PaddingValues(
                         horizontal = 4.dp,
                         vertical = 10.dp
