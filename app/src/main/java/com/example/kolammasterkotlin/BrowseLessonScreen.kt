@@ -66,6 +66,7 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
@@ -238,6 +239,7 @@ internal fun BrowseLessonScreen(
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var filtersOpen by remember { mutableStateOf(false) }
+    val languageCode = LocalConfiguration.current.locales[0].toLanguageTag()
     val context = androidx.compose.ui.platform.LocalContext.current
     val localizedContext = context.withSelectedAppLanguage()
 
@@ -493,6 +495,7 @@ internal fun BrowseLessonScreen(
                         ) { _, lesson ->
                             LessonCatalogueCard(
                                 lesson = lesson,
+                                languageCode = languageCode,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
                                 onClick = { openLesson(lesson, false) },
                                 onHeartClick = {
@@ -519,6 +522,7 @@ internal fun BrowseLessonScreen(
                             val lesson = item.lesson
                             LessonCatalogueCard(
                                 lesson = lesson,
+                                languageCode = languageCode,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
                                 onClick = { openLesson(lesson, false) },
                                 onHeartClick = {
@@ -539,6 +543,7 @@ internal fun BrowseLessonScreen(
                             val lesson = item.lesson
                             LessonCatalogueCard(
                                 lesson = lesson,
+                                languageCode = languageCode,
                                 isSaved = savedFolders.any { lesson.id in it.lessons },
                                 onClick = { openLesson(lesson, false) },
                                 onHeartClick = {
@@ -569,6 +574,7 @@ internal fun BrowseLessonScreen(
                                 val lesson = item.lesson
                                 LessonCatalogueCard(
                                     lesson = lesson,
+                                    languageCode = languageCode,
                                     isSaved = savedFolders.any { lesson.id in it.lessons },
                                     onClick = { openLesson(lesson, false) },
                                     onHeartClick = {
@@ -1144,6 +1150,7 @@ internal fun CatalogueLessonDetailScreen(
     lesson: LessonCatalogueEntry,
     onBack: () -> Unit
 ) {
+    val languageCode = LocalConfiguration.current.locales[0].toLanguageTag()
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -1160,7 +1167,7 @@ internal fun CatalogueLessonDetailScreen(
         )
         Spacer(Modifier.height(20.dp))
         Text(
-            text = lesson.lessonName,
+            text = lesson.localizedName(languageCode),
             color = KolamText,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
@@ -1304,6 +1311,7 @@ private fun Set<String>.toggle(value: String): Set<String> =
 @Composable
 internal fun LessonCatalogueCard(
     lesson: LessonCatalogueEntry,
+    languageCode: String,
     isSaved: Boolean,
     onClick: (() -> Unit)?,
     onHeartClick: () -> Unit
@@ -1314,7 +1322,7 @@ internal fun LessonCatalogueCard(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
-            LessonCatalogueCardContent(lesson, isSaved, onHeartClick)
+            LessonCatalogueCardContent(lesson, languageCode, isSaved, onHeartClick)
         }
     } else {
         Card(
@@ -1323,7 +1331,7 @@ internal fun LessonCatalogueCard(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
-            LessonCatalogueCardContent(lesson, isSaved, onHeartClick)
+            LessonCatalogueCardContent(lesson, languageCode, isSaved, onHeartClick)
         }
     }
 }
@@ -1331,6 +1339,7 @@ internal fun LessonCatalogueCard(
 @Composable
 private fun LessonCatalogueCardContent(
     lesson: LessonCatalogueEntry,
+    languageCode: String,
     isSaved: Boolean,
     onHeartClick: () -> Unit
 ) {
@@ -1359,7 +1368,7 @@ private fun LessonCatalogueCardContent(
                 }
             }
             Text(
-                text = lesson.lessonName,
+                text = lesson.localizedName(languageCode),
                 modifier = Modifier.weight(1f),
                 color = KolamText,
                 fontSize = 12.sp,
@@ -1369,7 +1378,7 @@ private fun LessonCatalogueCardContent(
                 textAlign = TextAlign.Center
             )
             LessonFavoriteStar(
-                lessonName = lesson.lessonName,
+                lessonName = lesson.localizedName(languageCode),
                 isSaved = isSaved,
                 onClick = onHeartClick
             )
@@ -1735,7 +1744,13 @@ private fun BrowseMessage(text: String) {
 private fun LessonCatalogueEntry.searchableText(): String = buildString {
     append(lessonName)
     append(' ')
+    append(displayNames.values.joinToString(" "))
+    append(' ')
     append(tags.joinToString(" "))
+    append(' ')
+    append(tagTranslations.translatable.values.flatten().joinToString(" "))
+    append(' ')
+    append(tagTranslations.nonTranslatable.joinToString(" "))
     append(' ')
     append(kolamType.orEmpty())
     append(' ')

@@ -12,6 +12,11 @@ internal enum class CatalogueAccess {
     LOCKED
 }
 
+internal data class CatalogueTagTranslations(
+    val translatable: Map<String, List<String>> = emptyMap(),
+    val nonTranslatable: List<String> = emptyList()
+)
+
 internal data class LessonCatalogueEntry(
     val id: String,
     val lessonName: String,
@@ -40,7 +45,9 @@ internal data class LessonCatalogueEntry(
     val packageFilename: String?,
     val filename: String?,
     val access: CatalogueAccess = CatalogueAccess.UNRESOLVED,
-    internal val sourceJson: String
+    internal val sourceJson: String,
+    val displayNames: Map<String, String> = emptyMap(),
+    val tagTranslations: CatalogueTagTranslations = CatalogueTagTranslations()
 ) {
     val requiredRewardedAdCount: Int
         get() = difficulty.rewardedAdCount()
@@ -65,6 +72,11 @@ internal data class LessonCatalogueEntry(
 
     val firstThumbnailUrl: String?
         get() = thumbnailUrls.firstOrNull()
+
+    fun localizedName(languageCode: String): String =
+        displayNames[languageCode]?.takeIf(String::isNotBlank)
+            ?: displayNames["en"]?.takeIf(String::isNotBlank)
+            ?: lessonName
 }
 
 private fun lessonId(category: String?, lessonName: String): String {
@@ -139,7 +151,9 @@ internal fun parseCatalogueJson(json: String): List<LessonCatalogueEntry> {
                     packageFile = record.stringValue("packageFile"),
                     packageFilename = record.stringValue("packageFilename"),
                     filename = record.stringValue("filename"),
-                    sourceJson = source
+                    sourceJson = source,
+                    displayNames = record.stringMap("displayNames"),
+                    tagTranslations = record.tagTranslations()
                 )
             )
         }
@@ -173,6 +187,35 @@ private fun JSONObject.stringList(key: String): List<String> {
         is String -> listOf(value).filter(String::isNotBlank)
         else -> emptyList()
     }
+}
+
+private fun JSONObject.stringMap(key: String): Map<String, String> {
+    val value = optJSONObject(key) ?: return emptyMap()
+    return buildMap {
+        val keys = value.keys()
+        while (keys.hasNext()) {
+            val languageCode = keys.next()
+            val localizedName = value.opt(languageCode) as? String ?: continue
+            put(languageCode, localizedName)
+        }
+    }
+}
+
+private fun JSONObject.tagTranslations(): CatalogueTagTranslations {
+    val translations = optJSONObject("tagTranslations") ?: return CatalogueTagTranslations()
+    val translatable = translations.optJSONObject("translatable")?.let { localizedTags ->
+        buildMap {
+            val languageCodes = localizedTags.keys()
+            while (languageCodes.hasNext()) {
+                val languageCode = languageCodes.next()
+                put(languageCode, localizedTags.stringList(languageCode))
+            }
+        }
+    }.orEmpty()
+    return CatalogueTagTranslations(
+        translatable = translatable,
+        nonTranslatable = translations.stringList("nonTranslatable")
+    )
 }
 
 private fun JSONObject.intValue(key: String): Int? {
