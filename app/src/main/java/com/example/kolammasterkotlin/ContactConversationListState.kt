@@ -13,3 +13,9 @@ internal fun shouldRevealContactConversationPromotion(
                 currentOrder.filter(previousOrder::contains) ||
                 previousOrder.first() != currentOrder.first()
             )
+
+internal fun shouldRefreshContactConversationList(
+    hasPendingPushFallback: Boolean,
+    explicitRefreshRequested: Boolean
+): Boolean =
+    hasPendingPushFallback || explicitRefreshRequested

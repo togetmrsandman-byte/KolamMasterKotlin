@@ -239,6 +239,68 @@ class PushNotificationsInstrumentedTest {
     }
 
     @Test
+    fun supportPushQueuesOnlyItsConversationRefreshOrInboxFallback() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val conversationA = "push-test-target-a-${UUID.randomUUID()}"
+        val conversationB = "push-test-target-b-${UUID.randomUUID()}"
+        val messageId = "push-test-target-message-${UUID.randomUUID()}"
+        SupportUnreadStore.consumeInboxRefreshSignal(context)
+        val initialInboxSignal = SupportUnreadStore.inboxRefreshSignal(context)
+        val initialSignalA =
+            SupportUnreadStore.conversationRefreshSignal(context, conversationA)
+        val initialSignalB =
+            SupportUnreadStore.conversationRefreshSignal(context, conversationB)
+        SupportUnreadStore.notifyConversationRefresh(context, conversationB)
+        val pendingSignalB =
+            SupportUnreadStore.conversationRefreshSignal(context, conversationB)
+        SupportUnreadStore.setActiveConversation(null)
+
+        assertTrue(
+            handleSupportPush(
+                context,
+                PushNotificationPayload.Support(conversationA, messageId),
+                appForeground = false
+            ) {}
+        )
+        assertEquals(
+            initialSignalA + 1,
+            SupportUnreadStore.conversationRefreshSignal(context, conversationA)
+        )
+        assertEquals(pendingSignalB, SupportUnreadStore.conversationRefreshSignal(context, conversationB))
+        assertEquals(initialInboxSignal, SupportUnreadStore.inboxRefreshSignal(context))
+        assertTrue(SupportUnreadStore.consumeConversationRefreshSignal(context, conversationA))
+        assertFalse(SupportUnreadStore.consumeConversationRefreshSignal(context, conversationA))
+        assertTrue(SupportUnreadStore.consumeConversationRefreshSignal(context, conversationB))
+        assertFalse(SupportUnreadStore.consumeConversationRefreshSignal(context, conversationB))
+
+        val missingIdMessage = "push-test-no-conversation-${UUID.randomUUID()}"
+        assertTrue(
+            handleSupportPush(
+                context,
+                PushNotificationPayload.Support(null, missingIdMessage),
+                appForeground = false
+            ) {}
+        )
+        assertEquals(initialInboxSignal + 1, SupportUnreadStore.inboxRefreshSignal(context))
+        assertTrue(SupportUnreadStore.consumeInboxRefreshSignal(context))
+        assertFalse(SupportUnreadStore.consumeInboxRefreshSignal(context))
+
+        assertTrue(
+            handleSupportPush(
+                context,
+                PushNotificationPayload.Support(null, null),
+                appForeground = false
+            ) {}
+        )
+        assertEquals(initialInboxSignal + 2, SupportUnreadStore.inboxRefreshSignal(context))
+        assertTrue(SupportUnreadStore.consumeInboxRefreshSignal(context))
+        assertFalse(SupportUnreadStore.consumeInboxRefreshSignal(context))
+        SupportUnreadStore.clearConversation(context, conversationA, messageId)
+        SupportUnreadStore.clearConversation(context, conversationB)
+        SupportUnreadStore.clearPendingMessage(context, missingIdMessage)
+    }
+
+    @Test
     fun successfulTextReplyClearsSupportUnreadState() = runBlocking {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val conversationId = "push-test-text-reply-${UUID.randomUUID()}"

@@ -10,6 +10,7 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.SystemClock
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -90,6 +91,7 @@ private const val NOTIFICATIONS_PERMISSION_REQUESTED_KEY =
     "notifications_permission_requested"
 private const val ONBOARDING_PERMISSION_PENDING_STATE_KEY =
     "onboarding_permission_pending"
+private const val LAST_ACTIVITY_MIN_INTERVAL_MILLIS = 60_000L
 
 private sealed interface AppScreen {
     data object ChooseLanguage : AppScreen
@@ -202,8 +204,9 @@ class MainActivity : ComponentActivity() {
     private var communityLessonOpenError by mutableStateOf<String?>(null)
     private var pendingAnnouncementNotification by
         mutableStateOf<AnnouncementNotification?>(null)
-    private var contactForegroundRefreshKey by mutableIntStateOf(0)
-    private var supportMessageVersion by mutableStateOf(0L)
+    private val lastActivityRepository by lazy { LastActivityRepository() }
+    private var lastActivityAttemptUserId: String? = null
+    private var lastActivityAttemptElapsedRealtime = 0L
 
     private val googleSignInLauncher =
         registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
@@ -255,7 +258,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        supportMessageVersion = SupportUnreadStore.messageVersion(this)
         onboardingPermissionFlow = OnboardingPermissionFlow(
             savedInstanceState?.getBoolean(ONBOARDING_PERMISSION_PENDING_STATE_KEY) == true
         )
@@ -385,10 +387,8 @@ class MainActivity : ComponentActivity() {
                     onOpenForegroundAnnouncement = { announcementId ->
                         pendingAnnouncementNotification =
                             AnnouncementNotification(announcementId)
-                    },
-                    contactForegroundRefreshKey = contactForegroundRefreshKey,
-                        supportMessageVersion = supportMessageVersion
-                    )
+                    }
+                )
                 }
             }
         }
@@ -417,9 +417,42 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
-        if (screenState == AppScreen.ContactUs) contactForegroundRefreshKey++
+        recordCurrentUserActivity()
         AnnouncementRepository.requestRefresh(this)
         refreshLauncherBadgeFromCache()
+    }
+
+    private fun recordCurrentUserActivity() {
+        lifecycleScope.launch {
+            try {
+                val account = SupabaseGuestAuth.currentAccount() ?: return@launch
+                recordCurrentUserActivity(account.id)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.w("LastActivity", "Could not resolve the current user for activity tracking.", exception)
+            }
+        }
+    }
+
+    private fun recordCurrentUserActivity(userId: String) {
+        val now = SystemClock.elapsedRealtime()
+        if (lastActivityAttemptUserId == userId &&
+            now - lastActivityAttemptElapsedRealtime < LAST_ACTIVITY_MIN_INTERVAL_MILLIS
+        ) {
+            return
+        }
+        lastActivityAttemptUserId = userId
+        lastActivityAttemptElapsedRealtime = now
+        lifecycleScope.launch {
+            try {
+                lastActivityRepository.recordCurrentUserActivity(userId)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.w("LastActivity", "Could not update Last Activity in Supabase.", exception)
+            }
+        }
     }
 
     private fun refreshLauncherBadgeFromCache() {
@@ -538,12 +571,14 @@ class MainActivity : ComponentActivity() {
                     }
                 }
                 accountState = newAccount
+                recordCurrentUserActivity(newAccount.id)
                 registerFcmToken(newAccount)
                 restoreLessonUnlocks(newAccount)
                 openPendingPublishAfterSignIn(newAccount)
                 if (screenState == AppScreen.SignInInvitation) {
                     waitingForPermission = continueOnboardingAfterPermission()
                 }
+
             } catch (exception: CancellationException) {
                 pendingPublishLesson = null
                 throw exception
@@ -1361,8 +1396,6 @@ private fun KolamMasterApp(
     announcementNotification: AnnouncementNotification?,
     onAnnouncementNotificationHandled: () -> Unit,
     onOpenForegroundAnnouncement: (String?) -> Unit,
-    contactForegroundRefreshKey: Int,
-    supportMessageVersion: Long
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -1390,23 +1423,22 @@ private fun KolamMasterApp(
     var contactRefreshKey by remember { mutableIntStateOf(0) }
     var contactRetryKey by remember(contactAccountId) { mutableIntStateOf(0) }
     var lastContactRetryKey by remember(contactAccountId) { mutableIntStateOf(0) }
-    var lastContactForegroundRefreshKey by remember(contactAccountId) {
-        mutableIntStateOf(-1)
-    }
-    var lastContactSupportMessageVersion by remember(contactAccountId) {
-        mutableStateOf(supportMessageVersion)
-    }
+    var lastContactRefreshKey by remember { mutableIntStateOf(0) }
     var isNewContactConversation by remember(contactAccountId) { mutableStateOf(false) }
     var selectedContactConversationId by remember(contactAccountId) {
         mutableStateOf<String?>(null)
     }
-    var contactDetailRefreshKey by remember { mutableIntStateOf(0) }
-    var observedSupportMessageVersion by remember {
-        mutableStateOf(supportMessageVersion)
+    var verifiedContactConversation by remember(contactAccountId) {
+        mutableStateOf<ContactConversation?>(null)
     }
+    var contactDetailRefreshKey by remember { mutableIntStateOf(0) }
     var observedSupportUnreadVersion by remember {
         mutableStateOf(SupportUnreadStore.unreadVersion(context))
     }
+    var observedSupportInboxRefreshSignal by remember {
+        mutableIntStateOf(SupportUnreadStore.inboxRefreshSignal(context))
+    }
+    var contactRefreshInFlight by remember(contactAccountId) { mutableStateOf(false) }
     val contactRepository = remember(contactLocalCache) {
         ContactRepository(localCache = contactLocalCache)
     }
@@ -1655,8 +1687,8 @@ private fun KolamMasterApp(
         contactAccountId,
         contactRefreshKey,
         contactRetryKey,
-        contactForegroundRefreshKey,
-        observedSupportMessageVersion
+        observedSupportInboxRefreshSignal,
+        selectedContactConversationId
     ) {
         if (screen != AppScreen.ContactUs || contactAccountId == null) {
             if (contactAccountId == null) {
@@ -1667,47 +1699,39 @@ private fun KolamMasterApp(
             isContactLoading = false
             return@LaunchedEffect
         }
+        if (selectedContactConversationId != null) {
+            isContactLoading = false
+            return@LaunchedEffect
+        }
 
         val cacheSnapshot = contactLocalCache.loadConversations(contactAccountId)
         if (cacheSnapshot != null && contactConversations.isEmpty()) {
             contactConversations = cacheSnapshot.value
         }
-        cacheSnapshot?.let { snapshot ->
-            scope.launch {
-                contactRepository.cacheMessagesForConversations(
-                    contactAccountId,
-                    snapshot.value
-                )
-            }
-        }
-        val hasExplicitRefresh = contactRetryKey != lastContactRetryKey ||
-            contactForegroundRefreshKey != lastContactForegroundRefreshKey ||
-            observedSupportMessageVersion != lastContactSupportMessageVersion
+        val hasPendingPushFallback = SupportUnreadStore.consumeInboxRefreshSignal(context)
+        val explicitRefreshRequested =
+            contactRefreshKey != lastContactRefreshKey ||
+                contactRetryKey != lastContactRetryKey
         lastContactRetryKey = contactRetryKey
-        lastContactForegroundRefreshKey = contactForegroundRefreshKey
-        lastContactSupportMessageVersion = observedSupportMessageVersion
-        if (!hasExplicitRefresh &&
-            cacheSnapshot != null &&
-            contactLocalCache.isFresh(cacheSnapshot.savedAtMillis)
-        ) {
+        lastContactRefreshKey = contactRefreshKey
+        val shouldRefreshList = shouldRefreshContactConversationList(
+            hasPendingPushFallback = hasPendingPushFallback,
+            explicitRefreshRequested = explicitRefreshRequested
+        )
+        if (!shouldRefreshList || contactRefreshInFlight) {
             contactLoadError = null
             isContactLoading = false
             return@LaunchedEffect
         }
 
         isContactLoading = true
+        contactRefreshInFlight = true
         contactLoadError = null
         contactSignInRequired = false
         try {
             val refreshedConversations =
                 contactRepository.getCurrentUserContactConversations()
             contactConversations = refreshedConversations
-            scope.launch {
-                contactRepository.cacheMessagesForConversations(
-                    contactAccountId,
-                    refreshedConversations
-                )
-            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
@@ -1722,6 +1746,7 @@ private fun KolamMasterApp(
             }
         } finally {
             isContactLoading = false
+            contactRefreshInFlight = false
         }
     }
     var unreadContactConversationIds by remember {
@@ -1757,11 +1782,13 @@ private fun KolamMasterApp(
             val updatedUnreadConversationIds =
                 SupportUnreadStore.unreadConversationIds(context)
             unreadContactConversationIds = updatedUnreadConversationIds
-            val updatedMessageVersion = SupportUnreadStore.messageVersion(context)
-            observedSupportMessageVersion = updatedMessageVersion
             observedSupportUnreadVersion = SupportUnreadStore.unreadVersion(context)
             hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
             foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
+            if (SupportUnreadStore.isInboxRefreshSignal(key)) {
+                observedSupportInboxRefreshSignal =
+                    SupportUnreadStore.inboxRefreshSignal(context)
+            }
             val activeConversationId = selectedContactConversationId
             if (screen == AppScreen.ContactUs &&
                 activeConversationId != null &&
@@ -1769,13 +1796,19 @@ private fun KolamMasterApp(
                     activeConversationId
                 )
             ) {
-                contactDetailRefreshKey++
+                if (SupportUnreadStore.consumeConversationRefreshSignal(
+                        context,
+                        activeConversationId
+                    )
+                ) {
+                    contactDetailRefreshKey++
+                }
             }
         }
         preferences.registerOnSharedPreferenceChangeListener(listener)
         unreadContactConversationIds = SupportUnreadStore.unreadConversationIds(context)
-        observedSupportMessageVersion = SupportUnreadStore.messageVersion(context)
         observedSupportUnreadVersion = SupportUnreadStore.unreadVersion(context)
+        observedSupportInboxRefreshSignal = SupportUnreadStore.inboxRefreshSignal(context)
         hasUnreadSupportNotifications = SupportUnreadStore.hasUnread(context)
         foregroundSupportAlert = SupportUnreadStore.foregroundAlert(context)
         onDispose { preferences.unregisterOnSharedPreferenceChangeListener(listener) }
@@ -1783,6 +1816,7 @@ private fun KolamMasterApp(
     var supportNotificationError by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(supportNotification, contactAccountId) {
         val reference = supportNotification ?: return@LaunchedEffect
+        verifiedContactConversation = null
         if (contactAccountId == null) {
             onNavigate(AppScreen.ContactUs)
             return@LaunchedEffect
@@ -1792,14 +1826,18 @@ private fun KolamMasterApp(
                 contactRepository.getContactConversationIdForMessage(it)
             }
             if (conversationId == null) {
+                selectedContactConversationId = null
+                contactRefreshKey++
                 onNavigate(AppScreen.ContactUs)
                 onSupportNotificationHandled()
                 return@LaunchedEffect
             }
             if (reference.conversationId != null) {
-                contactRepository.getContactConversation(conversationId)
+                verifiedContactConversation =
+                    contactRepository.getContactConversation(conversationId)
             }
             selectedContactConversationId = conversationId
+            SupportUnreadStore.consumeConversationRefreshSignal(context, conversationId)
             contactDetailRefreshKey++
             SupportUnreadStore.clearConversation(context, conversationId, reference.messageId)
             unreadContactConversationIds =
@@ -1810,6 +1848,8 @@ private fun KolamMasterApp(
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {
+            selectedContactConversationId = null
+            contactRefreshKey++
             supportNotificationError = if (NetworkErrors.isNetworkFailure(exception)) {
                 NetworkErrors.MESSAGE
             } else {
@@ -1880,7 +1920,7 @@ private fun KolamMasterApp(
             }
             screen == AppScreen.ContactUs && selectedContactConversationId != null -> {
                 selectedContactConversationId = null
-                contactRefreshKey++
+                verifiedContactConversation = null
             }
             screen == AppScreen.ContactUs && isNewContactConversation -> {
                 isNewContactConversation = false
@@ -1904,6 +1944,7 @@ private fun KolamMasterApp(
             DrawerAction.Language -> onNavigate(AppScreen.Language)
             DrawerAction.ContactUs -> {
                 selectedContactConversationId = null
+                verifiedContactConversation = null
                 isNewContactConversation = false
                 contactRefreshKey++
                 onNavigate(AppScreen.ContactUs)
@@ -2016,8 +2057,6 @@ private fun KolamMasterApp(
                         onPublishSuccess = { publishSuccessActive = true },
                         contactAccountId = contactAccountId,
                         contactLocalCache = contactLocalCache,
-                        contactForegroundRefreshKey = contactForegroundRefreshKey,
-                        supportMessageVersion = supportMessageVersion,
                         contactDetailRefreshKey = contactDetailRefreshKey,
                         unreadSupport = hasUnreadSupportNotifications,
                         unreadAnnouncements = announcementUnread,
@@ -2032,12 +2071,27 @@ private fun KolamMasterApp(
                         selectedContactConversationId = selectedContactConversationId,
                         onContactConversationSelected = {
                             selectedContactConversationId = it
+                            verifiedContactConversation = null
+                            val hasPendingRefresh =
+                                SupportUnreadStore.consumeConversationRefreshSignal(context, it)
+                            if (hasPendingRefresh) {
+                                contactDetailRefreshKey++
+                            }
                             SupportUnreadStore.clearConversation(context, it)
                             unreadContactConversationIds =
                                 SupportUnreadStore.unreadConversationIds(context)
                         },
                         onLoadContactMessages = contactRepository::getContactMessages,
-                        onLoadContactConversation = contactRepository::getContactConversation,
+                        onLoadContactConversation = { conversationId ->
+                            val verifiedConversation = verifiedContactConversation
+                                ?.takeIf { it.id == conversationId }
+                            if (verifiedConversation != null) {
+                                verifiedContactConversation = null
+                                verifiedConversation
+                            } else {
+                                contactRepository.getContactConversation(conversationId)
+                            }
+                        },
                         onSendContactMessage = contactRepository::sendContactMessage,
                         onUploadContactImage = contactRepository::uploadContactImage,
                         unreadContactConversationIds = unreadContactConversationIds,
@@ -2081,7 +2135,10 @@ private fun KolamMasterApp(
                             )
                             selectedContactConversationId = createdConversation.id
                             isNewContactConversation = false
-                            contactRefreshKey++
+                            contactConversations = contactAccountId
+                                ?.let(contactLocalCache::loadConversations)
+                                ?.value
+                                .orEmpty()
                         },
                         onBegin = {
                             scope.launch {
@@ -2297,8 +2354,6 @@ private fun AppScreenContent(
     onCommunityLessonRequestHandled: () -> Unit,
     contactAccountId: String?,
     contactLocalCache: ContactLocalCache,
-    contactForegroundRefreshKey: Int,
-    supportMessageVersion: Long,
     contactDetailRefreshKey: Int,
     unreadSupport: Boolean,
     unreadAnnouncements: Boolean,
@@ -2425,7 +2480,6 @@ private fun AppScreenContent(
                     onLoadMessages = onLoadContactMessages,
                     onSendMessage = onSendContactMessage,
                     onUploadImage = onUploadContactImage,
-                    foregroundRefreshKey = contactForegroundRefreshKey,
                     externalRefreshKey = contactDetailRefreshKey
                 )
             } else if (isContactSignedIn && isNewContactConversation) {

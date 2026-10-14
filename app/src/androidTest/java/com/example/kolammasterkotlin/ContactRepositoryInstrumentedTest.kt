@@ -99,6 +99,29 @@ class ContactRepositoryInstrumentedTest {
     }
 
     @Test
+    fun inboxConversationListRequestDoesNotFetchEveryConversationHistory() = runBlocking {
+        val auth = FakeContactAuth()
+        val transport = FakeContactHttp(
+            ContactHttpResponse(
+                200,
+                """[{"id":"c1","user_id":"${auth.account.id}","email":"","phone":"",""" +
+                    """"subject":"First","status":"OPEN","created_at":"created",""" +
+                    """"updated_at":"updated"},{"id":"c2","user_id":"${auth.account.id}",""" +
+                    """"email":"","phone":"","subject":"Second","status":"OPEN",""" +
+                    """"created_at":"created","updated_at":"updated"}]"""
+            )
+        )
+
+        val conversations = ContactRepository(auth, transport)
+            .getCurrentUserContactConversations()
+
+        assertEquals(listOf("c1", "c2"), conversations.map(ContactConversation::id))
+        assertEquals(1, transport.requests.size)
+        assertTrue(transport.requests.single().url.contains("/contact_conversations?"))
+        assertFalse(transport.requests.any { it.url.contains("/contact_messages?") })
+    }
+
+    @Test
     fun loadsLatestMessageActivityForConversationListRows() = runBlocking {
         val auth = FakeContactAuth()
         val transport = FakeContactHttp(

@@ -121,7 +121,6 @@ internal fun ContactConversationDetailDestination(
     onUploadImage: suspend (ByteArray) -> String,
     accountId: String? = null,
     localCache: ContactLocalCache? = null,
-    foregroundRefreshKey: Int = 0,
     externalRefreshKey: Int = 0
 ) {
     val context = LocalContext.current
@@ -179,9 +178,6 @@ internal fun ContactConversationDetailDestination(
     var lastHandledRetryKey by remember(accountId, conversationId) {
         mutableIntStateOf(0)
     }
-    var lastHandledForegroundRefreshKey by remember(accountId, conversationId) {
-        mutableIntStateOf(foregroundRefreshKey)
-    }
     var lastHandledExternalRefreshKey by remember(accountId, conversationId) {
         mutableIntStateOf(0)
     }
@@ -204,7 +200,6 @@ internal fun ContactConversationDetailDestination(
         accountId,
         conversationId,
         retryKey,
-        foregroundRefreshKey,
         externalRefreshKey
     ) {
         val latestCachedConversation =
@@ -220,10 +215,8 @@ internal fun ContactConversationDetailDestination(
         }
         if (latestCachedMessages != null) hasLoaded = true
         val mustRefresh = retryKey != lastHandledRetryKey ||
-            foregroundRefreshKey != lastHandledForegroundRefreshKey ||
             externalRefreshKey != lastHandledExternalRefreshKey
         lastHandledRetryKey = retryKey
-        lastHandledForegroundRefreshKey = foregroundRefreshKey
         lastHandledExternalRefreshKey = externalRefreshKey
         if (!mustRefresh &&
             latestCachedMessages != null &&

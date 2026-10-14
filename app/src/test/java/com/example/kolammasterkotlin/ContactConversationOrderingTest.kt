@@ -5,6 +5,42 @@ import org.junit.Test
 
 class ContactConversationOrderingTest {
     @Test
+    fun explicitOrPushFallbackRefreshesInbox() {
+        assertEquals(
+            true,
+            shouldRefreshContactConversationList(
+                hasPendingPushFallback = false,
+                explicitRefreshRequested = true
+            )
+        )
+        assertEquals(
+            true,
+            shouldRefreshContactConversationList(
+                hasPendingPushFallback = true,
+                explicitRefreshRequested = false
+            )
+        )
+        assertEquals(
+            false,
+            shouldRefreshContactConversationList(
+                hasPendingPushFallback = false,
+                explicitRefreshRequested = false
+            )
+        )
+    }
+
+    @Test
+    fun visibilityAndNavigationAloneDoNotRefreshInbox() {
+        assertEquals(
+            false,
+            shouldRefreshContactConversationList(
+                hasPendingPushFallback = false,
+                explicitRefreshRequested = false
+            )
+        )
+    }
+
+    @Test
     fun contactListOnlyRevealsWhenTheLeadingConversationChanges() {
         assertEquals(
             true,

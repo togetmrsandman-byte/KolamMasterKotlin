@@ -1,7 +1,15 @@
 package com.kolammaster.app
 
 import android.graphics.Bitmap
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Button
+import androidx.compose.material3.Text
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -12,13 +20,16 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToIndex
 import androidx.compose.ui.test.performTextInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import com.kolammaster.app.notifications.SupportUnreadStore
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import java.net.UnknownHostException
+import java.util.concurrent.atomic.AtomicInteger
 
 @RunWith(AndroidJUnit4::class)
 class ContactConversationDetailInstrumentedTest {
@@ -56,6 +67,179 @@ class ContactConversationDetailInstrumentedTest {
         composeRule.onNodeWithText("Reply").assertExists()
         composeRule.onNodeWithTag("contact-conversation-composer").assertIsDisplayed()
         composeRule.runOnIdle { assertEquals("selected-conversation-id", requestedConversationId) }
+    }
+
+    @Test
+    fun freshCachedHistoryIsReusedUnlessAnExternalRefreshIsRequested() {
+        val userId = "cache-test-user-${java.util.UUID.randomUUID()}"
+        val conversationId = "cache-test-conversation-${java.util.UUID.randomUUID()}"
+        val localCache = ContactLocalCache(composeRule.activity)
+        val cachedConversation = conversation(conversationId).copy(userId = userId)
+        val cachedMessage = message(
+            conversationId,
+            "cached-message",
+            "ADMIN",
+            "Cached reply",
+            "2026-10-13"
+        )
+        localCache.saveConversation(userId, cachedConversation)
+        localCache.saveMessages(userId, conversationId, listOf(cachedMessage))
+
+        var conversationLoads = 0
+        var messageLoads = 0
+        val externalRefreshKey = mutableIntStateOf(0)
+        composeRule.setContent {
+            ContactConversationDetailDestination(
+                conversationId = conversationId,
+                accountId = userId,
+                localCache = localCache,
+                externalRefreshKey = externalRefreshKey.intValue,
+                onLoadConversation = {
+                    conversationLoads++
+                    cachedConversation
+                },
+                onLoadMessages = {
+                    messageLoads++
+                    listOf(cachedMessage)
+                },
+                onSendMessage = { _, _, _ -> error("Not expected") },
+                onUploadImage = { error("Not expected") }
+            )
+        }
+
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Cached reply").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.runOnIdle {
+            assertEquals(0, conversationLoads)
+            assertEquals(0, messageLoads)
+            externalRefreshKey.intValue++
+        }
+        composeRule.waitUntil(5_000) {
+            conversationLoads == 1 && messageLoads == 1
+        }
+    }
+
+    @Test
+    fun deferredPushRefreshesOnlyItsConversationDespiteFreshHistoryCaches() {
+        val context = composeRule.activity
+        val userId = "deferred-push-user-${java.util.UUID.randomUUID()}"
+        val conversationAId = "deferred-push-a-${java.util.UUID.randomUUID()}"
+        val conversationBId = "deferred-push-b-${java.util.UUID.randomUUID()}"
+        val localCache = ContactLocalCache(context)
+        val conversationA = conversation(conversationAId).copy(userId = userId)
+        val conversationB = conversation(conversationBId).copy(userId = userId)
+        val messageA = message(
+            conversationAId,
+            "deferred-push-message-a",
+            "ADMIN",
+            "Cached reply A",
+            "2026-10-13"
+        )
+        val messageB = message(
+            conversationBId,
+            "deferred-push-message-b",
+            "ADMIN",
+            "Cached reply B",
+            "2026-10-13"
+        )
+        localCache.saveConversation(userId, conversationA)
+        localCache.saveMessages(userId, conversationAId, listOf(messageA))
+        localCache.saveConversation(userId, conversationB)
+        localCache.saveMessages(userId, conversationBId, listOf(messageB))
+        SupportUnreadStore.notifyConversationRefresh(context, conversationAId)
+
+        val conversationLoadsA = AtomicInteger()
+        val messageLoadsA = AtomicInteger()
+        val conversationLoadsB = AtomicInteger()
+        val messageLoadsB = AtomicInteger()
+        composeRule.setContent {
+            val selectedConversationId = remember { mutableStateOf<String?>(null) }
+            val refreshKeyA = remember { mutableIntStateOf(0) }
+            val refreshKeyB = remember { mutableIntStateOf(0) }
+            Column(Modifier.fillMaxSize()) {
+                Button(onClick = {
+                    if (SupportUnreadStore.consumeConversationRefreshSignal(
+                            context,
+                            conversationAId
+                        )
+                    ) {
+                        refreshKeyA.intValue++
+                    }
+                    selectedConversationId.value = conversationAId
+                }) { Text("Open conversation A") }
+                Button(onClick = {
+                    if (SupportUnreadStore.consumeConversationRefreshSignal(
+                            context,
+                            conversationBId
+                        )
+                    ) {
+                        refreshKeyB.intValue++
+                    }
+                    selectedConversationId.value = conversationBId
+                }) { Text("Open conversation B") }
+
+                when (selectedConversationId.value) {
+                    conversationAId -> ContactConversationDetailDestination(
+                        conversationId = conversationAId,
+                        accountId = userId,
+                        localCache = localCache,
+                        externalRefreshKey = refreshKeyA.intValue,
+                        onLoadConversation = {
+                            conversationLoadsA.incrementAndGet()
+                            conversationA
+                        },
+                        onLoadMessages = { _: String ->
+                            messageLoadsA.incrementAndGet()
+                            listOf(messageA)
+                        },
+                        onSendMessage = { _, _, _ -> error("Not expected") },
+                        onUploadImage = { error("Not expected") }
+                    )
+                    conversationBId -> ContactConversationDetailDestination(
+                        conversationId = conversationBId,
+                        accountId = userId,
+                        localCache = localCache,
+                        externalRefreshKey = refreshKeyB.intValue,
+                        onLoadConversation = {
+                            conversationLoadsB.incrementAndGet()
+                            conversationB
+                        },
+                        onLoadMessages = { _: String ->
+                            messageLoadsB.incrementAndGet()
+                            listOf(messageB)
+                        },
+                        onSendMessage = { _, _, _ -> error("Not expected") },
+                        onUploadImage = { error("Not expected") }
+                    )
+                    else -> Unit
+                }
+            }
+        }
+
+        composeRule.onNodeWithText("Open conversation A").performClick()
+        composeRule.waitUntil(5_000) {
+            messageLoadsA.get() == 1 &&
+                composeRule.onAllNodesWithText("Cached reply A").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.runOnIdle {
+            assertEquals(1, conversationLoadsA.get())
+            assertEquals(1, messageLoadsA.get())
+            assertEquals(0, conversationLoadsB.get())
+            assertEquals(0, messageLoadsB.get())
+            assertFalse(
+                SupportUnreadStore.consumeConversationRefreshSignal(context, conversationAId)
+            )
+        }
+
+        composeRule.onNodeWithText("Open conversation B").performClick()
+        composeRule.waitUntil(5_000) {
+            composeRule.onAllNodesWithText("Cached reply B").fetchSemanticsNodes().isNotEmpty()
+        }
+        composeRule.runOnIdle {
+            assertEquals(0, conversationLoadsB.get())
+            assertEquals(0, messageLoadsB.get())
+        }
     }
 
     @Test

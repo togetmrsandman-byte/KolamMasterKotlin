@@ -13,7 +13,10 @@ internal object SupportUnreadStore {
     private const val SEEN_MESSAGE_IDS_KEY = "seen_support_message_ids"
     private const val FOREGROUND_ALERTS_KEY = "foreground_support_alerts"
     private const val REFRESH_SIGNAL_PREFIX = "support_refresh_signal_"
-    private const val MESSAGE_VERSION_KEY = "support_message_version"
+    private const val CONSUMED_REFRESH_SIGNAL_PREFIX = "support_refresh_consumed_"
+    const val INBOX_REFRESH_SIGNAL_KEY = "support_inbox_refresh_signal"
+    private const val CONSUMED_INBOX_REFRESH_SIGNAL_KEY =
+        "support_inbox_refresh_consumed_signal"
     private const val UNREAD_VERSION_KEY = "support_unread_version"
     private const val CURRENT_USER_ID_KEY = "support_unread_user_id"
     @Volatile
@@ -69,10 +72,6 @@ internal object SupportUnreadStore {
         readUnread(context)[conversationId].orEmpty().isNotEmpty()
 
     @Synchronized
-    fun messageVersion(context: Context): Long =
-        preferences(context).getLong(MESSAGE_VERSION_KEY, 0L)
-
-    @Synchronized
     fun isActiveConversation(conversationId: String?): Boolean =
         !conversationId.isNullOrBlank() &&
             activeConversationId == conversationId
@@ -106,7 +105,6 @@ internal object SupportUnreadStore {
             pending += normalizedMessageId
             editor.putStringSet(PENDING_MESSAGE_IDS_KEY, pending)
         }
-        editor.putLong(MESSAGE_VERSION_KEY, preferences.getLong(MESSAGE_VERSION_KEY, 0L) + 1L)
         editor.putLong(UNREAD_VERSION_KEY, preferences.getLong(UNREAD_VERSION_KEY, 0L) + 1L)
         editor.commit()
         return true
@@ -148,17 +146,61 @@ internal object SupportUnreadStore {
     }
 
     @Synchronized
-    fun notifyActiveConversationRefresh(context: Context, conversationId: String) {
+    fun notifyConversationRefresh(context: Context, conversationId: String) {
         val key = conversationRefreshPreferenceKey(conversationId)
         val preferences = preferences(context)
         preferences.edit().putInt(key, preferences.getInt(key, 0) + 1).commit()
     }
+
+    @Synchronized
+    fun consumeConversationRefreshSignal(context: Context, conversationId: String): Boolean {
+        val preferences = preferences(context)
+        val signalKey = conversationRefreshPreferenceKey(conversationId)
+        val signal = preferences.getInt(signalKey, 0)
+        val consumedKey = consumedConversationRefreshPreferenceKey(conversationId)
+        if (signal <= preferences.getInt(consumedKey, 0)) return false
+        preferences.edit().putInt(consumedKey, signal).commit()
+        return true
+    }
+
+    @Synchronized
+    fun notifyInboxRefresh(context: Context) {
+        val preferences = preferences(context)
+        preferences.edit()
+            .putInt(
+                INBOX_REFRESH_SIGNAL_KEY,
+                preferences.getInt(INBOX_REFRESH_SIGNAL_KEY, 0) + 1
+            )
+            .commit()
+    }
+
+    @Synchronized
+    fun inboxRefreshSignal(context: Context): Int =
+        preferences(context).getInt(INBOX_REFRESH_SIGNAL_KEY, 0)
+
+    @Synchronized
+    fun consumeInboxRefreshSignal(context: Context): Boolean {
+        val preferences = preferences(context)
+        val signal = preferences.getInt(INBOX_REFRESH_SIGNAL_KEY, 0)
+        if (signal <= preferences.getInt(CONSUMED_INBOX_REFRESH_SIGNAL_KEY, 0)) return false
+        preferences.edit().putInt(CONSUMED_INBOX_REFRESH_SIGNAL_KEY, signal).commit()
+        return true
+    }
+
+    fun isInboxRefreshSignal(key: String?): Boolean =
+        key == INBOX_REFRESH_SIGNAL_KEY
 
     fun isConversationRefreshSignal(key: String?): Boolean =
         key?.startsWith(REFRESH_SIGNAL_PREFIX) == true
 
     fun conversationRefreshPreferenceKey(conversationId: String): String =
         REFRESH_SIGNAL_PREFIX + Base64.encodeToString(
+            conversationId.toByteArray(Charsets.UTF_8),
+            Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
+        )
+
+    private fun consumedConversationRefreshPreferenceKey(conversationId: String): String =
+        CONSUMED_REFRESH_SIGNAL_PREFIX + Base64.encodeToString(
             conversationId.toByteArray(Charsets.UTF_8),
             Base64.URL_SAFE or Base64.NO_PADDING or Base64.NO_WRAP
         )

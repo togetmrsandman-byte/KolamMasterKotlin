@@ -13,15 +13,13 @@ import java.util.UUID
 @RunWith(AndroidJUnit4::class)
 class ContactConversationOrderingInstrumentedTest {
     @Test
-    fun acceptedSupportMessagesAdvanceVersionAndDuplicatesDoNot() {
+    fun acceptedSupportMessagesRecordUnreadAndDuplicatesDoNot() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val conversationA = "ordering-version-a-${UUID.randomUUID()}"
         val conversationB = "ordering-version-b-${UUID.randomUUID()}"
         val firstMessage = "ordering-version-message-${UUID.randomUUID()}"
         val secondMessage = "ordering-version-message-${UUID.randomUUID()}"
         val thirdMessage = "ordering-version-message-${UUID.randomUUID()}"
-        val initialVersion = SupportUnreadStore.messageVersion(context)
-
         try {
             assertTrue(
                 SupportUnreadStore.recordSupportMessage(
@@ -30,7 +28,10 @@ class ContactConversationOrderingInstrumentedTest {
                     firstMessage
                 )
             )
-            assertEquals(initialVersion + 1L, SupportUnreadStore.messageVersion(context))
+            assertEquals(
+                setOf(firstMessage),
+                SupportUnreadStore.unreadMessageIds(context, conversationA)
+            )
             assertFalse(
                 SupportUnreadStore.recordSupportMessage(
                     context,
@@ -38,7 +39,10 @@ class ContactConversationOrderingInstrumentedTest {
                     firstMessage
                 )
             )
-            assertEquals(initialVersion + 1L, SupportUnreadStore.messageVersion(context))
+            assertEquals(
+                setOf(firstMessage),
+                SupportUnreadStore.unreadMessageIds(context, conversationA)
+            )
             assertTrue(
                 SupportUnreadStore.recordSupportMessage(
                     context,
@@ -46,7 +50,10 @@ class ContactConversationOrderingInstrumentedTest {
                     secondMessage
                 )
             )
-            assertEquals(initialVersion + 2L, SupportUnreadStore.messageVersion(context))
+            assertEquals(
+                setOf(firstMessage, secondMessage),
+                SupportUnreadStore.unreadMessageIds(context, conversationA)
+            )
             assertTrue(
                 SupportUnreadStore.recordSupportMessage(
                     context,
@@ -54,7 +61,10 @@ class ContactConversationOrderingInstrumentedTest {
                     thirdMessage
                 )
             )
-            assertEquals(initialVersion + 3L, SupportUnreadStore.messageVersion(context))
+            assertEquals(
+                setOf(thirdMessage),
+                SupportUnreadStore.unreadMessageIds(context, conversationB)
+            )
             assertTrue(SupportUnreadStore.hasUnread(context, conversationA))
             assertTrue(SupportUnreadStore.hasUnread(context, conversationB))
         } finally {

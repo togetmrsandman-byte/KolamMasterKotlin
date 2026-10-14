@@ -471,7 +471,6 @@ internal fun handleSupportPush(
     appForeground: Boolean,
     showBackgroundNotification: () -> Unit
 ): Boolean {
-    val isActiveConversation = SupportUnreadStore.isActiveConversation(payload.conversationId)
     val isNewMessage = SupportUnreadStore.recordSupportMessage(
         context = context,
         conversationId = payload.conversationId,
@@ -486,8 +485,10 @@ internal fun handleSupportPush(
         return false
     }
 
-    if (isActiveConversation && !payload.conversationId.isNullOrBlank()) {
-        SupportUnreadStore.notifyActiveConversationRefresh(context, payload.conversationId)
+    if (!payload.conversationId.isNullOrBlank()) {
+        SupportUnreadStore.notifyConversationRefresh(context, payload.conversationId)
+    } else {
+        SupportUnreadStore.notifyInboxRefresh(context)
     }
     if (appForeground) {
         SupportUnreadStore.recordForegroundAlert(
