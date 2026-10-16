@@ -17,13 +17,26 @@ internal data class LessonStroke(
     val nodes: List<LessonPoint>
 )
 
+internal data class LessonPath(val strokes: List<LessonStroke>) {
+    val length: Float = strokes.sumOf { stroke ->
+        (0 until stroke.nodes.lastIndex).sumOf { index ->
+            val start = stroke.nodes[index]
+            val end = stroke.nodes[index + 1]
+            hypot(end.x - start.x, end.y - start.y).toDouble()
+        }
+    }.toFloat()
+}
+
 internal data class LessonStep(
     val number: Int,
     val speed: Float,
     val strokes: List<LessonStroke>,
     val identificationColor: Int? = null,
-    val identificationMask: Path? = null
+    val identificationMask: Path? = null,
+    val paths: List<LessonPath> = listOf(LessonPath(strokes))
 ) {
+    val pathLength: Float = paths.sumOf { it.length.toDouble() }.toFloat()
+
     val animationDurationMillis: Int
         get() = strokes.sumOf { (3000f / speed).toDouble() }
             .toInt()
@@ -65,11 +78,12 @@ internal data class SikkuLesson(
                     val lesson = lessonArray.getJSONObject(lessonIndex)
                     val speed = lesson.getDouble("speed").toFloat()
                     require(speed > 0f && speed.isFinite()) { "Invalid lesson speed" }
-                    val strokes = mutableListOf<LessonStroke>()
+                    val lessonPaths = mutableListOf<LessonPath>()
                     val paths = lesson.getJSONArray("paths")
                     for (pathIndex in 0 until paths.length()) {
                         val path = paths.getJSONObject(pathIndex)
                         val pathStrokes = path.getJSONArray("strokes")
+                        val strokes = mutableListOf<LessonStroke>()
                         for (strokeIndex in 0 until pathStrokes.length()) {
                             val stroke = pathStrokes.getJSONObject(strokeIndex)
                             val width = stroke.getDouble("width").toFloat()
@@ -104,16 +118,18 @@ internal data class SikkuLesson(
                             }
                             strokes += LessonStroke(width, segmentWidths, nodes)
                         }
+                        if (strokes.isNotEmpty()) lessonPaths += LessonPath(strokes)
                     }
-                    require(strokes.isNotEmpty()) { "Lesson has no drawing strokes" }
+                    require(lessonPaths.isNotEmpty()) { "Lesson has no drawing strokes" }
                     add(
                         LessonStep(
                             number = lesson.getInt("lesson"),
                             speed = speed,
-                            strokes = strokes,
+                            strokes = lessonPaths.flatMap { it.strokes },
                             identificationColor = lesson.optString("identificationColor")
                                 .takeIf(String::isNotBlank)
-                                ?.let(::parseIdentificationColor)
+                                ?.let(::parseIdentificationColor),
+                            paths = lessonPaths
                         )
                     )
                 }
@@ -276,9 +292,7 @@ internal data class SikkuLesson(
         }
 
         private fun isIntersectionCandidate(color: Int): Boolean =
-            isNearMarker(color, WHITE_INTERSECTION_COLOR) ||
-                isNearMarker(color, LEGACY_GREEN_INTERSECTION_COLOR) ||
-                isRedIntersectionCandidate(color)
+            isNearMarker(color, WHITE_INTERSECTION_COLOR)
 
         private fun isNearMarker(color: Int, marker: Int): Boolean {
             val red = Color.red(color) - Color.red(marker)

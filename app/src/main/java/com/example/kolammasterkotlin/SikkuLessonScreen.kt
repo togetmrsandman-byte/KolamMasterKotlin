@@ -326,34 +326,52 @@ private fun drawLessonLayers(
     }
 
     for (completedStep in completedSteps) {
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.preview,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            step = completedStep,
-            progress = 1f,
-            applyArtworkColorFilter = false,
-            identificationMask = completedStep.identificationMask
-        )
+        for (path in completedStep.paths) {
+            drawBitmapThroughPath(
+                canvas = canvas,
+                bitmap = lesson.preview,
+                imageRect = imageRect,
+                imagePaint = imagePaint,
+                coordinateWidth = lesson.coordinateWidth,
+                coordinateHeight = lesson.coordinateHeight,
+                step = completedStep,
+                progress = 1f,
+                applyArtworkColorFilter = false,
+                identificationMask = completedStep.identificationMask,
+                pathStrokes = path.strokes
+            )
+        }
     }
 
     if (currentStep != null && progress > 0f) {
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.tinted,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            step = currentStep,
-            progress = progress,
-            applyArtworkColorFilter = false,
-            identificationMask = currentStep.identificationMask,
-            solidColor = Color.YELLOW
-        )
+        var consumedPathLength = 0f
+        for (path in currentStep.paths) {
+            val pathProgress = if (path.length > 0f) {
+                (
+                    (progress * currentStep.pathLength - consumedPathLength) /
+                        path.length
+                    ).coerceIn(0f, 1f)
+            } else {
+                0f
+            }
+            if (pathProgress > 0f) {
+                drawBitmapThroughPath(
+                    canvas = canvas,
+                    bitmap = lesson.tinted,
+                    imageRect = imageRect,
+                    imagePaint = imagePaint,
+                    coordinateWidth = lesson.coordinateWidth,
+                    coordinateHeight = lesson.coordinateHeight,
+                    step = currentStep,
+                    progress = pathProgress,
+                    applyArtworkColorFilter = false,
+                    identificationMask = currentStep.identificationMask,
+                    solidColor = Color.YELLOW,
+                    pathStrokes = path.strokes
+                )
+            }
+            consumedPathLength += path.length
+        }
     }
 
     if (showDots) {
@@ -375,14 +393,16 @@ internal fun drawBitmapThroughPath(
     progress: Float,
     applyArtworkColorFilter: Boolean,
     identificationMask: Path? = null,
-    solidColor: Int? = null
+    solidColor: Int? = null,
+    pathStrokes: List<LessonStroke> = step.strokes
 ) {
     val revealMask = createRevealMask(
         imageRect = imageRect,
         coordinateWidth = coordinateWidth,
         coordinateHeight = coordinateHeight,
         step = step,
-        progress = progress
+        progress = progress,
+        strokes = pathStrokes
     ) ?: return
     val saveCount = canvas.save()
     canvas.clipPath(revealMask)
@@ -422,13 +442,14 @@ internal fun createRevealMask(
     coordinateWidth: Float,
     coordinateHeight: Float,
     step: LessonStep,
-    progress: Float
+    progress: Float,
+    strokes: List<LessonStroke> = step.strokes
 ): Path? {
     val scaleX = imageRect.width() / coordinateWidth
     val scaleY = imageRect.height() / coordinateHeight
     val widthScale = hypot(scaleX, scaleY) / kotlin.math.sqrt(2f)
     var totalLength = 0f
-    for (stroke in step.strokes) {
+    for (stroke in strokes) {
         for (index in 0 until stroke.nodes.lastIndex) {
             val start = stroke.nodes[index]
             val end = stroke.nodes[index + 1]
@@ -448,7 +469,7 @@ internal fun createRevealMask(
     }
     var hasMask = false
 
-    for (stroke in step.strokes) {
+    for (stroke in strokes) {
         for (segmentIndex in 0 until stroke.nodes.lastIndex) {
             if (remaining <= 0f) return maskPath.takeIf { hasMask }
 
