@@ -335,7 +335,8 @@ private fun drawLessonLayers(
             coordinateHeight = lesson.coordinateHeight,
             step = completedStep,
             progress = 1f,
-            applyArtworkColorFilter = true
+            applyArtworkColorFilter = false,
+            identificationMask = completedStep.identificationMask
         )
     }
 
@@ -349,7 +350,9 @@ private fun drawLessonLayers(
             coordinateHeight = lesson.coordinateHeight,
             step = currentStep,
             progress = progress,
-            applyArtworkColorFilter = true
+            applyArtworkColorFilter = false,
+            identificationMask = currentStep.identificationMask,
+            solidColor = Color.YELLOW
         )
     }
 
@@ -370,7 +373,9 @@ internal fun drawBitmapThroughPath(
     coordinateWidth: Float,
     coordinateHeight: Float,
     progress: Float,
-    applyArtworkColorFilter: Boolean
+    applyArtworkColorFilter: Boolean,
+    identificationMask: Path? = null,
+    solidColor: Int? = null
 ) {
     val revealMask = createRevealMask(
         imageRect = imageRect,
@@ -384,7 +389,31 @@ internal fun drawBitmapThroughPath(
     val artworkPaint = Paint(imagePaint).apply {
         if (applyArtworkColorFilter) colorFilter = artworkColorFilter
     }
-    canvas.drawBitmap(bitmap, null, imageRect, artworkPaint)
+    if (identificationMask == null) {
+        if (solidColor == null) {
+            canvas.drawBitmap(bitmap, null, imageRect, artworkPaint)
+        } else {
+            canvas.drawRect(imageRect, Paint(imagePaint).apply { color = solidColor })
+        }
+    } else {
+        canvas.translate(imageRect.left, imageRect.top)
+        canvas.scale(
+            imageRect.width() / bitmap.width,
+            imageRect.height() / bitmap.height
+        )
+        canvas.clipPath(identificationMask)
+        if (solidColor == null) {
+            canvas.drawBitmap(bitmap, 0f, 0f, artworkPaint)
+        } else {
+            canvas.drawRect(
+                0f,
+                0f,
+                bitmap.width.toFloat(),
+                bitmap.height.toFloat(),
+                Paint(imagePaint).apply { color = solidColor }
+            )
+        }
+    }
     canvas.restoreToCount(saveCount)
 }
 

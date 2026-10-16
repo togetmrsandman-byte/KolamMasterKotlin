@@ -2,6 +2,7 @@ package com.kolammaster.app
 
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -18,6 +19,47 @@ class InitialAssetSetupTest {
         assertEquals(60, progress.last().completed)
         assertTrue(harness.isComplete)
         assertEquals(listOf("lessons", "complete"), harness.events)
+    }
+
+    @Test
+    fun downloadsAllThumbnailsWhenCatalogueHasFewerThanSixtyLessons() = runBlocking {
+        val harness = Harness(lessonCount = 7)
+        val progress = mutableListOf<AssetSetupProgress>()
+
+        assertTrue(harness.setup.run { progress += it })
+
+        assertEquals(7, harness.cachedThumbnails.size)
+        assertEquals(7, progress.last().total)
+        assertEquals(7, progress.last().completed)
+        assertTrue(harness.isComplete)
+    }
+
+    @Test
+    fun emptyCatalogueCompletesSetupWithoutDownloadingThumbnails() = runBlocking {
+        val harness = Harness(lessonCount = 0)
+        val progress = mutableListOf<AssetSetupProgress>()
+
+        assertTrue(harness.setup.run { progress += it })
+
+        assertTrue(harness.cachedThumbnails.isEmpty())
+        assertEquals(0, progress.last().total)
+        assertEquals(0, progress.last().completed)
+        assertEquals(AssetSetupMessage.Complete, progress.last().message)
+        assertTrue(harness.isComplete)
+    }
+
+    @Test
+    fun downloadsNoMoreThanSixtyThumbnailsWhenCatalogueIsLarger() = runBlocking {
+        val harness = Harness(lessonCount = 65)
+        val progress = mutableListOf<AssetSetupProgress>()
+
+        assertTrue(harness.setup.run { progress += it })
+
+        assertEquals(60, harness.cachedThumbnails.size)
+        assertEquals(60, progress.last().total)
+        assertEquals(60, progress.last().completed)
+        assertFalse("https://example.test/60.png" in harness.cachedThumbnails)
+        assertTrue(harness.isComplete)
     }
 
     @Test
@@ -41,7 +83,7 @@ class InitialAssetSetupTest {
         assertEquals(AssetSetupMessage.CompleteWithMissingImages, progress.last().message)
     }
 
-    private class Harness {
+    private class Harness(private val lessonCount: Int = 60) {
         var isComplete = false
         var failLastThumbnailOnce = false
         var thumbnailDownloadCount = 0
@@ -57,7 +99,7 @@ class InitialAssetSetupTest {
             },
             loadLessons = {
                 events += "lessons"
-                List(60) { index -> lesson(index) }
+                List(lessonCount) { index -> lesson(index) }
             },
             cacheLessonThumbnails = { urls, reportProgress ->
                 var completed = 0
