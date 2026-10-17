@@ -72,6 +72,7 @@ internal fun SikkuLessonScreen(
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
+    val viewTransform = remember { LessonViewTransform() }
 
     LaunchedEffect(started, complete, stepIndex, replayRequest, playbackSpeed) {
         if (started && !complete && stepIndex >= 0) {
@@ -147,7 +148,9 @@ internal fun SikkuLessonScreen(
                 progress = progress.value,
                 showPreview = !started,
                 showDots = started,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .lessonViewTransform(viewTransform, enabled = started && !complete)
             )
             if (complete) {
                 FlowerCelebration(Modifier.fillMaxSize())
@@ -175,6 +178,7 @@ internal fun SikkuLessonScreen(
             ) {
                 Button(
                     onClick = {
+                        viewTransform.reset()
                         if (complete) {
                             complete = false
                             stepIndex = (lesson.steps.lastIndex - 1).coerceAtLeast(-1)
@@ -201,6 +205,7 @@ internal fun SikkuLessonScreen(
                 }
                 Button(
                     onClick = {
+                        viewTransform.reset()
                         if (complete) {
                             complete = false
                             started = false
@@ -243,6 +248,7 @@ internal fun SikkuLessonScreen(
                         if (complete) {
                             onPublish()
                         } else {
+                            viewTransform.reset()
                             if (stepIndex < 0) {
                                 stepIndex = 0
                             } else if (stepIndex == lesson.steps.lastIndex) {

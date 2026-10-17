@@ -52,6 +52,7 @@ internal fun RangoliLessonScreen(
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember { Animatable(0f) }
+    val viewTransform = remember { LessonViewTransform() }
     val currentStep = lesson.steps.getOrNull(stepIndex)
 
     LaunchedEffect(started, complete, stepIndex, replayRequest, playbackSpeed) {
@@ -116,7 +117,9 @@ internal fun RangoliLessonScreen(
                 },
                 progress = progress.value,
                 showPreview = !started || complete,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .lessonViewTransform(viewTransform, enabled = started && !complete)
             )
             if (complete) {
                 FlowerCelebration(Modifier.fillMaxSize())
@@ -147,6 +150,7 @@ internal fun RangoliLessonScreen(
             ) {
                 Button(
                     onClick = {
+                        viewTransform.reset()
                         if (complete) {
                             complete = false
                             stepIndex = (lesson.steps.lastIndex - 1).coerceAtLeast(0)
@@ -173,6 +177,7 @@ internal fun RangoliLessonScreen(
                 }
                 Button(
                     onClick = {
+                        viewTransform.reset()
                         if (complete) {
                             complete = false
                             started = false
@@ -215,6 +220,7 @@ internal fun RangoliLessonScreen(
                         if (complete) {
                             onPublish()
                         } else {
+                            viewTransform.reset()
                             if (stepIndex == lesson.steps.lastIndex) {
                                 complete = true
                             } else {

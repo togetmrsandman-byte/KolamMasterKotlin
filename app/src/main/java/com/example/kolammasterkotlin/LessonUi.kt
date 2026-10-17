@@ -8,6 +8,7 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
@@ -71,6 +74,39 @@ internal fun scaledAnimationDuration(
 ): Int = (durationMillis * (1f - startingProgress.coerceIn(0f, 1f)) / speed)
     .roundToInt()
     .coerceAtLeast(1)
+
+internal class LessonViewTransform {
+    var scale by mutableFloatStateOf(1f)
+        private set
+    var offset by mutableStateOf(Offset.Zero)
+        private set
+
+    fun applyGesture(pan: Offset, zoom: Float) {
+        scale = (scale * zoom).coerceIn(1f, 5f)
+        offset = if (scale > 1f) offset + pan else Offset.Zero
+    }
+
+    fun reset() {
+        scale = 1f
+        offset = Offset.Zero
+    }
+}
+
+internal fun Modifier.lessonViewTransform(
+    transform: LessonViewTransform,
+    enabled: Boolean
+): Modifier = pointerInput(enabled, transform) {
+    if (enabled) {
+        detectTransformGestures { _, pan, zoom, _ ->
+            transform.applyGesture(pan, zoom)
+        }
+    }
+}.graphicsLayer {
+    scaleX = transform.scale
+    scaleY = transform.scale
+    translationX = transform.offset.x
+    translationY = transform.offset.y
+}
 
 @Composable
 internal fun LessonStatusRow(
