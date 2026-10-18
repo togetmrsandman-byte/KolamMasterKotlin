@@ -7,79 +7,75 @@ import org.junit.Test
 
 class InitialAssetSetupTest {
     @Test
-    fun downloadsInitialLessonThumbnailsWithoutLoadingCommunityImages() = runBlocking {
-        val harness = Harness()
-        val progress = mutableListOf<AssetSetupProgress>()
-
-        assertTrue(harness.setup.run { progress += it })
-
-        assertEquals(60, harness.cachedThumbnails.size)
-        assertEquals(60, progress.last().total)
-        assertEquals(60, progress.last().completed)
-        assertTrue(harness.isComplete)
-        assertEquals(listOf("lessons", "complete"), harness.events)
-    }
-
-    @Test
-    fun completedSetupDoesNotLoadOrDownloadAssetsAgain() = runBlocking {
-        val harness = Harness().apply { isComplete = true }
-
-        assertTrue(harness.setup.run {})
-
-        assertTrue(harness.events.isEmpty())
-        assertTrue(harness.cachedThumbnails.isEmpty())
-    }
-
-    @Test
-    fun failedImageDownloadDoesNotBlockOnboardingAndIsReported() = runBlocking {
-        val harness = Harness().apply { failLastThumbnailOnce = true }
-        val progress = mutableListOf<AssetSetupProgress>()
-
-        assertTrue(harness.setup.run { progress += it })
-        assertTrue(harness.isComplete)
-        assertEquals(59, harness.cachedThumbnails.size)
-        assertEquals(AssetSetupMessage.CompleteWithMissingImages, progress.last().message)
-    }
-
-    private class Harness {
+    fun completesStartupWithoutWaitingForOptionalCatalogueImages() = runBlocking {
         var isComplete = false
-        var failLastThumbnailOnce = false
-        var thumbnailDownloadCount = 0
-        val cachedThumbnails = mutableSetOf<String>()
-        val events = mutableListOf<String>()
-        private var failureUsed = false
-
+        val progress = mutableListOf<AssetSetupProgress>()
         val setup = InitialAssetSetup(
             isComplete = { isComplete },
-            markComplete = {
-                isComplete = true
-                events += "complete"
-            },
-            loadLessons = {
-                events += "lessons"
-                List(60) { index -> lesson(index) }
-            },
-            cacheLessonThumbnails = { urls, reportProgress ->
-                var completed = 0
-                var successful = true
-                urls.forEach { url ->
-                    if (url !in cachedThumbnails) {
-                        thumbnailDownloadCount++
-                        if (failLastThumbnailOnce && !failureUsed && url.endsWith("/59.png")) {
-                            failureUsed = true
-                            successful = false
-                        } else {
-                            cachedThumbnails += url
-                        }
-                    }
-                    completed++
-                    reportProgress(completed, urls.size)
+            markComplete = { isComplete = true }
+        )
+
+        assertTrue(setup.run { progress += it })
+
+        assertTrue(isComplete)
+        assertEquals(AssetSetupMessage.Complete, progress.last().message)
+        assertEquals(0, progress.last().completed)
+        assertEquals(0, progress.last().total)
+    }
+
+    @Test
+    fun completedSetupDoesNotRepeatInitialization() = runBlocking {
+        var markCompleteCalls = 0
+        val setup = InitialAssetSetup(
+            isComplete = { true },
+            markComplete = { markCompleteCalls++ }
+        )
+
+        assertTrue(setup.run {})
+
+        assertEquals(0, markCompleteCalls)
+    }
+
+    @Test
+    fun optionalThumbnailPrefetchUsesAtMostSixtyAvailableLessons() = runBlocking {
+        listOf(1, 20, 60, 75).forEach { lessonCount ->
+            val requestedUrls = mutableListOf<String>()
+
+            InitialAssetSetup.prefetchAvailableThumbnails(
+                lessons = List(lessonCount) { index -> lesson(index) },
+                cacheLessonThumbnails = { urls, _ ->
+                    requestedUrls += urls
+                    true
                 }
-                successful
+            )
+
+            assertEquals(minOf(lessonCount, 60), requestedUrls.size)
+        }
+    }
+
+    @Test
+    fun missingThumbnailUrlsDoNotPreventOptionalPrefetch() = runBlocking {
+        val requestedUrls = mutableListOf<String>()
+
+        InitialAssetSetup.prefetchAvailableThumbnails(
+            lessons = List(20) { index ->
+                lesson(
+                    index,
+                    thumbnailUrl = if (index == 5) null else "https://example.test/$index.png"
+                )
+            },
+            cacheLessonThumbnails = { urls, _ ->
+                requestedUrls += urls
+                true
             }
         )
 
-        private fun lesson(index: Int) = LessonCatalogueEntry(
+        assertEquals(19, requestedUrls.size)
+        assertTrue(requestedUrls.none { it.endsWith("/5.png") })
+    }
+
+    private fun lesson(index: Int, thumbnailUrl: String? = "https://example.test/$index.png") =
+        LessonCatalogueEntry(
             id = "lesson-$index",
             lessonName = "Lesson $index",
             category = null,
@@ -93,7 +89,7 @@ class InitialAssetSetupTest {
             totalSteps = null,
             stepCount = null,
             dotInformation = null,
-            thumbnailUrls = listOf("https://example.test/$index.png"),
+            thumbnailUrls = listOfNotNull(thumbnailUrl),
             thumbnailImage = null,
             previewImage = null,
             dotsImage = null,
@@ -108,5 +104,4 @@ class InitialAssetSetupTest {
             filename = null,
             sourceJson = "{}"
         )
-    }
 }

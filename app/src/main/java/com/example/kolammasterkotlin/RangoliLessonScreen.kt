@@ -46,13 +46,27 @@ internal fun RangoliLessonScreen(
 ) {
     var started by rememberSaveable { mutableStateOf(false) }
     var stepIndex by rememberSaveable { mutableIntStateOf(0) }
+    var completedStepIndices by remember { mutableStateOf(emptySet<Int>()) }
     var complete by rememberSaveable { mutableStateOf(false) }
     var replayRequest by remember { mutableIntStateOf(0) }
     var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
+    var activePathIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
-    val progress = remember { Animatable(0f) }
+    val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
     val viewTransform = remember { LessonViewTransform() }
+    val hasPolygonBackedSteps = remember(lesson) {
+        lesson.steps.any { it.structuralLesson?.polygonReveal != null }
+    }
+    val polygonPlaybacks = remember(lesson) {
+        lesson.steps.mapNotNull { rangoliStep ->
+            rangoliStep.structuralLesson?.let { step ->
+                step.polygonReveal?.let {
+                    step.number to PolygonRevealData.Playback(it)
+                }
+            }
+        }.toMap()
+    }
     val currentStep = lesson.steps.getOrNull(stepIndex)
 
     LaunchedEffect(started, complete, stepIndex, replayRequest, playbackSpeed) {
@@ -60,24 +74,34 @@ internal fun RangoliLessonScreen(
         if (started && !complete && structuralStep != null) {
             if (animatedStepIndex != stepIndex || animatedReplayRequest != replayRequest) {
                 progress.snapTo(0f)
+                activePathIndex = 0
+                structuralStep?.let { step ->
+                    polygonPlaybacks[step.number]?.reset()
+                }
                 animatedStepIndex = stepIndex
                 animatedReplayRequest = replayRequest
             }
-            progress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = scaledAnimationDuration(
-                        currentStep.animationDurationMillis,
-                        playbackSpeed,
-                        progress.value
-                    ),
-                    easing = LinearEasing
+            while (activePathIndex < structuralStep.pathCount) {
+                progress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = scaledAnimationDuration(
+                            currentStep.animationDurationMillis,
+                            playbackSpeed,
+                            progress.value
+                        ),
+                        easing = LinearEasing
+                    )
                 )
-            )
+                if (activePathIndex + 1 < structuralStep.pathCount) progress.snapTo(0f)
+                activePathIndex++
+            }
         } else if (!started) {
             progress.snapTo(0f)
+            activePathIndex = 0
         } else {
             progress.snapTo(1f)
+            activePathIndex = currentStep?.structuralLesson?.pathCount ?: 0
         }
     }
 
@@ -109,14 +133,14 @@ internal fun RangoliLessonScreen(
                 lesson = lesson,
                 currentStep = currentStep.takeIf { started && !complete },
                 completedSteps = if (complete) {
-                    emptyList()
-                } else if (started) {
-                    lesson.steps.take(stepIndex)
+                    if (hasPolygonBackedSteps) lesson.steps else emptyList()
                 } else {
-                    emptyList()
+                    lesson.steps.filterIndexed { index, _ -> index in completedStepIndices }
                 },
                 progress = progress.value,
-                showPreview = !started || complete,
+                activePathIndex = activePathIndex,
+                showPreview = !started || (complete && !hasPolygonBackedSteps),
+                polygonPlaybacks = polygonPlaybacks,
                 modifier = Modifier
                     .fillMaxSize()
                     .lessonViewTransform(viewTransform, enabled = started && !complete)
@@ -154,8 +178,12 @@ internal fun RangoliLessonScreen(
                         if (complete) {
                             complete = false
                             stepIndex = (lesson.steps.lastIndex - 1).coerceAtLeast(0)
+                            completedStepIndices = (0 until stepIndex).toSet()
                         } else {
                             stepIndex--
+                            completedStepIndices = completedStepIndices
+                                .filter { it < stepIndex }
+                                .toSet()
                         }
                     },
                     enabled = complete || stepIndex > 0,
@@ -182,7 +210,11 @@ internal fun RangoliLessonScreen(
                             complete = false
                             started = false
                             stepIndex = 0
+                            completedStepIndices = emptySet()
                         } else {
+                            completedStepIndices = completedStepIndices
+                                .filter { it < stepIndex }
+                                .toSet()
                             replayRequest++
                         }
                     },
@@ -222,8 +254,10 @@ internal fun RangoliLessonScreen(
                         } else {
                             viewTransform.reset()
                             if (stepIndex == lesson.steps.lastIndex) {
+                                completedStepIndices = lesson.steps.indices.toSet()
                                 complete = true
                             } else {
+                                completedStepIndices = completedStepIndices + stepIndex
                                 stepIndex++
                             }
                         }
@@ -252,7 +286,9 @@ private fun RangoliArtwork(
     currentStep: RangoliStep?,
     completedSteps: List<RangoliStep>,
     progress: Float,
+    activePathIndex: Int,
     showPreview: Boolean,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>,
     modifier: Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -265,7 +301,9 @@ private fun RangoliArtwork(
                 currentStep = currentStep,
                 completedSteps = completedSteps,
                 progress = progress,
-                showPreview = showPreview
+                activePathIndex = activePathIndex,
+                showPreview = showPreview,
+                polygonPlaybacks = polygonPlaybacks
             )
         }
     }
@@ -279,7 +317,9 @@ private fun drawRangoliLayers(
     currentStep: RangoliStep?,
     completedSteps: List<RangoliStep>,
     progress: Float,
-    showPreview: Boolean
+    activePathIndex: Int,
+    showPreview: Boolean,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
     val scale = min(width / lesson.preview.width, height / lesson.preview.height)
     val drawnWidth = lesson.preview.width * scale
@@ -310,7 +350,8 @@ private fun drawRangoliLayers(
                 lesson = lesson,
                 step = step,
                 imageRect = imageRect,
-                imagePaint = imagePaint
+                imagePaint = imagePaint,
+                polygonPlaybacks = polygonPlaybacks
             )
         }
     }
@@ -323,7 +364,9 @@ private fun drawRangoliLayers(
             step = currentStep,
             imageRect = imageRect,
             imagePaint = imagePaint,
-            progress = progress
+            progress = progress,
+            activePathIndex = activePathIndex,
+            polygonPlaybacks = polygonPlaybacks
         )
     }
 }
@@ -333,20 +376,38 @@ private fun drawCompletedRangoliStep(
     lesson: RangoliLesson,
     step: RangoliStep,
     imageRect: RectF,
-    imagePaint: Paint
+    imagePaint: Paint,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
     if (step.structuralLesson != null) {
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.artwork,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            step = step.structuralLesson,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            progress = 1f,
-            applyArtworkColorFilter = false
-        )
+        val structuralLesson = step.structuralLesson
+        val polygonReveal = structuralLesson.polygonReveal
+        if (polygonReveal != null) {
+            drawPolygonArtwork(
+                canvas = canvas,
+                imageRect = imageRect,
+                data = polygonReveal,
+                playback = null,
+                pathIndex = 0,
+                progress = 1f,
+                artwork = lesson.artwork
+            )
+        } else {
+            structuralLesson.paths.indices.forEach { pathIndex ->
+                drawBitmapThroughPath(
+                    canvas = canvas,
+                    bitmap = lesson.artwork,
+                    imageRect = imageRect,
+                    imagePaint = imagePaint,
+                    step = structuralLesson,
+                    pathIndex = pathIndex,
+                    coordinateWidth = lesson.coordinateWidth,
+                    coordinateHeight = lesson.coordinateHeight,
+                    progress = 1f,
+                    applyArtworkColorFilter = false
+                )
+            }
+        }
     } else if (step.fillBitmap != null) {
         drawFillImage(canvas, step.fillBitmap, imageRect, imagePaint)
     }
@@ -358,22 +419,39 @@ private fun drawCurrentRangoliStep(
     step: RangoliStep,
     imageRect: RectF,
     imagePaint: Paint,
-    progress: Float
+    progress: Float,
+    activePathIndex: Int,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
     val structuralLesson = step.structuralLesson
     if (structuralLesson != null) {
-        if (progress <= 0f) return
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.tinted,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            step = structuralLesson,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            progress = progress,
-            applyArtworkColorFilter = false
-        )
+        val polygonReveal = structuralLesson.polygonReveal
+        for (pathIndex in 0..activePathIndex.coerceAtMost(structuralLesson.pathCount - 1)) {
+            val pathProgress = if (pathIndex < activePathIndex) 1f else progress
+            if (polygonReveal != null) {
+                drawPolygonArtwork(
+                    canvas = canvas,
+                    imageRect = imageRect,
+                    data = polygonReveal,
+                    playback = polygonPlaybacks[structuralLesson.number],
+                    pathIndex = pathIndex,
+                    progress = pathProgress
+                )
+            } else {
+                drawBitmapThroughPath(
+                    canvas = canvas,
+                    bitmap = lesson.tinted,
+                    imageRect = imageRect,
+                    imagePaint = imagePaint,
+                    step = structuralLesson,
+                    pathIndex = pathIndex,
+                    coordinateWidth = lesson.coordinateWidth,
+                    coordinateHeight = lesson.coordinateHeight,
+                    progress = pathProgress,
+                    applyArtworkColorFilter = false
+                )
+            }
+        }
     } else if (step.fillBitmap != null) {
         drawFillImage(canvas, step.fillBitmap, imageRect, imagePaint)
     }

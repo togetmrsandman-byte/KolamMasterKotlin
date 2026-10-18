@@ -60,6 +60,7 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 internal val playbackSpeeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f)
+internal const val BASE_PATH_DURATION_MILLIS = 3_000
 internal val PlaybackControlHeight = 40.dp
 private val DefaultPlaybackLabelFontSize = 14.sp
 private val LocalPlaybackLabelFontSize = compositionLocalOf { DefaultPlaybackLabelFontSize }
@@ -74,6 +75,11 @@ internal fun scaledAnimationDuration(
 ): Int = (durationMillis * (1f - startingProgress.coerceIn(0f, 1f)) / speed)
     .roundToInt()
     .coerceAtLeast(1)
+
+internal fun pathPlaybackDurationMillis(pathCount: Int): Int =
+    (pathCount.coerceAtLeast(1).toLong() * BASE_PATH_DURATION_MILLIS)
+        .coerceAtMost(Int.MAX_VALUE.toLong())
+        .toInt()
 
 internal class LessonViewTransform {
     var scale by mutableFloatStateOf(1f)

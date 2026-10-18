@@ -20,67 +20,47 @@ internal enum class AssetSetupMessage {
 
 internal class InitialAssetSetup(
     private val isComplete: () -> Boolean,
-    private val markComplete: () -> Unit,
-    private val loadLessons: suspend () -> List<LessonCatalogueEntry>,
-    private val cacheLessonThumbnails: suspend (
-        List<String>,
-        suspend (Int, Int) -> Unit
-    ) -> Boolean
+    private val markComplete: () -> Unit
 ) {
     suspend fun run(onProgress: suspend (AssetSetupProgress) -> Unit): Boolean {
         if (isComplete()) return true
 
-        val lessons = loadLessons().take(INITIAL_LESSON_COUNT)
-        require(lessons.size == INITIAL_LESSON_COUNT) {
-            "The lesson catalogue does not contain the initial $INITIAL_LESSON_COUNT lessons."
-        }
-        val thumbnailUrls = lessons.map { it.firstThumbnailUrl.orEmpty() }
-        require(thumbnailUrls.none(String::isBlank)) {
-            "One or more initial lessons do not have a thumbnail URL."
-        }
-        val uniqueThumbnailUrls = thumbnailUrls.distinct()
-        val total = uniqueThumbnailUrls.size
-        onProgress(
-            AssetSetupProgress(0, total, AssetSetupMessage.PreparingLearnThumbnails)
-        )
-
-        val thumbnailsReady = withTimeoutOrNull(IMAGE_CACHE_TIMEOUT_MILLIS) {
-            try {
-                cacheLessonThumbnails(uniqueThumbnailUrls) { completed, _ ->
-                    onProgress(
-                        AssetSetupProgress(
-                            completed = completed,
-                            total = total,
-                            message = AssetSetupMessage.DownloadingLearnThumbnails
-                        )
-                    )
-                }
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                Log.w(TAG, "Some Learn thumbnails could not be cached during onboarding.", exception)
-                false
-            }
-        } ?: false
-
+        onProgress(AssetSetupProgress(0, 0, AssetSetupMessage.PreparingImages))
         markComplete()
-        onProgress(
-            AssetSetupProgress(
-                total,
-                total,
-                if (thumbnailsReady) {
-                    AssetSetupMessage.Complete
-                } else {
-                    AssetSetupMessage.CompleteWithMissingImages
-                }
-            )
-        )
+        onProgress(AssetSetupProgress(0, 0, AssetSetupMessage.Complete))
         return true
     }
 
-    private companion object {
-        const val TAG = "InitialAssetSetup"
-        const val IMAGE_CACHE_TIMEOUT_MILLIS = 30_000L
-        const val INITIAL_LESSON_COUNT = 60
+    companion object {
+        private const val INITIAL_LESSON_LIMIT = 60
+        private const val OPTIONAL_THUMBNAIL_TIMEOUT_MILLIS = 30_000L
+        private const val TAG = "InitialAssetSetup"
+
+        suspend fun prefetchAvailableThumbnails(
+            lessons: List<LessonCatalogueEntry>,
+            cacheLessonThumbnails: suspend (
+                List<String>,
+                suspend (Int, Int) -> Unit
+            ) -> Boolean
+        ) {
+            val urls = lessons.take(INITIAL_LESSON_LIMIT)
+                .mapNotNull { it.firstThumbnailUrl?.takeIf(String::isNotBlank) }
+                .distinct()
+            if (urls.isEmpty()) return
+
+            val result = withTimeoutOrNull(OPTIONAL_THUMBNAIL_TIMEOUT_MILLIS) {
+                try {
+                    cacheLessonThumbnails(urls) { _, _ -> }
+                } catch (exception: CancellationException) {
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.w(TAG, "Could not prefetch optional lesson thumbnails.", exception)
+                    false
+                }
+            }
+            if (result != true) {
+                Log.w(TAG, "Optional thumbnail prefetch was incomplete or timed out.")
+            }
+        }
     }
 }

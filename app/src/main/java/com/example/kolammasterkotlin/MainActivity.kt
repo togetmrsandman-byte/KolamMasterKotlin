@@ -396,7 +396,7 @@ class MainActivity : ComponentActivity() {
         if (screenState == AppScreen.DownloadingAssets) {
             startInitialAssetSetup()
         } else if (isInitialAssetSetupComplete()) {
-            refreshLessonCatalogue()
+            refreshLessonCatalogue(prefetchInitialThumbnails = true)
         }
     }
 
@@ -730,6 +730,7 @@ class MainActivity : ComponentActivity() {
             assetSetupRunning = false
             assetSetupError = null
             screenState = AppScreen.Opening
+            refreshLessonCatalogue(prefetchInitialThumbnails = true)
             return
         }
         if (assetSetupJob?.isActive == true) return
@@ -744,7 +745,6 @@ class MainActivity : ComponentActivity() {
         )
         assetSetupJob = lifecycleScope.launch {
             try {
-                val catalogueRepository = LessonCatalogueRepository(this@MainActivity)
                 val setup = InitialAssetSetup(
                     isComplete = ::isInitialAssetSetupComplete,
                     markComplete = {
@@ -754,25 +754,6 @@ class MainActivity : ComponentActivity() {
                                 .putBoolean(ASSET_SETUP_COMPLETE_KEY, true)
                                 .commit()
                         ) { "Could not save initial asset setup completion." }
-                    },
-                    loadLessons = {
-                        val entries = catalogueRepository.refresh()
-                        catalogueState = LessonCatalogueUiState(
-                            entries = entries,
-                            isInitialLoading = false
-                        )
-                        entries
-                    },
-                    cacheLessonThumbnails = { urls, reportProgress ->
-                        LessonThumbnailCache.prefetch(
-                            this@MainActivity,
-                            urls,
-                            { completed, total ->
-                                withContext(Dispatchers.Main.immediate) {
-                                    reportProgress(completed, total)
-                                }
-                            }
-                        )
                     }
                 )
                 val completed = setup.run { progress ->
@@ -783,6 +764,7 @@ class MainActivity : ComponentActivity() {
                 }
                 assetSetupRunning = false
                 screenState = AppScreen.Opening
+                refreshLessonCatalogue(prefetchInitialThumbnails = true)
             } catch (exception: CancellationException) {
                 assetSetupRunning = false
                 throw exception
@@ -1078,7 +1060,7 @@ class MainActivity : ComponentActivity() {
     private fun isCurrentUnlockAccount(userId: String, generation: Int): Boolean =
         generation == unlockRestoreGeneration && accountState?.id == userId
 
-    private fun refreshLessonCatalogue() {
+    private fun refreshLessonCatalogue(prefetchInitialThumbnails: Boolean = false) {
         val repository = LessonCatalogueRepository(this)
         lifecycleScope.launch {
             val cachedEntries = repository.loadCached()
@@ -1094,6 +1076,15 @@ class MainActivity : ComponentActivity() {
                     isInitialLoading = false,
                     isRefreshing = false
                 )
+                if (prefetchInitialThumbnails) {
+                    InitialAssetSetup.prefetchAvailableThumbnails(freshEntries) { urls, reportProgress ->
+                        LessonThumbnailCache.prefetch(
+                            this@MainActivity,
+                            urls,
+                            reportProgress
+                        )
+                    }
+                }
             } catch (exception: IOException) {
                 Log.w("LessonCatalogue", "Could not refresh public lesson catalogue", exception)
                 catalogueState = catalogueState.copy(
