@@ -7,6 +7,8 @@ import android.graphics.Paint
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
@@ -81,21 +83,42 @@ internal fun RangoliLessonScreen(
                 animatedStepIndex = stepIndex
                 animatedReplayRequest = replayRequest
             }
+            val loopStartedAt = SystemClock.elapsedRealtime()
             while (activePathIndex < structuralStep.pathCount) {
+                val pathIndex = activePathIndex
+                val durationMillis = scaledAnimationDuration(
+                    currentStep.animationDurationMillis,
+                    playbackSpeed,
+                    progress.value
+                )
+                val pathStartedAt = SystemClock.elapsedRealtime()
+                Log.d(
+                    "PathTimingDebug",
+                    "Rangoli start stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "activePathIndex=$activePathIndex pathCount=${structuralStep.pathCount} " +
+                        "playbackSpeed=$playbackSpeed progress=${progress.value} " +
+                        "durationMillis=$durationMillis"
+                )
                 progress.animateTo(
                     targetValue = 1f,
                     animationSpec = tween(
-                        durationMillis = scaledAnimationDuration(
-                            currentStep.animationDurationMillis,
-                            playbackSpeed,
-                            progress.value
-                        ),
+                        durationMillis = durationMillis,
                         easing = LinearEasing
                     )
+                )
+                Log.d(
+                    "PathTimingDebug",
+                    "Rangoli path finished stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "elapsedMillis=${SystemClock.elapsedRealtime() - pathStartedAt}"
                 )
                 if (activePathIndex + 1 < structuralStep.pathCount) progress.snapTo(0f)
                 activePathIndex++
             }
+            Log.d(
+                "PathTimingDebug",
+                "Rangoli loop finished stepIndex=$stepIndex pathCount=${structuralStep.pathCount} " +
+                    "elapsedMillis=${SystemClock.elapsedRealtime() - loopStartedAt}"
+            )
         } else if (!started) {
             progress.snapTo(0f)
             activePathIndex = 0

@@ -15,7 +15,6 @@ import kotlin.math.floor
 import kotlin.math.hypot
 
 private const val POLYGON_REVEAL_BUCKET_COUNT = 256
-private const val INTERSECTION_GRID_CELL_SIZE = 64
 
 internal data class LessonPolygon(val vertices: List<LessonPoint>)
 
@@ -68,11 +67,10 @@ internal class PolygonRevealData private constructor(
 
             val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
             val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
-            val routeWidthScale = hypot(routeScaleX, routeScaleY) / kotlin.math.sqrt(2.0)
             val routes = step.paths.map { path ->
                 val segments = mutableListOf<RouteSegment>()
                 var totalLength = 0.0
-                path.strokes.forEachIndexed { strokeIndex, stroke ->
+                path.strokes.forEach { stroke ->
                     for (index in 0 until stroke.nodes.lastIndex) {
                         val start = stroke.nodes[index]
                         val end = stroke.nodes[index + 1]
@@ -82,17 +80,13 @@ internal class PolygonRevealData private constructor(
                         val deltaY = (end.y.toDouble() - start.y) * routeScaleY
                         val length = hypot(deltaX, deltaY)
                         if (length > 0.0 && length.isFinite()) {
-                            val sourceWidth = stroke.segmentWidths.getOrNull(index) ?: stroke.width
                             segments += RouteSegment(
                                 startX = startX,
                                 startY = startY,
                                 deltaX = deltaX,
                                 deltaY = deltaY,
                                 length = length,
-                                startDistance = totalLength,
-                                strokeIndex = strokeIndex,
-                                segmentIndex = index,
-                                width = sourceWidth * routeWidthScale
+                                startDistance = totalLength
                             )
                             totalLength += length
                         }
@@ -102,17 +96,6 @@ internal class PolygonRevealData private constructor(
             }
             require(routes.any { it.totalLength > 0.0 && it.totalLength.isFinite() }) {
                 "Polygon step has no usable animation route"
-            }
-            val intersectionsByPath = routes.map { route ->
-                if (route.totalLength <= 0.0 || !route.totalLength.isFinite()) {
-                    emptyMap()
-                } else {
-                    buildIntersectionGrid(
-                        intersections = findRouteIntersections(route.segments, route.totalLength),
-                        imageWidth = yellowArtwork.width,
-                        imageHeight = yellowArtwork.height
-                    )
-                }
             }
 
             val regionMask = Bitmap.createBitmap(
@@ -162,35 +145,8 @@ internal class PolygonRevealData private constructor(
                             routes
                         )
                         val ownerPath = routeMatch.pathIndex
-                        var routeProgress = routeMatch.progress
-                        intersectionsByPath[ownerPath][gridKey(
-                            x / INTERSECTION_GRID_CELL_SIZE,
-                            y / INTERSECTION_GRID_CELL_SIZE
-                        )].orEmpty().forEach { intersection ->
-                            val pixelX = x + 0.5
-                            val pixelY = y + 0.5
-                            val offsetX = pixelX - intersection.x
-                            val offsetY = pixelY - intersection.y
-                            val radiusSquared = intersection.radius * intersection.radius
-                            if (offsetX * offsetX + offsetY * offsetY <= radiusSquared &&
-                                minOf(
-                                    distanceToSegmentSquared(
-                                        pixelX,
-                                        pixelY,
-                                        intersection.firstSegment
-                                    ),
-                                    distanceToSegmentSquared(
-                                        pixelX,
-                                        pixelY,
-                                        intersection.secondSegment
-                                    )
-                                ) <= radiusSquared
-                            ) {
-                                routeProgress = minOf(routeProgress, intersection.routeProgress)
-                            }
-                        }
                         (ownerPath to (kotlin.math.ceil(
-                            routeProgress * POLYGON_REVEAL_BUCKET_COUNT - 1e-9
+                            routeMatch.progress * POLYGON_REVEAL_BUCKET_COUNT - 1e-9
                         ).toInt() - 1)
                             .coerceIn(0, POLYGON_REVEAL_BUCKET_COUNT - 1))
                     } else {
@@ -257,140 +213,6 @@ internal class PolygonRevealData private constructor(
                 progress = nearestProgress.coerceIn(0.0, 1.0)
             )
         }
-
-        private fun findRouteIntersections(
-            segments: List<RouteSegment>,
-            totalLength: Double
-        ): List<RouteIntersection> {
-            val intersections = mutableListOf<RouteIntersection>()
-            for (firstIndex in segments.indices) {
-                val first = segments[firstIndex]
-                for (secondIndex in firstIndex + 1 until segments.size) {
-                    val second = segments[secondIndex]
-                    if (first.strokeIndex == second.strokeIndex &&
-                        second.segmentIndex == first.segmentIndex + 1
-                    ) {
-                        continue
-                    }
-                    segmentIntersections(first, second).forEach { (x, y) ->
-                        intersections += RouteIntersection(
-                            x = x,
-                            y = y,
-                            routeProgress = minOf(
-                                routeProgressAt(first, x, y, totalLength),
-                                routeProgressAt(second, x, y, totalLength)
-                            ),
-                            radius = maxOf(first.width, second.width) / 2.0 + 1.0,
-                            firstSegment = first,
-                            secondSegment = second
-                        )
-                    }
-                }
-            }
-            return intersections
-        }
-
-        private fun buildIntersectionGrid(
-            intersections: List<RouteIntersection>,
-            imageWidth: Int,
-            imageHeight: Int
-        ): Map<Long, List<RouteIntersection>> {
-            val grid = mutableMapOf<Long, MutableList<RouteIntersection>>()
-            intersections.forEach { intersection ->
-                val firstCellX = (intersection.x - intersection.radius).toInt()
-                    .coerceIn(0, imageWidth - 1) / INTERSECTION_GRID_CELL_SIZE
-                val lastCellX = (intersection.x + intersection.radius).toInt()
-                    .coerceIn(0, imageWidth - 1) / INTERSECTION_GRID_CELL_SIZE
-                val firstCellY = (intersection.y - intersection.radius).toInt()
-                    .coerceIn(0, imageHeight - 1) / INTERSECTION_GRID_CELL_SIZE
-                val lastCellY = (intersection.y + intersection.radius).toInt()
-                    .coerceIn(0, imageHeight - 1) / INTERSECTION_GRID_CELL_SIZE
-                for (cellY in firstCellY..lastCellY) {
-                    for (cellX in firstCellX..lastCellX) {
-                        grid.getOrPut(gridKey(cellX, cellY)) { mutableListOf() } += intersection
-                    }
-                }
-            }
-            return grid.mapValues { (_, intersectionsInCell) -> intersectionsInCell.toList() }
-        }
-
-        private fun gridKey(x: Int, y: Int): Long =
-            (x.toLong() shl 32) or (y.toLong() and 0xffffffffL)
-
-        private fun segmentIntersections(
-            first: RouteSegment,
-            second: RouteSegment
-        ): List<Pair<Double, Double>> {
-            val offsetX = second.startX - first.startX
-            val offsetY = second.startY - first.startY
-            val cross = first.deltaX * second.deltaY - first.deltaY * second.deltaX
-            val offsetCrossFirst = offsetX * first.deltaY - offsetY * first.deltaX
-            val epsilon = 1e-9
-            if (abs(cross) > epsilon) {
-                val firstProjection =
-                    (offsetX * second.deltaY - offsetY * second.deltaX) / cross
-                val secondProjection =
-                    (offsetX * first.deltaY - offsetY * first.deltaX) / cross
-                if (firstProjection !in 0.0..1.0 || secondProjection !in 0.0..1.0) {
-                    return emptyList()
-                }
-                return listOf(
-                    Pair(
-                        first.startX + first.deltaX * firstProjection,
-                        first.startY + first.deltaY * firstProjection
-                    )
-                )
-            }
-            if (abs(offsetCrossFirst) > epsilon) return emptyList()
-
-            val endpoints = listOf(
-                Pair(first.startX, first.startY),
-                Pair(first.startX + first.deltaX, first.startY + first.deltaY),
-                Pair(second.startX, second.startY),
-                Pair(second.startX + second.deltaX, second.startY + second.deltaY)
-            )
-            return endpoints.filterIndexed { index, point ->
-                distanceToSegmentSquared(point.first, point.second, first) <= epsilon &&
-                    distanceToSegmentSquared(point.first, point.second, second) <= epsilon &&
-                    endpoints.take(index).none { previous ->
-                        val deltaX = previous.first - point.first
-                        val deltaY = previous.second - point.second
-                        deltaX * deltaX + deltaY * deltaY <= epsilon
-                    }
-            }
-        }
-
-        private fun routeProgressAt(
-            segment: RouteSegment,
-            x: Double,
-            y: Double,
-            totalLength: Double
-        ): Double {
-            val offsetX = x - segment.startX
-            val offsetY = y - segment.startY
-            val projection = (
-                (offsetX * segment.deltaX + offsetY * segment.deltaY) /
-                    (segment.length * segment.length)
-                ).coerceIn(0.0, 1.0)
-            return ((segment.startDistance + segment.length * projection) / totalLength)
-                .coerceIn(0.0, 1.0)
-        }
-
-        private fun distanceToSegmentSquared(
-            x: Double,
-            y: Double,
-            segment: RouteSegment
-        ): Double {
-            val offsetX = x - segment.startX
-            val offsetY = y - segment.startY
-            val projection = (
-                (offsetX * segment.deltaX + offsetY * segment.deltaY) /
-                    (segment.length * segment.length)
-                ).coerceIn(0.0, 1.0)
-            val differenceX = offsetX - segment.deltaX * projection
-            val differenceY = offsetY - segment.deltaY * projection
-            return differenceX * differenceX + differenceY * differenceY
-        }
     }
 
     private data class RouteSegment(
@@ -399,10 +221,7 @@ internal class PolygonRevealData private constructor(
         val deltaX: Double,
         val deltaY: Double,
         val length: Double,
-        val startDistance: Double,
-        val strokeIndex: Int,
-        val segmentIndex: Int,
-        val width: Double
+        val startDistance: Double
     )
 
     private data class Route(
@@ -413,15 +232,6 @@ internal class PolygonRevealData private constructor(
     private data class RouteMatch(
         val pathIndex: Int,
         val progress: Double
-    )
-
-    private data class RouteIntersection(
-        val x: Double,
-        val y: Double,
-        val routeProgress: Double,
-        val radius: Double,
-        val firstSegment: RouteSegment,
-        val secondSegment: RouteSegment
     )
 
     internal class Playback(private val data: PolygonRevealData) {

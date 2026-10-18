@@ -9,6 +9,8 @@ import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,21 +95,42 @@ internal fun SikkuLessonScreen(
                 animatedReplayRequest = replayRequest
             }
             val step = lesson.steps[stepIndex]
+            val loopStartedAt = SystemClock.elapsedRealtime()
             while (activePathIndex < step.pathCount) {
+                val pathIndex = activePathIndex
+                val durationMillis = scaledAnimationDuration(
+                    step.animationDurationMillis,
+                    playbackSpeed,
+                    progress.value
+                )
+                val pathStartedAt = SystemClock.elapsedRealtime()
+                Log.d(
+                    "PathTimingDebug",
+                    "Sikku start stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "activePathIndex=$activePathIndex pathCount=${step.pathCount} " +
+                        "playbackSpeed=$playbackSpeed progress=${progress.value} " +
+                        "durationMillis=$durationMillis"
+                )
                 progress.animateTo(
                     targetValue = 1f,
                     animationSpec = tween(
-                        durationMillis = scaledAnimationDuration(
-                            step.animationDurationMillis,
-                            playbackSpeed,
-                            progress.value
-                        ),
+                        durationMillis = durationMillis,
                         easing = LinearEasing
                     )
+                )
+                Log.d(
+                    "PathTimingDebug",
+                    "Sikku path finished stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "elapsedMillis=${SystemClock.elapsedRealtime() - pathStartedAt}"
                 )
                 if (activePathIndex + 1 < step.pathCount) progress.snapTo(0f)
                 activePathIndex++
             }
+            Log.d(
+                "PathTimingDebug",
+                "Sikku loop finished stepIndex=$stepIndex pathCount=${step.pathCount} " +
+                    "elapsedMillis=${SystemClock.elapsedRealtime() - loopStartedAt}"
+            )
         } else if (started && !complete) {
             progress.snapTo(0f)
             activePathIndex = 0
