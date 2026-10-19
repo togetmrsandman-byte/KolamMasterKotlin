@@ -54,8 +54,8 @@ internal data class SikkuLesson(
             ) {
                 "Invalid path coordinate dimensions"
             }
-            val polygonsByStep = readStepPolygons(root)
-            val yellowArtwork = if (polygonsByStep.isEmpty()) {
+            val polygonDataByStep = readStepPolygonData(root)
+            val yellowArtwork = if (polygonDataByStep.isEmpty()) {
                 null
             } else {
                 createYellowArtwork(preview)
@@ -117,18 +117,20 @@ internal data class SikkuLesson(
                         number = number,
                         paths = lessonPaths
                     )
-                    val polygonRegions = polygonsByStep[number]
+                    val polygonStep = polygonDataByStep[number]
+                        ?.takeIf { it.polygons.isNotEmpty() }
                     add(
-                        if (polygonRegions.isNullOrEmpty()) {
+                        if (polygonStep == null) {
                             step
                         } else {
                             step.copy(
                                 polygonReveal = PolygonRevealData.create(
-                                    polygons = polygonRegions,
+                                    polygons = polygonStep.polygons,
                                     step = step,
                                     coordinateWidth = coordinateWidth,
                                     coordinateHeight = coordinateHeight,
-                                    yellowArtwork = checkNotNull(yellowArtwork)
+                                    yellowArtwork = checkNotNull(yellowArtwork),
+                                    connections = polygonStep.connections
                                 )
                             )
                         }

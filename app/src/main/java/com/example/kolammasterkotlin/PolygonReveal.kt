@@ -10,18 +10,46 @@ import android.graphics.RectF
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
+import java.math.BigDecimal
+import java.util.ArrayDeque
 import kotlin.math.abs
 import kotlin.math.floor
 import kotlin.math.hypot
 
 private const val POLYGON_REVEAL_BUCKET_COUNT = 256
 
-internal data class LessonPolygon(val vertices: List<LessonPoint>)
+internal data class LessonPolygon(
+    val vertices: List<LessonPoint>,
+    val id: String? = null,
+    val hole: Boolean = false
+)
+
+internal data class LessonConnectionEndpoint(
+    val polygonId: String,
+    val vertexIndex: Int,
+    val point: LessonPoint
+)
+
+internal data class LessonConnection(
+    val stepNumber: Int,
+    val id: String?,
+    val from: LessonConnectionEndpoint,
+    val to: LessonConnectionEndpoint,
+    val revealAtFirstCrossing: Boolean = false
+)
+
+internal data class LessonPolygonStep(
+    val polygons: List<LessonPolygon>,
+    val connections: List<LessonConnection>
+)
 
 internal class PolygonRevealData private constructor(
     val yellowArtwork: Bitmap,
     val regionPath: Path,
-    private val runsByPathAndBucket: List<List<Path>>
+    private val runsByPathAndBucket: List<List<Path>>,
+    val connections: List<LessonConnection>,
+    private val connectionAreaPaths: List<Path> = emptyList(),
+    private val connectionAreaTriggers: List<Pair<Int, Double>> = emptyList()
 ) {
     companion object {
         fun create(
@@ -29,7 +57,8 @@ internal class PolygonRevealData private constructor(
             step: LessonStep,
             coordinateWidth: Float,
             coordinateHeight: Float,
-            yellowArtwork: Bitmap
+            yellowArtwork: Bitmap,
+            connections: List<LessonConnection> = emptyList()
         ): PolygonRevealData {
             require(polygons.isNotEmpty()) { "Polygon step has no regions" }
             require(coordinateWidth > 0f && coordinateHeight > 0f) {
@@ -169,9 +198,147 @@ internal class PolygonRevealData private constructor(
                     }
                 }
             }
+            // --- compute connection areas eligible for reveal-at-first-crossing ---
+            val connectionAreaPaths = mutableListOf<Path>()
+            val connectionAreaTriggers = mutableListOf<Pair<Int, Double>>() // (ownerPathIndex, thresholdProgress)
+
+            val revealConnections = connections.filter { it.revealAtFirstCrossing }
+            if (revealConnections.isNotEmpty()) {
+                data class NodeKey(val polygonId: String, val vertexIndex: Int)
+                val nodePoints = linkedMapOf<NodeKey, LessonPoint>()
+                val adjacency = linkedMapOf<NodeKey, MutableSet<NodeKey>>()
+
+                fun putNode(nk: NodeKey, point: LessonPoint) {
+                    nodePoints.putIfAbsent(nk, point)
+                    adjacency.putIfAbsent(nk, mutableSetOf())
+                }
+
+                for (conn in revealConnections) {
+                    val a = NodeKey(conn.from.polygonId, conn.from.vertexIndex)
+                    val b = NodeKey(conn.to.polygonId, conn.to.vertexIndex)
+                    putNode(a, conn.from.point)
+                    putNode(b, conn.to.point)
+                    adjacency.getOrPut(a) { mutableSetOf() }.add(b)
+                    adjacency.getOrPut(b) { mutableSetOf() }.add(a)
+                }
+
+                val unvisited = adjacency.keys.toMutableSet()
+                while (unvisited.isNotEmpty()) {
+                    val start = unvisited.first()
+                    val comp = mutableListOf<NodeKey>()
+                    val stack = ArrayDeque<NodeKey>()
+                    stack.add(start)
+                    while (stack.isNotEmpty()) {
+                        val n = stack.removeFirst()
+                        if (!unvisited.remove(n)) continue
+                        comp += n
+                        adjacency[n]?.forEach { neigh ->
+                            if (neigh in unvisited) stack.add(neigh)
+                        }
+                    }
+
+                    // Only accept components that form a simple cycle: every node degree == 2 and size >= 3
+                    val degreesOk = comp.all { adjacency[it]?.size == 2 }
+                    if (!degreesOk || comp.size < 3) continue
+
+                    // Build ordered cycle
+                    val ordered = mutableListOf<NodeKey>()
+                    var prev: NodeKey? = null
+                    var current = comp.first()
+                    ordered.add(current)
+                    val firstNeighbors = adjacency[current]!!.toList()
+                    var next = firstNeighbors.firstOrNull() ?: continue
+                    prev = current
+                    current = next
+                    while (current != ordered.first()) {
+                        ordered.add(current)
+                        val neighs = adjacency[current]!!.toList()
+                        val candidate = if (neighs[0] == prev) neighs.getOrNull(1) else neighs[0]
+                        if (candidate == null) {
+                            ordered.clear()
+                            break
+                        }
+                        prev = current
+                        current = candidate
+                        if (ordered.size > comp.size + 2) {
+                            ordered.clear()
+                            break
+                        }
+                    }
+                    if (ordered.isEmpty()) continue
+
+                    // Construct Path for drawing and also build list of points/edges for intersection testing
+                    val areaPath = Path().apply { fillType = Path.FillType.WINDING }
+                    val pts = ordered.map { nodePoints.getValue(it) }
+                    val firstPoint = pts.first()
+                    areaPath.moveTo(firstPoint.x, firstPoint.y)
+                    for (i in 1 until pts.size) areaPath.lineTo(pts[i].x, pts[i].y)
+                    areaPath.close()
+
+                    // Quick area validity test
+                    var signedArea = 0.0
+                    for (i in pts.indices) {
+                        val p = pts[i]
+                        val q = pts[(i + 1) % pts.size]
+                        signedArea += (p.x.toDouble() * q.y - q.x.toDouble() * p.y)
+                    }
+                    if (kotlin.math.abs(signedArea) <= 0.001) continue
+
+                    // Compute earliest crossing by checking intersection between route segments and loop edges.
+                    var bestOwnerPath = -1
+                    var bestProgress = Double.POSITIVE_INFINITY
+
+                    fun cross(ax: Double, ay: Double, bx: Double, by: Double): Double = ax * by - ay * bx
+
+                    for ((pathIndex, route) in routes.withIndex()) {
+                        if (route.totalLength <= 0.0 || !route.totalLength.isFinite()) continue
+                        for (seg in route.segments) {
+                            val pX = seg.startX
+                            val pY = seg.startY
+                            val rX = seg.deltaX
+                            val rY = seg.deltaY
+                            for (i in pts.indices) {
+                                val a = pts[i]
+                                val b = pts[(i + 1) % pts.size]
+                                val qX = a.x.toDouble()
+                                val qY = a.y.toDouble()
+                                val sX = (b.x - a.x).toDouble()
+                                val sY = (b.y - a.y).toDouble()
+                                val denom = cross(rX, rY, sX, sY)
+                                if (kotlin.math.abs(denom) < 1e-12) continue
+                                val qpX = qX - pX
+                                val qpY = qY - pY
+                                val t = cross(qpX, qpY, sX, sY) / denom
+                                val u = cross(qpX, qpY, rX, rY) / denom
+                                if (t >= -1e-9 && t <= 1.0 + 1e-9 && u >= -1e-9 && u <= 1.0 + 1e-9) {
+                                    val clampedT = t.coerceIn(0.0, 1.0)
+                                    val progress = (seg.startDistance + seg.length * clampedT) / route.totalLength
+                                    if (progress < bestProgress) {
+                                        bestProgress = progress
+                                        bestOwnerPath = pathIndex
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    if (bestOwnerPath >= 0 && bestProgress.isFinite()) {
+                        connectionAreaPaths += areaPath
+                        connectionAreaTriggers += (bestOwnerPath to bestProgress.coerceIn(0.0, 1.0))
+                    }
+                }
+            }
+
             regionMask.recycle()
 
-            return PolygonRevealData(yellowArtwork, regionPath, runsByPathAndBucket)
+            return PolygonRevealData(
+                yellowArtwork,
+                regionPath,
+                runsByPathAndBucket,
+                connections,
+                connectionAreaPaths.toList(),
+                connectionAreaTriggers.toList()
+            )
         }
 
         private fun nearestRoute(
@@ -238,9 +405,15 @@ internal class PolygonRevealData private constructor(
         private val visiblePaths = data.runsByPathAndBucket.map { Path() }
         private val lastBuckets = IntArray(data.runsByPathAndBucket.size) { -1 }
 
+        // connection-area related
+        private val connectionAreaPaths = data.connectionAreaPaths
+        private val connectionAreaTriggers = data.connectionAreaTriggers
+        private val revealedAreas = BooleanArray(connectionAreaPaths.size)
+
         fun reset() {
             visiblePaths.forEach(Path::reset)
             lastBuckets.fill(-1)
+            revealedAreas.fill(false)
         }
 
         fun pathAt(pathIndex: Int, progress: Float): Path? {
@@ -260,7 +433,24 @@ internal class PolygonRevealData private constructor(
                 visiblePath.addPath(data.runsByPathAndBucket[pathIndex][bucket])
             }
             lastBuckets[pathIndex] = targetBucket
-            return visiblePath
+
+            // mark areas whose owner path == pathIndex and threshold <= progress
+            for (i in connectionAreaTriggers.indices) {
+                if (!revealedAreas[i]) {
+                    val (ownerPath, thresholdProgress) = connectionAreaTriggers[i]
+                    if (ownerPath == pathIndex && progress.toDouble() >= thresholdProgress) {
+                        revealedAreas[i] = true
+                    }
+                }
+            }
+
+            // merge visible incremental path with permanently revealed areas for return
+            val result = Path()
+            result.addPath(visiblePath)
+            for (i in revealedAreas.indices) {
+                if (revealedAreas[i]) result.addPath(connectionAreaPaths[i])
+            }
+            return result
         }
     }
 }
@@ -316,7 +506,7 @@ private fun luminance(color: Int): Int =
     (0.2126f * Color.red(color) + 0.7152f * Color.green(color) +
         0.0722f * Color.blue(color) + 0.5f).toInt().coerceIn(0, 255)
 
-internal fun readStepPolygons(root: JSONObject): Map<Int, List<LessonPolygon>> {
+internal fun readStepPolygonData(root: JSONObject): Map<Int, LessonPolygonStep> {
     val polygonValue = root.opt("polygons") ?: return emptyMap()
     if (polygonValue == JSONObject.NULL) return emptyMap()
     val entries = polygonValue as? JSONArray
@@ -354,12 +544,16 @@ internal fun readStepPolygons(root: JSONObject): Map<Int, List<LessonPolygon>> {
             (0 until regionArray.length()).map { regionArray.get(it) }
         }
         for ((regionIndex, region) in regionEntries.withIndex()) {
-            val vertices = when (region) {
-                is JSONObject -> region.optJSONArray("vertices")
-                    ?: region.optJSONArray("points")
-                    ?: region.optJSONArray("coordinates")
-                    ?: throw IOException("Polygon region $regionIndex has no vertices")
-                is JSONArray -> region
+            val (vertices, polygonId, isHole) = when (region) {
+                is JSONObject -> Triple(
+                    region.optJSONArray("vertices")
+                        ?: region.optJSONArray("points")
+                        ?: region.optJSONArray("coordinates")
+                        ?: throw IOException("Polygon region $regionIndex has no vertices"),
+                    jsonIdentifier(region.opt("id")),
+                    region.opt("hole") as? Boolean ?: false
+                )
+                is JSONArray -> Triple(region, null, false)
                 else -> throw IOException(
                     "Polygon region $regionIndex for step $stepNumber is invalid"
                 )
@@ -389,10 +583,79 @@ internal fun readStepPolygons(root: JSONObject): Map<Int, List<LessonPolygon>> {
                     add(point)
                 }
             }
-            regions += LessonPolygon(points)
+            regions += LessonPolygon(points, polygonId, isHole)
         }
     }
-    return polygonsByStep.mapValues { it.value.toList() }
+
+    val connectionsByStep = linkedMapOf<Int, MutableList<LessonConnection>>()
+    val connectionGroups = root.optJSONArray("connections")
+    if (connectionGroups != null) {
+        for (groupIndex in 0 until connectionGroups.length()) {
+            val group = connectionGroups.optJSONObject(groupIndex) ?: continue
+            val stepNumber = exactPositiveInt(group.opt("step")) ?: continue
+            val stepPolygons = polygonsByStep[stepNumber] ?: continue
+            val connectionEntries = group.optJSONArray("connections") ?: continue
+            for (connectionIndex in 0 until connectionEntries.length()) {
+                val entry = connectionEntries.optJSONObject(connectionIndex) ?: continue
+                val from = resolveConnectionEndpoint(entry.optJSONObject("from"), stepPolygons)
+                    ?: continue
+                val to = resolveConnectionEndpoint(entry.optJSONObject("to"), stepPolygons)
+                    ?: continue
+                connectionsByStep.getOrPut(stepNumber) { mutableListOf() } += LessonConnection(
+                    stepNumber = stepNumber,
+                    id = jsonIdentifier(entry.opt("id")),
+                    from = from,
+                    to = to,
+                    revealAtFirstCrossing = entry.optBoolean("revealAtFirstCrossing", false)
+                )
+            }
+        }
+    }
+
+    return polygonsByStep.mapValues { (stepNumber, polygons) ->
+        LessonPolygonStep(
+            polygons = polygons.toList(),
+            connections = connectionsByStep[stepNumber]?.toList().orEmpty()
+        )
+    }
+}
+
+private fun resolveConnectionEndpoint(
+    endpoint: JSONObject?,
+    polygons: List<LessonPolygon>
+): LessonConnectionEndpoint? {
+    endpoint ?: return null
+    val polygonId = jsonIdentifier(endpoint.opt("polygonId")) ?: return null
+    val vertexIndex = exactNonNegativeInt(endpoint.opt("vertexIndex")) ?: return null
+    val matches = polygons.filter { it.id == polygonId }
+    if (matches.size != 1) return null
+    val point = matches.single().vertices.getOrNull(vertexIndex) ?: return null
+    return LessonConnectionEndpoint(polygonId, vertexIndex, point)
+}
+
+private fun jsonIdentifier(value: Any?): String? =
+    when (value) {
+        is String -> value.takeIf(String::isNotBlank)
+        is Number -> try {
+            BigDecimal(value.toString()).stripTrailingZeros().toPlainString()
+        } catch (_: NumberFormatException) {
+            null
+        }
+        else -> null
+    }
+
+private fun exactPositiveInt(value: Any?): Int? =
+    exactNonNegativeInt(value)?.takeIf { it > 0 }
+
+private fun exactNonNegativeInt(value: Any?): Int? {
+    if (value !is Number) return null
+    return try {
+        BigDecimal(value.toString()).intValueExact().takeIf { it >= 0 }
+    } catch (_: ArithmeticException) {
+        null
+    } catch (_: NumberFormatException) {
+        null
+    }
 }
 
 internal fun drawPolygonArtwork(

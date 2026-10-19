@@ -46,8 +46,8 @@ internal data class RangoliLesson(
                     coordinateWidth.isFinite() && coordinateHeight.isFinite()
             ) { "Invalid Rangoli path coordinate dimensions" }
 
-            val polygonsByStep = readStepPolygons(pathRoot)
-            val yellowArtwork = if (polygonsByStep.isEmpty()) {
+            val polygonDataByStep = readStepPolygonData(pathRoot)
+            val yellowArtwork = if (polygonDataByStep.isEmpty()) {
                 null
             } else {
                 createYellowArtwork(artwork)
@@ -69,17 +69,19 @@ internal data class RangoliLesson(
                         number = number,
                         paths = paths
                     )
-                    val polygonRegions = polygonsByStep[number]
-                    val lessonWithPolygons = if (polygonRegions.isNullOrEmpty()) {
+                    val polygonStep = polygonDataByStep[number]
+                        ?.takeIf { it.polygons.isNotEmpty() }
+                    val lessonWithPolygons = if (polygonStep == null) {
                         structuralLesson
                     } else {
                         structuralLesson.copy(
                             polygonReveal = PolygonRevealData.create(
-                                polygons = polygonRegions,
+                                polygons = polygonStep.polygons,
                                 step = structuralLesson,
                                 coordinateWidth = coordinateWidth,
                                 coordinateHeight = coordinateHeight,
-                                yellowArtwork = checkNotNull(yellowArtwork)
+                                yellowArtwork = checkNotNull(yellowArtwork),
+                                connections = polygonStep.connections
                             )
                         )
                     }
