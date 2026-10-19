@@ -6,6 +6,8 @@ import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
 import org.json.JSONArray
 import org.json.JSONObject
@@ -137,70 +139,121 @@ internal class PolygonRevealData private constructor(
                 Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
             )
 
-            val runsByPathAndBucket = routes.map {
-                List(POLYGON_REVEAL_BUCKET_COUNT) { Path() }
-            }
+            val runsByPathAndBucket = routes.map { List(POLYGON_REVEAL_BUCKET_COUNT) { Path() } }
             val regionPixels = IntArray(yellowArtwork.width)
             val artworkPixels = IntArray(yellowArtwork.width)
-            for (y in 0 until yellowArtwork.height) {
-                regionMask.getPixels(
-                    regionPixels,
-                    0,
-                    yellowArtwork.width,
-                    0,
-                    y,
-                    yellowArtwork.width,
-                    1
-                )
-                yellowArtwork.getPixels(
-                    artworkPixels,
-                    0,
-                    yellowArtwork.width,
-                    0,
-                    y,
-                    yellowArtwork.width,
-                    1
-                )
-                var runStart = -1
-                var runBucket: Pair<Int, Int>? = null
-                for (x in 0..yellowArtwork.width) {
-                    val bucket = if (x < yellowArtwork.width &&
-                        Color.alpha(regionPixels[x]) > 0 &&
-                        Color.alpha(artworkPixels[x]) > 0
-                    ) {
-                        val routeMatch = nearestRoute(
-                            x + 0.5,
-                            y + 0.5,
-                            routes
-                        )
-                        val ownerPath = routeMatch.pathIndex
-                        (ownerPath to (kotlin.math.ceil(
-                            routeMatch.progress * POLYGON_REVEAL_BUCKET_COUNT - 1e-9
-                        ).toInt() - 1)
-                            .coerceIn(0, POLYGON_REVEAL_BUCKET_COUNT - 1))
-                    } else {
-                        null
-                    }
 
-                    if (bucket != runBucket) {
-                        if (runStart >= 0) {
-                            val (pathIndex, pathBucket) = checkNotNull(runBucket)
-                            runsByPathAndBucket[pathIndex][pathBucket].addRect(
-                                runStart.toFloat(),
-                                y.toFloat(),
-                                x.toFloat(),
-                                y + 1f,
-                                Path.Direction.CW
-                            )
+            fun revealBucketForProgress(progress: Double): Int =
+                (kotlin.math.ceil(progress * POLYGON_REVEAL_BUCKET_COUNT - 1e-9).toInt() - 1)
+                    .coerceIn(0, POLYGON_REVEAL_BUCKET_COUNT - 1)
+
+            fun nearestRouteOnPath(
+                x: Double,
+                y: Double,
+                routes: List<Route>,
+                pathIndex: Int
+            ): RouteMatch {
+                val route = routes.getOrNull(pathIndex) ?: return nearestRoute(x, y, routes)
+                if (route.totalLength <= 0.0 || !route.totalLength.isFinite()) {
+                    return nearestRoute(x, y, routes)
+                }
+
+                var nearestDistanceSquared = Double.POSITIVE_INFINITY
+                var nearestProgress = 0.0
+                route.segments.forEach { segment ->
+                    val offsetX = x - segment.startX
+                    val offsetY = y - segment.startY
+                    val projection = (
+                        (offsetX * segment.deltaX + offsetY * segment.deltaY) /
+                            (segment.length * segment.length)
+                        ).coerceIn(0.0, 1.0)
+                    val differenceX = offsetX - segment.deltaX * projection
+                    val differenceY = offsetY - segment.deltaY * projection
+                    val distanceSquared = differenceX * differenceX + differenceY * differenceY
+                    val nearestScale = if (nearestDistanceSquared.isFinite()) abs(nearestDistanceSquared) else 0.0
+                    val tieTolerance = maxOf(abs(distanceSquared), nearestScale, 1.0) * 1e-12
+                    if (distanceSquared < nearestDistanceSquared - tieTolerance) {
+                        nearestDistanceSquared = distanceSquared
+                        nearestProgress = (segment.startDistance + segment.length * projection) / route.totalLength
+                    }
+                }
+                return RouteMatch(pathIndex = pathIndex, progress = nearestProgress.coerceIn(0.0, 1.0))
+            }
+
+            fun accumulateRevealRuns(
+                mask: Bitmap,
+                ownerPathOverride: Int? = null,
+                minimumProgress: Double? = null,
+                targetSegment: RouteSegment? = null
+            ) {
+                for (y in 0 until yellowArtwork.height) {
+                    mask.getPixels(regionPixels, 0, yellowArtwork.width, 0, y, yellowArtwork.width, 1)
+                    yellowArtwork.getPixels(artworkPixels, 0, yellowArtwork.width, 0, y, yellowArtwork.width, 1)
+                    var runStart = -1
+                    var runBucket: Pair<Int, Int>? = null
+                    for (x in 0..yellowArtwork.width) {
+                        val bucket = if (x < yellowArtwork.width &&
+                            Color.alpha(regionPixels[x]) > 0 &&
+                            Color.alpha(artworkPixels[x]) > 0
+                        ) {
+                            val (ownerPath, revealProgress) = if (targetSegment != null && ownerPathOverride != null) {
+                                val route = routes[ownerPathOverride]
+                                val offsetX = (x + 0.5) - targetSegment.startX
+                                val offsetY = (y + 0.5) - targetSegment.startY
+                                val projection = (
+                                    (offsetX * targetSegment.deltaX + offsetY * targetSegment.deltaY) /
+                                        (targetSegment.length * targetSegment.length)
+                                    ).coerceIn(0.0, 1.0)
+                                val prog = (targetSegment.startDistance + targetSegment.length * projection) / route.totalLength
+                                val clampedProg = if (minimumProgress != null) maxOf(prog, minimumProgress) else prog
+                                (ownerPathOverride to clampedProg)
+                            } else {
+                                val routeMatch = if (ownerPathOverride != null) {
+                                    nearestRouteOnPath(x + 0.5, y + 0.5, routes, ownerPathOverride)
+                                } else {
+                                    nearestRoute(x + 0.5, y + 0.5, routes)
+                                }
+                                val ownerPath = ownerPathOverride ?: routeMatch.pathIndex
+                                val prog = if (minimumProgress != null) {
+                                    maxOf(routeMatch.progress, minimumProgress)
+                                } else {
+                                    routeMatch.progress
+                                }
+                                (ownerPath to prog)
+                            }
+                            (ownerPath to revealBucketForProgress(revealProgress))
+                        } else {
+                            null
                         }
-                        runStart = if (bucket != null) x else -1
-                        runBucket = bucket
+
+                        if (bucket != runBucket) {
+                            if (runStart >= 0) {
+                                val (pathIndex, pathBucket) = checkNotNull(runBucket)
+                                runsByPathAndBucket[pathIndex][pathBucket].addRect(
+                                    runStart.toFloat(),
+                                    y.toFloat(),
+                                    x.toFloat(),
+                                    y + 1f,
+                                    Path.Direction.CW
+                                )
+                            }
+                            runStart = if (bucket != null) x else -1
+                            runBucket = bucket
+                        }
                     }
                 }
             }
-            // --- compute connection areas eligible for reveal-at-first-crossing ---
+
+            data class IntersectionArea(
+                val path: Path,
+                val ownerPath: Int,
+                val triggerProgress: Double,
+                val firstCrossingSegment: RouteSegment
+            )
+            val intersectionAreas = mutableListOf<IntersectionArea>()
+
             val connectionAreaPaths = mutableListOf<Path>()
-            val connectionAreaTriggers = mutableListOf<Pair<Int, Double>>() // (ownerPathIndex, thresholdProgress)
+            val connectionAreaTriggers = mutableListOf<Pair<Int, Double>>()
 
             val revealConnections = connections.filter { it.revealAtFirstCrossing }
             if (revealConnections.isNotEmpty()) {
@@ -237,11 +290,9 @@ internal class PolygonRevealData private constructor(
                         }
                     }
 
-                    // Only accept components that form a simple cycle: every node degree == 2 and size >= 3
                     val degreesOk = comp.all { adjacency[it]?.size == 2 }
                     if (!degreesOk || comp.size < 3) continue
 
-                    // Build ordered cycle
                     val ordered = mutableListOf<NodeKey>()
                     var prev: NodeKey? = null
                     var current = comp.first()
@@ -267,7 +318,6 @@ internal class PolygonRevealData private constructor(
                     }
                     if (ordered.isEmpty()) continue
 
-                    // Construct Path for drawing and also build list of points/edges for intersection testing
                     val areaPath = Path().apply { fillType = Path.FillType.WINDING }
                     val pts = ordered.map { nodePoints.getValue(it) }
                     val firstPoint = pts.first()
@@ -275,7 +325,6 @@ internal class PolygonRevealData private constructor(
                     for (i in 1 until pts.size) areaPath.lineTo(pts[i].x, pts[i].y)
                     areaPath.close()
 
-                    // Quick area validity test
                     var signedArea = 0.0
                     for (i in pts.indices) {
                         val p = pts[i]
@@ -284,9 +333,9 @@ internal class PolygonRevealData private constructor(
                     }
                     if (kotlin.math.abs(signedArea) <= 0.001) continue
 
-                    // Compute earliest crossing by checking intersection between route segments and loop edges.
                     var bestOwnerPath = -1
                     var bestProgress = Double.POSITIVE_INFINITY
+                    var firstCrossingSegment: RouteSegment? = null
 
                     fun cross(ax: Double, ay: Double, bx: Double, by: Double): Double = ax * by - ay * bx
 
@@ -316,17 +365,52 @@ internal class PolygonRevealData private constructor(
                                     if (progress < bestProgress) {
                                         bestProgress = progress
                                         bestOwnerPath = pathIndex
+                                        firstCrossingSegment = seg
                                     }
                                 }
                             }
                         }
                     }
 
-                    if (bestOwnerPath >= 0 && bestProgress.isFinite()) {
+                    if (bestOwnerPath >= 0 && bestProgress.isFinite() && firstCrossingSegment != null) {
                         connectionAreaPaths += areaPath
-                        connectionAreaTriggers += (bestOwnerPath to bestProgress.coerceIn(0.0, 1.0))
+                        val triggerProg = bestProgress.coerceIn(0.0, 1.0)
+                        connectionAreaTriggers += (bestOwnerPath to triggerProg)
+                        intersectionAreas += IntersectionArea(
+                            path = areaPath,
+                            ownerPath = bestOwnerPath,
+                            triggerProgress = triggerProg,
+                            firstCrossingSegment = firstCrossingSegment
+                        )
                     }
                 }
+            }
+
+            if (intersectionAreas.isNotEmpty()) {
+                val clearPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR)
+                }
+                for (area in intersectionAreas) {
+                    Canvas(regionMask).drawPath(area.path, clearPaint)
+                }
+            }
+
+            accumulateRevealRuns(regionMask)
+
+            for (area in intersectionAreas) {
+                val areaMask = Bitmap.createBitmap(
+                    yellowArtwork.width,
+                    yellowArtwork.height,
+                    Bitmap.Config.ARGB_8888
+                )
+                Canvas(areaMask).drawPath(area.path, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE })
+                accumulateRevealRuns(
+                    areaMask,
+                    ownerPathOverride = area.ownerPath,
+                    minimumProgress = area.triggerProgress,
+                    targetSegment = area.firstCrossingSegment
+                )
+                areaMask.recycle()
             }
 
             regionMask.recycle()
@@ -339,6 +423,7 @@ internal class PolygonRevealData private constructor(
                 connectionAreaPaths.toList(),
                 connectionAreaTriggers.toList()
             )
+
         }
 
         private fun nearestRoute(
@@ -380,6 +465,7 @@ internal class PolygonRevealData private constructor(
                 progress = nearestProgress.coerceIn(0.0, 1.0)
             )
         }
+
     }
 
     private data class RouteSegment(
@@ -405,15 +491,9 @@ internal class PolygonRevealData private constructor(
         private val visiblePaths = data.runsByPathAndBucket.map { Path() }
         private val lastBuckets = IntArray(data.runsByPathAndBucket.size) { -1 }
 
-        // connection-area related
-        private val connectionAreaPaths = data.connectionAreaPaths
-        private val connectionAreaTriggers = data.connectionAreaTriggers
-        private val revealedAreas = BooleanArray(connectionAreaPaths.size)
-
         fun reset() {
             visiblePaths.forEach(Path::reset)
             lastBuckets.fill(-1)
-            revealedAreas.fill(false)
         }
 
         fun pathAt(pathIndex: Int, progress: Float): Path? {
@@ -433,24 +513,7 @@ internal class PolygonRevealData private constructor(
                 visiblePath.addPath(data.runsByPathAndBucket[pathIndex][bucket])
             }
             lastBuckets[pathIndex] = targetBucket
-
-            // mark areas whose owner path == pathIndex and threshold <= progress
-            for (i in connectionAreaTriggers.indices) {
-                if (!revealedAreas[i]) {
-                    val (ownerPath, thresholdProgress) = connectionAreaTriggers[i]
-                    if (ownerPath == pathIndex && progress.toDouble() >= thresholdProgress) {
-                        revealedAreas[i] = true
-                    }
-                }
-            }
-
-            // merge visible incremental path with permanently revealed areas for return
-            val result = Path()
-            result.addPath(visiblePath)
-            for (i in revealedAreas.indices) {
-                if (revealedAreas[i]) result.addPath(connectionAreaPaths[i])
-            }
-            return result
+            return visiblePath
         }
     }
 }
