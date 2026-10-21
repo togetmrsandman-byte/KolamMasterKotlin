@@ -34,8 +34,6 @@ internal data class RangoliLesson(
             val artworkFile = File(directory, "artwork.webp")
             val artwork = if (artworkFile.isFile) decodeImage(artworkFile) else preview
             requireSameDimensions(preview, artwork, artworkFile.name)
-            val tinted = decodeImage(File(directory, "tinted.webp"))
-            requireSameDimensions(preview, tinted, "tinted.webp")
 
             val fillSteps = manifest.optJSONArray("fillSteps").toIntSet().sorted()
             val fillImages = findFillImages(directory)
@@ -48,6 +46,12 @@ internal data class RangoliLesson(
                     coordinateWidth.isFinite() && coordinateHeight.isFinite()
             ) { "Invalid Rangoli path coordinate dimensions" }
 
+            val polygonDataByStep = readStepPolygonData(pathRoot)
+            val yellowArtwork = if (polygonDataByStep.isEmpty()) {
+                null
+            } else {
+                createYellowArtwork(artwork)
+            }
             val pathLessons = readPathLessons(pathRoot)
             val structuralSteps = pathLessons.mapNotNull { (number, lessonJson) ->
                 if (number in fillSteps ||
@@ -57,26 +61,51 @@ internal data class RangoliLesson(
                 ) {
                     null
                 } else {
-                    val inheritedSpeed = lessonJson.optDouble("speed", 1.0).toFloat()
-                    require(inheritedSpeed > 0f && inheritedSpeed.isFinite()) {
-                        "Invalid speed for step $number"
-                    }
-                    val paths = readPaths(lessonJson, inheritedSpeed)
-                    val strokes = paths.flatMap { it.strokes }
-                    require(strokes.isNotEmpty()) {
+                    val paths = readPaths(lessonJson)
+                    require(paths.any { it.strokes.isNotEmpty() }) {
                         "Rangoli structural step $number has no strokes"
                     }
-                    val computedDuration = paths.sumOf { path ->
-                        path.durationMillis.toDouble()
-                    }.toInt()
-                    val duration = lessonJson.optInt("durationMs", computedDuration)
+                    val structuralLesson = LessonStep(
+                        number = number,
+                        paths = paths
+                    )
+                    val polygonStep = polygonDataByStep[number]
+                        ?.takeIf { it.polygons.isNotEmpty() }
+                    val lessonWithPolygons = if (polygonStep == null) {
+                        structuralLesson
+                    } else {
+                        structuralLesson.copy(
+                            polygonReveal = PolygonRevealData.create(
+                                polygons = polygonStep.polygons,
+                                step = structuralLesson,
+                                coordinateWidth = coordinateWidth,
+                                coordinateHeight = coordinateHeight,
+                                yellowArtwork = checkNotNull(yellowArtwork),
+                                connections = polygonStep.connections
+                            )
+                        )
+                    }
                     RangoliStep(
                         number = number,
-                        structuralLesson = LessonStep(number, inheritedSpeed, strokes),
+                        structuralLesson = lessonWithPolygons,
                         fillBitmap = null,
-                        animationDurationMillis = duration.coerceIn(500, 10_000)
+                        animationDurationMillis = 3000
                     )
                 }
+            }
+            val hasPolygonBackedSteps = structuralSteps.any {
+                it.structuralLesson?.polygonReveal != null
+            }
+            val hasLegacyStructuralSteps = structuralSteps.any {
+                it.structuralLesson?.polygonReveal == null
+            }
+            val tintedFile = File(directory, "tinted.webp")
+            val tinted = if (!hasPolygonBackedSteps ||
+                (hasLegacyStructuralSteps && tintedFile.isFile)
+            ) {
+                decodeImage(tintedFile).also { requireSameDimensions(preview, it, tintedFile.name) }
+            } else {
+                artwork
             }
             val fillLessonSteps = fillSteps.map { number ->
                 require(number in 1..totalSteps) {
@@ -149,12 +178,7 @@ internal data class RangoliLesson(
             }
         }
 
-        private data class PathData(
-            val strokes: List<LessonStroke>,
-            val durationMillis: Int
-        )
-
-        private fun readPaths(lesson: JSONObject, inheritedSpeed: Float): List<PathData> {
+        private fun readPaths(lesson: JSONObject): List<LessonPath> {
             val paths = lesson.optJSONArray("paths")
             val pathObjects = if (paths != null) {
                 (0 until paths.length()).map { paths.getJSONObject(it) }
@@ -162,15 +186,8 @@ internal data class RangoliLesson(
                 listOf(lesson)
             }
             return pathObjects.map { path ->
-                val speed = path.optDouble("speed", inheritedSpeed.toDouble()).toFloat()
-                require(speed > 0f && speed.isFinite()) { "Invalid Rangoli path speed" }
                 val strokes = readPathStrokes(path)
-                val duration = path.optInt(
-                    "durationMs",
-                    ((3000f / speed) * strokes.size).toInt()
-                )
-                require(duration > 0) { "Invalid Rangoli path duration" }
-                PathData(strokes, duration)
+                LessonPath(strokes)
             }
         }
 

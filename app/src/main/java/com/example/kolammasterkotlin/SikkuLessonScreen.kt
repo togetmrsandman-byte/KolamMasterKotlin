@@ -9,6 +9,8 @@ import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
+import android.os.SystemClock
+import android.util.Log
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -67,37 +69,77 @@ internal fun SikkuLessonScreen(
     var started by rememberSaveable { mutableStateOf(false) }
     var complete by rememberSaveable { mutableStateOf(false) }
     var stepIndex by rememberSaveable { mutableIntStateOf(-1) }
+    var completedStepIndices by remember { mutableStateOf(emptySet<Int>()) }
     var replayRequest by remember { mutableIntStateOf(0) }
     var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
+    var activePathIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
+    val polygonPlaybacks = remember(lesson) {
+        lesson.steps.mapNotNull { step ->
+            step.polygonReveal?.let { step.number to PolygonRevealData.Playback(it) }
+        }.toMap()
+    }
 
     LaunchedEffect(started, complete, stepIndex, replayRequest, playbackSpeed) {
         if (started && !complete && stepIndex >= 0) {
             if (animatedStepIndex != stepIndex || animatedReplayRequest != replayRequest) {
                 progress.snapTo(0f)
+                activePathIndex = 0
+                lesson.steps.getOrNull(stepIndex)?.let { step ->
+                    polygonPlaybacks[step.number]?.reset()
+                }
                 animatedStepIndex = stepIndex
                 animatedReplayRequest = replayRequest
             }
-            progress.animateTo(
-                targetValue = 1f,
-                animationSpec = tween(
-                    durationMillis = scaledAnimationDuration(
-                        lesson.steps[stepIndex].animationDurationMillis,
-                        playbackSpeed,
-                        progress.value
-                    ),
-                    easing = LinearEasing
+            val step = lesson.steps[stepIndex]
+            val loopStartedAt = SystemClock.elapsedRealtime()
+            while (activePathIndex < step.pathCount) {
+                val pathIndex = activePathIndex
+                val durationMillis = scaledAnimationDuration(
+                    step.animationDurationMillis,
+                    playbackSpeed,
+                    progress.value
                 )
+                val pathStartedAt = SystemClock.elapsedRealtime()
+                Log.d(
+                    "PathTimingDebug",
+                    "Sikku start stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "activePathIndex=$activePathIndex pathCount=${step.pathCount} " +
+                        "playbackSpeed=$playbackSpeed progress=${progress.value} " +
+                        "durationMillis=$durationMillis"
+                )
+                progress.animateTo(
+                    targetValue = 1f,
+                    animationSpec = tween(
+                        durationMillis = durationMillis,
+                        easing = LinearEasing
+                    )
+                )
+                Log.d(
+                    "PathTimingDebug",
+                    "Sikku path finished stepIndex=$stepIndex pathIndex=$pathIndex " +
+                        "elapsedMillis=${SystemClock.elapsedRealtime() - pathStartedAt}"
+                )
+                if (activePathIndex + 1 < step.pathCount) progress.snapTo(0f)
+                activePathIndex++
+            }
+            Log.d(
+                "PathTimingDebug",
+                "Sikku loop finished stepIndex=$stepIndex pathCount=${step.pathCount} " +
+                    "elapsedMillis=${SystemClock.elapsedRealtime() - loopStartedAt}"
             )
         } else if (started && !complete) {
             progress.snapTo(0f)
+            activePathIndex = 0
             animatedStepIndex = Int.MIN_VALUE
         } else if (!started) {
             progress.snapTo(0f)
+            activePathIndex = 0
         } else {
             progress.snapTo(1f)
+            activePathIndex = lesson.steps.getOrNull(stepIndex)?.pathCount ?: 0
         }
     }
 
@@ -134,10 +176,8 @@ internal fun SikkuLessonScreen(
                 lesson = lesson,
                 completedSteps = if (complete) {
                     lesson.steps
-                } else if (started && stepIndex > 0) {
-                    lesson.steps.take(stepIndex)
                 } else {
-                    emptyList()
+                    lesson.steps.filterIndexed { index, _ -> index in completedStepIndices }
                 },
                 currentStep = if (started && !complete && stepIndex >= 0) {
                     lesson.steps[stepIndex]
@@ -145,8 +185,10 @@ internal fun SikkuLessonScreen(
                     null
                 },
                 progress = progress.value,
+                activePathIndex = activePathIndex,
                 showPreview = !started,
                 showDots = started,
+                polygonPlaybacks = polygonPlaybacks,
                 modifier = Modifier.fillMaxSize()
             )
             if (complete) {
@@ -178,8 +220,12 @@ internal fun SikkuLessonScreen(
                         if (complete) {
                             complete = false
                             stepIndex = (lesson.steps.lastIndex - 1).coerceAtLeast(-1)
+                            completedStepIndices = (0 until stepIndex).toSet()
                         } else {
                             stepIndex = (stepIndex - 1).coerceAtLeast(-1)
+                            completedStepIndices = completedStepIndices
+                                .filter { it < stepIndex }
+                                .toSet()
                         }
                     },
                     enabled = complete || stepIndex >= 0,
@@ -205,7 +251,11 @@ internal fun SikkuLessonScreen(
                             complete = false
                             started = false
                             stepIndex = -1
+                            completedStepIndices = emptySet()
                         } else {
+                            completedStepIndices = completedStepIndices
+                                .filter { it < stepIndex }
+                                .toSet()
                             replayRequest++
                         }
                     },
@@ -246,8 +296,10 @@ internal fun SikkuLessonScreen(
                             if (stepIndex < 0) {
                                 stepIndex = 0
                             } else if (stepIndex == lesson.steps.lastIndex) {
+                                completedStepIndices = lesson.steps.indices.toSet()
                                 complete = true
                             } else {
+                                completedStepIndices = completedStepIndices + stepIndex
                                 stepIndex++
                             }
                         }
@@ -276,8 +328,10 @@ private fun LessonArtwork(
     completedSteps: List<LessonStep>,
     currentStep: LessonStep?,
     progress: Float,
+    activePathIndex: Int,
     showPreview: Boolean,
     showDots: Boolean,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>,
     modifier: Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -290,8 +344,10 @@ private fun LessonArtwork(
                 completedSteps = completedSteps,
                 currentStep = currentStep,
                 progress = progress,
+                activePathIndex = activePathIndex,
                 showPreview = showPreview,
-                showDots = showDots
+                showDots = showDots,
+                polygonPlaybacks = polygonPlaybacks
             )
         }
     }
@@ -305,8 +361,10 @@ private fun drawLessonLayers(
     completedSteps: List<LessonStep>,
     currentStep: LessonStep?,
     progress: Float,
+    activePathIndex: Int,
     showPreview: Boolean,
-    showDots: Boolean
+    showDots: Boolean,
+    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
     val scale = min(width / lesson.preview.width, height / lesson.preview.height)
     val drawnWidth = lesson.preview.width * scale
@@ -326,31 +384,64 @@ private fun drawLessonLayers(
     }
 
     for (completedStep in completedSteps) {
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.preview,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            step = completedStep,
-            progress = 1f,
-            applyArtworkColorFilter = true
-        )
+        val polygonReveal = completedStep.polygonReveal
+        if (polygonReveal != null) {
+            drawPolygonArtwork(
+                canvas = canvas,
+                imageRect = imageRect,
+                data = polygonReveal,
+                playback = null,
+                pathIndex = 0,
+                progress = 1f,
+                artwork = lesson.preview,
+                colorFilter = artworkColorFilter
+            )
+        } else {
+            completedStep.paths.indices.forEach { pathIndex ->
+                drawBitmapThroughPath(
+                    canvas = canvas,
+                    bitmap = lesson.preview,
+                    imageRect = imageRect,
+                    imagePaint = imagePaint,
+                    coordinateWidth = lesson.coordinateWidth,
+                    coordinateHeight = lesson.coordinateHeight,
+                    step = completedStep,
+                    pathIndex = pathIndex,
+                    progress = 1f,
+                    applyArtworkColorFilter = true
+                )
+            }
+        }
     }
 
-    if (currentStep != null && progress > 0f) {
-        drawBitmapThroughPath(
-            canvas = canvas,
-            bitmap = lesson.tinted,
-            imageRect = imageRect,
-            imagePaint = imagePaint,
-            coordinateWidth = lesson.coordinateWidth,
-            coordinateHeight = lesson.coordinateHeight,
-            step = currentStep,
-            progress = progress,
-            applyArtworkColorFilter = true
-        )
+    if (currentStep != null && currentStep.pathCount > 0) {
+        val polygonReveal = currentStep.polygonReveal
+        for (pathIndex in 0..activePathIndex.coerceAtMost(currentStep.pathCount - 1)) {
+            val pathProgress = if (pathIndex < activePathIndex) 1f else progress
+            if (polygonReveal != null) {
+                drawPolygonArtwork(
+                    canvas = canvas,
+                    imageRect = imageRect,
+                    data = polygonReveal,
+                    playback = polygonPlaybacks[currentStep.number],
+                    pathIndex = pathIndex,
+                    progress = pathProgress
+                )
+            } else {
+                drawBitmapThroughPath(
+                    canvas = canvas,
+                    bitmap = lesson.tinted,
+                    imageRect = imageRect,
+                    imagePaint = imagePaint,
+                    coordinateWidth = lesson.coordinateWidth,
+                    coordinateHeight = lesson.coordinateHeight,
+                    step = currentStep,
+                    pathIndex = pathIndex,
+                    progress = pathProgress,
+                    applyArtworkColorFilter = true
+                )
+            }
+        }
     }
 
     if (showDots) {
@@ -367,6 +458,7 @@ internal fun drawBitmapThroughPath(
     imageRect: RectF,
     imagePaint: Paint,
     step: LessonStep,
+    pathIndex: Int,
     coordinateWidth: Float,
     coordinateHeight: Float,
     progress: Float,
@@ -377,6 +469,7 @@ internal fun drawBitmapThroughPath(
         coordinateWidth = coordinateWidth,
         coordinateHeight = coordinateHeight,
         step = step,
+        pathIndex = pathIndex,
         progress = progress
     ) ?: return
     val saveCount = canvas.save()
@@ -393,13 +486,14 @@ internal fun createRevealMask(
     coordinateWidth: Float,
     coordinateHeight: Float,
     step: LessonStep,
+    pathIndex: Int,
     progress: Float
 ): Path? {
     val scaleX = imageRect.width() / coordinateWidth
     val scaleY = imageRect.height() / coordinateHeight
     val widthScale = hypot(scaleX, scaleY) / kotlin.math.sqrt(2f)
     var totalLength = 0f
-    for (stroke in step.strokes) {
+    for (stroke in step.paths.getOrNull(pathIndex)?.strokes.orEmpty()) {
         for (index in 0 until stroke.nodes.lastIndex) {
             val start = stroke.nodes[index]
             val end = stroke.nodes[index + 1]
@@ -419,7 +513,7 @@ internal fun createRevealMask(
     }
     var hasMask = false
 
-    for (stroke in step.strokes) {
+    for (stroke in step.paths.getOrNull(pathIndex)?.strokes.orEmpty()) {
         for (segmentIndex in 0 until stroke.nodes.lastIndex) {
             if (remaining <= 0f) return maskPath.takeIf { hasMask }
 

@@ -31,9 +31,6 @@ internal class InitialAssetSetup(
         if (isComplete()) return true
 
         val lessons = loadLessons().take(INITIAL_LESSON_COUNT)
-        require(lessons.size == INITIAL_LESSON_COUNT) {
-            "The lesson catalogue does not contain the initial $INITIAL_LESSON_COUNT lessons."
-        }
         val thumbnailUrls = lessons.map { it.firstThumbnailUrl.orEmpty() }
         require(thumbnailUrls.none(String::isBlank)) {
             "One or more initial lessons do not have a thumbnail URL."

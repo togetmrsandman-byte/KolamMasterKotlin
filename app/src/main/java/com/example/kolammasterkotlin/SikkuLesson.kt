@@ -14,15 +14,17 @@ internal data class LessonStroke(
     val nodes: List<LessonPoint>
 )
 
+internal data class LessonPath(val strokes: List<LessonStroke>)
+
 internal data class LessonStep(
     val number: Int,
-    val speed: Float,
-    val strokes: List<LessonStroke>
+    val paths: List<LessonPath>,
+    val polygonReveal: PolygonRevealData? = null
 ) {
+    val pathCount: Int
+        get() = paths.size
     val animationDurationMillis: Int
-        get() = strokes.sumOf { (3000f / speed).toDouble() }
-            .toInt()
-            .coerceIn(500, 10_000)
+        get() = 3000
 }
 
 internal data class SikkuLesson(
@@ -38,11 +40,7 @@ internal data class SikkuLesson(
         fun load(directory: File): SikkuLesson {
             val preview = decodeImage(File(directory, "preview.webp"))
             val dots = decodeImage(File(directory, "dots.webp"))
-            val tintedFile = File(directory, "tinted.webp")
-            val tinted = if (tintedFile.isFile) decodeImage(tintedFile) else preview
-            if (preview.width != dots.width || preview.height != dots.height ||
-                preview.width != tinted.width || preview.height != tinted.height
-            ) {
+            if (preview.width != dots.width || preview.height != dots.height) {
                 throw IOException("Sikku lesson image dimensions do not match")
             }
 
@@ -50,67 +48,107 @@ internal data class SikkuLesson(
             val coordinateSpace = root.getJSONObject("coordinateSpace")
             val coordinateWidth = coordinateSpace.getDouble("width").toFloat()
             val coordinateHeight = coordinateSpace.getDouble("height").toFloat()
-            require(coordinateWidth > 0f && coordinateHeight > 0f) {
+            require(
+                coordinateWidth > 0f && coordinateHeight > 0f &&
+                    coordinateWidth.isFinite() && coordinateHeight.isFinite()
+            ) {
                 "Invalid path coordinate dimensions"
+            }
+            val polygonDataByStep = readStepPolygonData(root)
+            val yellowArtwork = if (polygonDataByStep.isEmpty()) {
+                null
+            } else {
+                createYellowArtwork(preview)
             }
 
             val lessonArray = root.getJSONArray("lessons")
             val steps = buildList {
                 for (lessonIndex in 0 until lessonArray.length()) {
                     val lesson = lessonArray.getJSONObject(lessonIndex)
-                    val speed = lesson.getDouble("speed").toFloat()
-                    require(speed > 0f && speed.isFinite()) { "Invalid lesson speed" }
-                    val strokes = mutableListOf<LessonStroke>()
                     val paths = lesson.getJSONArray("paths")
-                    for (pathIndex in 0 until paths.length()) {
-                        val path = paths.getJSONObject(pathIndex)
-                        val pathStrokes = path.getJSONArray("strokes")
-                        for (strokeIndex in 0 until pathStrokes.length()) {
-                            val stroke = pathStrokes.getJSONObject(strokeIndex)
-                            val width = stroke.getDouble("width").toFloat()
-                            require(width > 0f && width.isFinite()) { "Invalid stroke width" }
-                            val nodesArray = stroke.getJSONArray("nodes")
-                            val nodes = buildList {
-                                for (nodeIndex in 0 until nodesArray.length()) {
-                                    val node = nodesArray.getJSONObject(nodeIndex)
-                                    val x = node.getDouble("x").toFloat()
-                                    val y = node.getDouble("y").toFloat()
-                                    require(x.isFinite() && y.isFinite()) {
-                                        "Invalid path node coordinates"
-                                    }
-                                    add(LessonPoint(x, y))
-                                }
-                            }
-                            require(nodes.size >= 2) { "Path stroke has fewer than two nodes" }
-
-                            val widthArray = stroke.optJSONArray("segmentWidths")
-                            val segmentWidths = if (widthArray == null) {
-                                emptyList()
-                            } else {
-                                buildList {
-                                    for (widthIndex in 0 until widthArray.length()) {
-                                        val segmentWidth = widthArray.getDouble(widthIndex).toFloat()
-                                        require(segmentWidth > 0f && segmentWidth.isFinite()) {
-                                            "Invalid segment width"
+                    val lessonPaths = buildList {
+                        for (pathIndex in 0 until paths.length()) {
+                            val path = paths.getJSONObject(pathIndex)
+                            val pathStrokes = path.getJSONArray("strokes")
+                            val strokes = mutableListOf<LessonStroke>()
+                            for (strokeIndex in 0 until pathStrokes.length()) {
+                                val stroke = pathStrokes.getJSONObject(strokeIndex)
+                                val width = stroke.getDouble("width").toFloat()
+                                require(width > 0f && width.isFinite()) { "Invalid stroke width" }
+                                val nodesArray = stroke.getJSONArray("nodes")
+                                val nodes = buildList {
+                                    for (nodeIndex in 0 until nodesArray.length()) {
+                                        val node = nodesArray.getJSONObject(nodeIndex)
+                                        val x = node.getDouble("x").toFloat()
+                                        val y = node.getDouble("y").toFloat()
+                                        require(x.isFinite() && y.isFinite()) {
+                                            "Invalid path node coordinates"
                                         }
-                                        add(segmentWidth)
+                                        add(LessonPoint(x, y))
                                     }
                                 }
+                                require(nodes.size >= 2) { "Path stroke has fewer than two nodes" }
+
+                                val widthArray = stroke.optJSONArray("segmentWidths")
+                                val segmentWidths = if (widthArray == null) {
+                                    emptyList()
+                                } else {
+                                    buildList {
+                                        for (widthIndex in 0 until widthArray.length()) {
+                                            val segmentWidth =
+                                                widthArray.getDouble(widthIndex).toFloat()
+                                            require(segmentWidth > 0f && segmentWidth.isFinite()) {
+                                                "Invalid segment width"
+                                            }
+                                            add(segmentWidth)
+                                        }
+                                    }
+                                }
+                                strokes += LessonStroke(width, segmentWidths, nodes)
                             }
-                            strokes += LessonStroke(width, segmentWidths, nodes)
+                            add(LessonPath(strokes))
                         }
                     }
-                    require(strokes.isNotEmpty()) { "Lesson has no drawing strokes" }
+                    require(lessonPaths.any { it.strokes.isNotEmpty() }) {
+                        "Lesson has no drawing strokes"
+                    }
+                    val number = lesson.getInt("lesson")
+                    val step = LessonStep(
+                        number = number,
+                        paths = lessonPaths
+                    )
+                    val polygonStep = polygonDataByStep[number]
+                        ?.takeIf { it.polygons.isNotEmpty() }
                     add(
-                        LessonStep(
-                            number = lesson.getInt("lesson"),
-                            speed = speed,
-                            strokes = strokes
-                        )
+                        if (polygonStep == null) {
+                            step
+                        } else {
+                            step.copy(
+                                polygonReveal = PolygonRevealData.create(
+                                    polygons = polygonStep.polygons,
+                                    step = step,
+                                    coordinateWidth = coordinateWidth,
+                                    coordinateHeight = coordinateHeight,
+                                    yellowArtwork = checkNotNull(yellowArtwork),
+                                    connections = polygonStep.connections
+                                )
+                            )
+                        }
                     )
                 }
             }
             require(steps.isNotEmpty()) { "Path data has no lessons" }
+
+            val tintedFile = File(directory, "tinted.webp")
+            val tinted = if (steps.any { it.polygonReveal == null } && tintedFile.isFile) {
+                decodeImage(tintedFile).also {
+                    if (preview.width != it.width || preview.height != it.height) {
+                        throw IOException("Sikku lesson image dimensions do not match")
+                    }
+                }
+            } else {
+                preview
+            }
 
             return SikkuLesson(
                 preview = preview,

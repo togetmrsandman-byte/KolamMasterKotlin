@@ -8,7 +8,7 @@ import org.junit.Test
 class InitialAssetSetupTest {
     @Test
     fun downloadsInitialLessonThumbnailsWithoutLoadingCommunityImages() = runBlocking {
-        val harness = Harness()
+        val harness = Harness(60)
         val progress = mutableListOf<AssetSetupProgress>()
 
         assertTrue(harness.setup.run { progress += it })
@@ -21,8 +21,21 @@ class InitialAssetSetupTest {
     }
 
     @Test
+    fun downloadsFewerThan60ThumbnailsWhenFewerLessonsAvailable() = runBlocking {
+        val harness = Harness(25)
+        val progress = mutableListOf<AssetSetupProgress>()
+
+        assertTrue(harness.setup.run { progress += it })
+
+        assertEquals(25, harness.cachedThumbnails.size)
+        assertEquals(25, progress.last().total)
+        assertEquals(25, progress.last().completed)
+        assertTrue(harness.isComplete)
+    }
+
+    @Test
     fun completedSetupDoesNotLoadOrDownloadAssetsAgain() = runBlocking {
-        val harness = Harness().apply { isComplete = true }
+        val harness = Harness(60).apply { isComplete = true }
 
         assertTrue(harness.setup.run {})
 
@@ -32,7 +45,7 @@ class InitialAssetSetupTest {
 
     @Test
     fun failedImageDownloadDoesNotBlockOnboardingAndIsReported() = runBlocking {
-        val harness = Harness().apply { failLastThumbnailOnce = true }
+        val harness = Harness(60).apply { failLastThumbnailOnce = true }
         val progress = mutableListOf<AssetSetupProgress>()
 
         assertTrue(harness.setup.run { progress += it })
@@ -41,7 +54,7 @@ class InitialAssetSetupTest {
         assertEquals(AssetSetupMessage.CompleteWithMissingImages, progress.last().message)
     }
 
-    private class Harness {
+    private class Harness(private val lessonCount: Int) {
         var isComplete = false
         var failLastThumbnailOnce = false
         var thumbnailDownloadCount = 0
@@ -57,7 +70,7 @@ class InitialAssetSetupTest {
             },
             loadLessons = {
                 events += "lessons"
-                List(60) { index -> lesson(index) }
+                List(lessonCount) { index -> lesson(index) }
             },
             cacheLessonThumbnails = { urls, reportProgress ->
                 var completed = 0
@@ -65,7 +78,7 @@ class InitialAssetSetupTest {
                 urls.forEach { url ->
                     if (url !in cachedThumbnails) {
                         thumbnailDownloadCount++
-                        if (failLastThumbnailOnce && !failureUsed && url.endsWith("/59.png")) {
+                        if (failLastThumbnailOnce && !failureUsed && url.endsWith("/${lessonCount - 1}.png")) {
                             failureUsed = true
                             successful = false
                         } else {
