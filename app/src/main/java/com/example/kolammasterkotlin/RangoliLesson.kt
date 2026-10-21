@@ -89,7 +89,7 @@ internal data class RangoliLesson(
                         number = number,
                         structuralLesson = lessonWithPolygons,
                         fillBitmap = null,
-                        animationDurationMillis = 3000
+                        animationDurationMillis = 2000
                     )
                 }
             }

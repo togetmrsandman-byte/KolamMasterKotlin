@@ -52,7 +52,7 @@ internal fun RangoliLessonScreen(
     var complete by rememberSaveable { mutableStateOf(false) }
     var replayRequest by remember { mutableIntStateOf(0) }
     var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
-    var activePathIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
+    var activeStrokeIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
@@ -75,26 +75,26 @@ internal fun RangoliLessonScreen(
         if (started && !complete && structuralStep != null) {
             if (animatedStepIndex != stepIndex || animatedReplayRequest != replayRequest) {
                 progress.snapTo(0f)
-                activePathIndex = 0
-                structuralStep?.let { step ->
+                activeStrokeIndex = 0
+                structuralStep.let { step ->
                     polygonPlaybacks[step.number]?.reset()
                 }
                 animatedStepIndex = stepIndex
                 animatedReplayRequest = replayRequest
             }
             val loopStartedAt = SystemClock.elapsedRealtime()
-            while (activePathIndex < structuralStep.pathCount) {
-                val pathIndex = activePathIndex
+            while (activeStrokeIndex < structuralStep.strokeCount) {
+                val strokeIndex = activeStrokeIndex
                 val durationMillis = scaledAnimationDuration(
                     currentStep.animationDurationMillis,
                     playbackSpeed,
                     progress.value
                 )
-                val pathStartedAt = SystemClock.elapsedRealtime()
+                val strokeStartedAt = SystemClock.elapsedRealtime()
                 Log.d(
                     "PathTimingDebug",
-                    "Rangoli start stepIndex=$stepIndex pathIndex=$pathIndex " +
-                        "activePathIndex=$activePathIndex pathCount=${structuralStep.pathCount} " +
+                    "Rangoli start stepIndex=$stepIndex strokeIndex=$strokeIndex " +
+                        "activeStrokeIndex=$activeStrokeIndex strokeCount=${structuralStep.strokeCount} " +
                         "playbackSpeed=$playbackSpeed progress=${progress.value} " +
                         "durationMillis=$durationMillis"
                 )
@@ -107,23 +107,23 @@ internal fun RangoliLessonScreen(
                 )
                 Log.d(
                     "PathTimingDebug",
-                    "Rangoli path finished stepIndex=$stepIndex pathIndex=$pathIndex " +
-                        "elapsedMillis=${SystemClock.elapsedRealtime() - pathStartedAt}"
+                    "Rangoli stroke finished stepIndex=$stepIndex strokeIndex=$strokeIndex " +
+                        "elapsedMillis=${SystemClock.elapsedRealtime() - strokeStartedAt}"
                 )
-                if (activePathIndex + 1 < structuralStep.pathCount) progress.snapTo(0f)
-                activePathIndex++
+                if (activeStrokeIndex + 1 < structuralStep.strokeCount) progress.snapTo(0f)
+                activeStrokeIndex++
             }
             Log.d(
                 "PathTimingDebug",
-                "Rangoli loop finished stepIndex=$stepIndex pathCount=${structuralStep.pathCount} " +
+                "Rangoli loop finished stepIndex=$stepIndex strokeCount=${structuralStep.strokeCount} " +
                     "elapsedMillis=${SystemClock.elapsedRealtime() - loopStartedAt}"
             )
         } else if (!started) {
             progress.snapTo(0f)
-            activePathIndex = 0
+            activeStrokeIndex = 0
         } else {
             progress.snapTo(1f)
-            activePathIndex = currentStep?.structuralLesson?.pathCount ?: 0
+            activeStrokeIndex = currentStep?.structuralLesson?.strokeCount ?: 0
         }
     }
 
@@ -160,7 +160,7 @@ internal fun RangoliLessonScreen(
                     lesson.steps.filterIndexed { index, _ -> index in completedStepIndices }
                 },
                 progress = progress.value,
-                activePathIndex = activePathIndex,
+                activeStrokeIndex = activeStrokeIndex,
                 showPreview = !started || (complete && !hasPolygonBackedSteps),
                 polygonPlaybacks = polygonPlaybacks,
                 modifier = Modifier.fillMaxSize()
@@ -303,7 +303,7 @@ private fun RangoliArtwork(
     currentStep: RangoliStep?,
     completedSteps: List<RangoliStep>,
     progress: Float,
-    activePathIndex: Int,
+    activeStrokeIndex: Int,
     showPreview: Boolean,
     polygonPlaybacks: Map<Int, PolygonRevealData.Playback>,
     modifier: Modifier
@@ -318,7 +318,7 @@ private fun RangoliArtwork(
                 currentStep = currentStep,
                 completedSteps = completedSteps,
                 progress = progress,
-                activePathIndex = activePathIndex,
+                activeStrokeIndex = activeStrokeIndex,
                 showPreview = showPreview,
                 polygonPlaybacks = polygonPlaybacks
             )
@@ -334,7 +334,7 @@ private fun drawRangoliLayers(
     currentStep: RangoliStep?,
     completedSteps: List<RangoliStep>,
     progress: Float,
-    activePathIndex: Int,
+    activeStrokeIndex: Int,
     showPreview: Boolean,
     polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
@@ -382,7 +382,7 @@ private fun drawRangoliLayers(
             imageRect = imageRect,
             imagePaint = imagePaint,
             progress = progress,
-            activePathIndex = activePathIndex,
+            activeStrokeIndex = activeStrokeIndex,
             polygonPlaybacks = polygonPlaybacks
         )
     }
@@ -400,28 +400,15 @@ private fun drawCompletedRangoliStep(
         val structuralLesson = step.structuralLesson
         val polygonReveal = structuralLesson.polygonReveal
         if (polygonReveal != null) {
-            drawPolygonArtwork(
-                canvas = canvas,
-                imageRect = imageRect,
-                data = polygonReveal,
-                playback = null,
-                pathIndex = 0,
-                progress = 1f,
-                artwork = lesson.artwork
-            )
-        } else {
-            structuralLesson.paths.indices.forEach { pathIndex ->
-                drawBitmapThroughPath(
+            for (strokeIndex in 0 until structuralLesson.strokeCount) {
+                drawPolygonArtwork(
                     canvas = canvas,
-                    bitmap = lesson.artwork,
                     imageRect = imageRect,
-                    imagePaint = imagePaint,
-                    step = structuralLesson,
-                    pathIndex = pathIndex,
-                    coordinateWidth = lesson.coordinateWidth,
-                    coordinateHeight = lesson.coordinateHeight,
+                    data = polygonReveal,
+                    playback = null,
+                    pathIndex = strokeIndex,
                     progress = 1f,
-                    applyArtworkColorFilter = false
+                    artwork = lesson.artwork
                 )
             }
         }
@@ -437,35 +424,22 @@ private fun drawCurrentRangoliStep(
     imageRect: RectF,
     imagePaint: Paint,
     progress: Float,
-    activePathIndex: Int,
+    activeStrokeIndex: Int,
     polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
 ) {
     val structuralLesson = step.structuralLesson
     if (structuralLesson != null) {
         val polygonReveal = structuralLesson.polygonReveal
-        for (pathIndex in 0..activePathIndex.coerceAtMost(structuralLesson.pathCount - 1)) {
-            val pathProgress = if (pathIndex < activePathIndex) 1f else progress
+        for (strokeIndex in 0..activeStrokeIndex.coerceAtMost(structuralLesson.strokeCount - 1)) {
+            val strokeProgress = if (strokeIndex < activeStrokeIndex) 1f else progress
             if (polygonReveal != null) {
                 drawPolygonArtwork(
                     canvas = canvas,
                     imageRect = imageRect,
                     data = polygonReveal,
                     playback = polygonPlaybacks[structuralLesson.number],
-                    pathIndex = pathIndex,
-                    progress = pathProgress
-                )
-            } else {
-                drawBitmapThroughPath(
-                    canvas = canvas,
-                    bitmap = lesson.tinted,
-                    imageRect = imageRect,
-                    imagePaint = imagePaint,
-                    step = structuralLesson,
-                    pathIndex = pathIndex,
-                    coordinateWidth = lesson.coordinateWidth,
-                    coordinateHeight = lesson.coordinateHeight,
-                    progress = pathProgress,
-                    applyArtworkColorFilter = false
+                    pathIndex = strokeIndex,
+                    progress = strokeProgress
                 )
             }
         }

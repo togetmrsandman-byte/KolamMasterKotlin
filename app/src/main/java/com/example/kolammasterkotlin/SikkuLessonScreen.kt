@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import kotlin.math.hypot
 import kotlin.math.min
 
 private val artworkColorFilter = ColorMatrixColorFilter(
@@ -72,7 +71,7 @@ internal fun SikkuLessonScreen(
     var completedStepIndices by remember { mutableStateOf(emptySet<Int>()) }
     var replayRequest by remember { mutableIntStateOf(0) }
     var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
-    var activePathIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
+    var activeStrokeIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
@@ -86,7 +85,7 @@ internal fun SikkuLessonScreen(
         if (started && !complete && stepIndex >= 0) {
             if (animatedStepIndex != stepIndex || animatedReplayRequest != replayRequest) {
                 progress.snapTo(0f)
-                activePathIndex = 0
+                activeStrokeIndex = 0
                 lesson.steps.getOrNull(stepIndex)?.let { step ->
                     polygonPlaybacks[step.number]?.reset()
                 }
@@ -95,18 +94,18 @@ internal fun SikkuLessonScreen(
             }
             val step = lesson.steps[stepIndex]
             val loopStartedAt = SystemClock.elapsedRealtime()
-            while (activePathIndex < step.pathCount) {
-                val pathIndex = activePathIndex
+            while (activeStrokeIndex < step.strokeCount) {
+                val strokeIndex = activeStrokeIndex
                 val durationMillis = scaledAnimationDuration(
                     step.animationDurationMillis,
                     playbackSpeed,
                     progress.value
                 )
-                val pathStartedAt = SystemClock.elapsedRealtime()
+                val strokeStartedAt = SystemClock.elapsedRealtime()
                 Log.d(
                     "PathTimingDebug",
-                    "Sikku start stepIndex=$stepIndex pathIndex=$pathIndex " +
-                        "activePathIndex=$activePathIndex pathCount=${step.pathCount} " +
+                    "Sikku start stepIndex=$stepIndex strokeIndex=$strokeIndex " +
+                        "activeStrokeIndex=$activeStrokeIndex strokeCount=${step.strokeCount} " +
                         "playbackSpeed=$playbackSpeed progress=${progress.value} " +
                         "durationMillis=$durationMillis"
                 )
@@ -119,27 +118,27 @@ internal fun SikkuLessonScreen(
                 )
                 Log.d(
                     "PathTimingDebug",
-                    "Sikku path finished stepIndex=$stepIndex pathIndex=$pathIndex " +
-                        "elapsedMillis=${SystemClock.elapsedRealtime() - pathStartedAt}"
+                    "Sikku stroke finished stepIndex=$stepIndex strokeIndex=$strokeIndex " +
+                        "elapsedMillis=${SystemClock.elapsedRealtime() - strokeStartedAt}"
                 )
-                if (activePathIndex + 1 < step.pathCount) progress.snapTo(0f)
-                activePathIndex++
+                if (activeStrokeIndex + 1 < step.strokeCount) progress.snapTo(0f)
+                activeStrokeIndex++
             }
             Log.d(
                 "PathTimingDebug",
-                "Sikku loop finished stepIndex=$stepIndex pathCount=${step.pathCount} " +
+                "Sikku loop finished stepIndex=$stepIndex strokeCount=${step.strokeCount} " +
                     "elapsedMillis=${SystemClock.elapsedRealtime() - loopStartedAt}"
             )
         } else if (started && !complete) {
             progress.snapTo(0f)
-            activePathIndex = 0
+            activeStrokeIndex = 0
             animatedStepIndex = Int.MIN_VALUE
         } else if (!started) {
             progress.snapTo(0f)
-            activePathIndex = 0
+            activeStrokeIndex = 0
         } else {
             progress.snapTo(1f)
-            activePathIndex = lesson.steps.getOrNull(stepIndex)?.pathCount ?: 0
+            activeStrokeIndex = lesson.steps.getOrNull(stepIndex)?.strokeCount ?: 0
         }
     }
 
@@ -185,7 +184,7 @@ internal fun SikkuLessonScreen(
                     null
                 },
                 progress = progress.value,
-                activePathIndex = activePathIndex,
+                activeStrokeIndex = activeStrokeIndex,
                 showPreview = !started,
                 showDots = started,
                 polygonPlaybacks = polygonPlaybacks,
@@ -328,7 +327,7 @@ private fun LessonArtwork(
     completedSteps: List<LessonStep>,
     currentStep: LessonStep?,
     progress: Float,
-    activePathIndex: Int,
+    activeStrokeIndex: Int,
     showPreview: Boolean,
     showDots: Boolean,
     polygonPlaybacks: Map<Int, PolygonRevealData.Playback>,
@@ -344,7 +343,7 @@ private fun LessonArtwork(
                 completedSteps = completedSteps,
                 currentStep = currentStep,
                 progress = progress,
-                activePathIndex = activePathIndex,
+                activeStrokeIndex = activeStrokeIndex,
                 showPreview = showPreview,
                 showDots = showDots,
                 polygonPlaybacks = polygonPlaybacks
@@ -361,7 +360,7 @@ private fun drawLessonLayers(
     completedSteps: List<LessonStep>,
     currentStep: LessonStep?,
     progress: Float,
-    activePathIndex: Int,
+    activeStrokeIndex: Int,
     showPreview: Boolean,
     showDots: Boolean,
     polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
@@ -386,59 +385,33 @@ private fun drawLessonLayers(
     for (completedStep in completedSteps) {
         val polygonReveal = completedStep.polygonReveal
         if (polygonReveal != null) {
-            drawPolygonArtwork(
-                canvas = canvas,
-                imageRect = imageRect,
-                data = polygonReveal,
-                playback = null,
-                pathIndex = 0,
-                progress = 1f,
-                artwork = lesson.preview,
-                colorFilter = artworkColorFilter
-            )
-        } else {
-            completedStep.paths.indices.forEach { pathIndex ->
-                drawBitmapThroughPath(
+            for (strokeIndex in 0 until completedStep.strokeCount) {
+                drawPolygonArtwork(
                     canvas = canvas,
-                    bitmap = lesson.preview,
                     imageRect = imageRect,
-                    imagePaint = imagePaint,
-                    coordinateWidth = lesson.coordinateWidth,
-                    coordinateHeight = lesson.coordinateHeight,
-                    step = completedStep,
-                    pathIndex = pathIndex,
+                    data = polygonReveal,
+                    playback = null,
+                    pathIndex = strokeIndex,
                     progress = 1f,
-                    applyArtworkColorFilter = true
+                    artwork = lesson.preview,
+                    colorFilter = artworkColorFilter
                 )
             }
         }
     }
 
-    if (currentStep != null && currentStep.pathCount > 0) {
+    if (currentStep != null && currentStep.strokeCount > 0) {
         val polygonReveal = currentStep.polygonReveal
-        for (pathIndex in 0..activePathIndex.coerceAtMost(currentStep.pathCount - 1)) {
-            val pathProgress = if (pathIndex < activePathIndex) 1f else progress
+        for (strokeIndex in 0..activeStrokeIndex.coerceAtMost(currentStep.strokeCount - 1)) {
+            val strokeProgress = if (strokeIndex < activeStrokeIndex) 1f else progress
             if (polygonReveal != null) {
                 drawPolygonArtwork(
                     canvas = canvas,
                     imageRect = imageRect,
                     data = polygonReveal,
                     playback = polygonPlaybacks[currentStep.number],
-                    pathIndex = pathIndex,
-                    progress = pathProgress
-                )
-            } else {
-                drawBitmapThroughPath(
-                    canvas = canvas,
-                    bitmap = lesson.tinted,
-                    imageRect = imageRect,
-                    imagePaint = imagePaint,
-                    coordinateWidth = lesson.coordinateWidth,
-                    coordinateHeight = lesson.coordinateHeight,
-                    step = currentStep,
-                    pathIndex = pathIndex,
-                    progress = pathProgress,
-                    applyArtworkColorFilter = true
+                    pathIndex = strokeIndex,
+                    progress = strokeProgress
                 )
             }
         }
@@ -450,103 +423,4 @@ private fun drawLessonLayers(
         }
         canvas.drawBitmap(lesson.dots, null, imageRect, dotsPaint)
     }
-}
-
-internal fun drawBitmapThroughPath(
-    canvas: AndroidCanvas,
-    bitmap: android.graphics.Bitmap,
-    imageRect: RectF,
-    imagePaint: Paint,
-    step: LessonStep,
-    pathIndex: Int,
-    coordinateWidth: Float,
-    coordinateHeight: Float,
-    progress: Float,
-    applyArtworkColorFilter: Boolean
-) {
-    val revealMask = createRevealMask(
-        imageRect = imageRect,
-        coordinateWidth = coordinateWidth,
-        coordinateHeight = coordinateHeight,
-        step = step,
-        pathIndex = pathIndex,
-        progress = progress
-    ) ?: return
-    val saveCount = canvas.save()
-    canvas.clipPath(revealMask)
-    val artworkPaint = Paint(imagePaint).apply {
-        if (applyArtworkColorFilter) colorFilter = artworkColorFilter
-    }
-    canvas.drawBitmap(bitmap, null, imageRect, artworkPaint)
-    canvas.restoreToCount(saveCount)
-}
-
-internal fun createRevealMask(
-    imageRect: RectF,
-    coordinateWidth: Float,
-    coordinateHeight: Float,
-    step: LessonStep,
-    pathIndex: Int,
-    progress: Float
-): Path? {
-    val scaleX = imageRect.width() / coordinateWidth
-    val scaleY = imageRect.height() / coordinateHeight
-    val widthScale = hypot(scaleX, scaleY) / kotlin.math.sqrt(2f)
-    var totalLength = 0f
-    for (stroke in step.paths.getOrNull(pathIndex)?.strokes.orEmpty()) {
-        for (index in 0 until stroke.nodes.lastIndex) {
-            val start = stroke.nodes[index]
-            val end = stroke.nodes[index + 1]
-            totalLength += hypot(end.x - start.x, end.y - start.y)
-        }
-    }
-    if (totalLength <= 0f) return null
-
-    var remaining = totalLength * progress.coerceIn(0f, 1f)
-    val maskPath = Path()
-    val segmentPath = Path()
-    val segmentFill = Path()
-    val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        style = Paint.Style.STROKE
-        strokeCap = Paint.Cap.ROUND
-        strokeJoin = Paint.Join.ROUND
-    }
-    var hasMask = false
-
-    for (stroke in step.paths.getOrNull(pathIndex)?.strokes.orEmpty()) {
-        for (segmentIndex in 0 until stroke.nodes.lastIndex) {
-            if (remaining <= 0f) return maskPath.takeIf { hasMask }
-
-            val start = stroke.nodes[segmentIndex]
-            val end = stroke.nodes[segmentIndex + 1]
-            val segmentLength = hypot(end.x - start.x, end.y - start.y)
-            if (segmentLength <= 0f) continue
-
-            val visibleLength = min(remaining, segmentLength)
-            val fraction = visibleLength / segmentLength
-            val visibleEndX = start.x + (end.x - start.x) * fraction
-            val visibleEndY = start.y + (end.y - start.y) * fraction
-            val segmentWidth = stroke.segmentWidths.getOrNull(segmentIndex) ?: stroke.width
-            strokePaint.strokeWidth = segmentWidth * widthScale
-            segmentPath.reset()
-            segmentPath.moveTo(
-                imageRect.left + start.x * scaleX,
-                imageRect.top + start.y * scaleY
-            )
-            segmentPath.lineTo(
-                imageRect.left + visibleEndX * scaleX,
-                imageRect.top + visibleEndY * scaleY
-            )
-            segmentFill.reset()
-            strokePaint.getFillPath(segmentPath, segmentFill)
-            if (hasMask) {
-                check(maskPath.op(segmentFill, Path.Op.UNION)) { "Could not combine path segments" }
-            } else {
-                maskPath.set(segmentFill)
-                hasMask = true
-            }
-            remaining -= visibleLength
-        }
-    }
-    return maskPath.takeIf { hasMask }
 }

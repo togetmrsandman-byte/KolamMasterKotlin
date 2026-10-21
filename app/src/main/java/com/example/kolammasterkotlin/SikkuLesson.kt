@@ -21,10 +21,12 @@ internal data class LessonStep(
     val paths: List<LessonPath>,
     val polygonReveal: PolygonRevealData? = null
 ) {
-    val pathCount: Int
-        get() = paths.size
+    val strokes: List<LessonStroke>
+        get() = paths.flatMap { it.strokes }
+    val strokeCount: Int
+        get() = strokes.size
     val animationDurationMillis: Int
-        get() = 3000
+        get() = 2000
 }
 
 internal data class SikkuLesson(

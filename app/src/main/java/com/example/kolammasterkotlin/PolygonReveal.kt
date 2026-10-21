@@ -98,29 +98,28 @@ internal class PolygonRevealData private constructor(
 
             val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
             val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
-            val routes = step.paths.map { path ->
+            val allStrokes = step.paths.flatMap { it.strokes }
+            val routes = allStrokes.map { stroke ->
                 val segments = mutableListOf<RouteSegment>()
                 var totalLength = 0.0
-                path.strokes.forEach { stroke ->
-                    for (index in 0 until stroke.nodes.lastIndex) {
-                        val start = stroke.nodes[index]
-                        val end = stroke.nodes[index + 1]
-                        val startX = start.x.toDouble() * routeScaleX
-                        val startY = start.y.toDouble() * routeScaleY
-                        val deltaX = (end.x.toDouble() - start.x) * routeScaleX
-                        val deltaY = (end.y.toDouble() - start.y) * routeScaleY
-                        val length = hypot(deltaX, deltaY)
-                        if (length > 0.0 && length.isFinite()) {
-                            segments += RouteSegment(
-                                startX = startX,
-                                startY = startY,
-                                deltaX = deltaX,
-                                deltaY = deltaY,
-                                length = length,
-                                startDistance = totalLength
-                            )
-                            totalLength += length
-                        }
+                for (index in 0 until stroke.nodes.lastIndex) {
+                    val start = stroke.nodes[index]
+                    val end = stroke.nodes[index + 1]
+                    val startX = start.x.toDouble() * routeScaleX
+                    val startY = start.y.toDouble() * routeScaleY
+                    val deltaX = (end.x.toDouble() - start.x) * routeScaleX
+                    val deltaY = (end.y.toDouble() - start.y) * routeScaleY
+                    val length = hypot(deltaX, deltaY)
+                    if (length > 0.0 && length.isFinite()) {
+                        segments += RouteSegment(
+                            startX = startX,
+                            startY = startY,
+                            deltaX = deltaX,
+                            deltaY = deltaY,
+                            length = length,
+                            startDistance = totalLength
+                        )
+                        totalLength += length
                     }
                 }
                 Route(segments, totalLength)
