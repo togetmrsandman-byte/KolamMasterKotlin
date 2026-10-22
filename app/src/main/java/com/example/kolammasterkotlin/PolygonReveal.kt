@@ -12,10 +12,8 @@ import org.json.JSONObject
 import java.io.IOException
 import java.math.BigDecimal
 import kotlin.math.abs
-import kotlin.math.floor
 import kotlin.math.hypot
-
-private const val POLYGON_REVEAL_BUCKET_COUNT = 256
+import kotlin.math.min
 
 internal data class LessonPolygon(
     val vertices: List<LessonPoint>,
@@ -45,7 +43,9 @@ internal data class LessonPolygonStep(
 internal class PolygonRevealData private constructor(
     val yellowArtwork: Bitmap,
     val regionPath: Path,
-    private val runsByPathAndBucket: List<List<Path>>,
+    val strokes: List<LessonStroke>,
+    val coordinateWidth: Float,
+    val coordinateHeight: Float,
     val connections: List<LessonConnection>
 ) {
     companion object {
@@ -153,185 +153,15 @@ internal class PolygonRevealData private constructor(
             }
             regionPath.addPath(routePath)
 
-            data class ProcessedPolygon(
-                val path: Path,
-                val strokeIndex: Int,
-                val hole: Boolean
-            )
-            val processedPolygons = polygons.mapIndexed { index, polygon ->
-                val strokeIndex = polygon.id?.toIntOrNull()?.coerceIn(0, routes.lastIndex) ?: (index % routes.size)
-                val pPath = Path().apply {
-                    val signedArea = polygon.vertices.indices.sumOf { idx ->
-                        val pt = polygon.vertices[idx]
-                        val next = polygon.vertices[(idx + 1) % polygon.vertices.size]
-                        (pt.x.toDouble() * next.y - next.x.toDouble() * pt.y)
-                    }
-                    val ordered = if (signedArea > 0.0) polygon.vertices else polygon.vertices.asReversed()
-                    ordered.forEachIndexed { ptIdx, pt ->
-                        if (ptIdx == 0) moveTo(pt.x, pt.y) else lineTo(pt.x, pt.y)
-                    }
-                    close()
-                }
-                ProcessedPolygon(pPath, strokeIndex, polygon.hole)
-            }
-
-            fun findStrokeForPoint(px: Double, py: Double): Int? {
-                var matched: Int? = null
-                for (pp in processedPolygons) {
-                    if (isPointInPath(pp.path, px.toFloat(), py.toFloat())) {
-                        if (pp.hole) {
-                            matched = null
-                        } else {
-                            matched = pp.strokeIndex
-                        }
-                    }
-                }
-                return matched
-            }
-
-            val regionMask = Bitmap.createBitmap(
-                yellowArtwork.width,
-                yellowArtwork.height,
-                Bitmap.Config.ARGB_8888
-            )
-            Canvas(regionMask).drawPath(
-                regionPath,
-                Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE }
-            )
-
-            val runsByPathAndBucket = routes.map { List(POLYGON_REVEAL_BUCKET_COUNT) { Path() } }
-            val regionPixels = IntArray(yellowArtwork.width)
-            val artworkPixels = IntArray(yellowArtwork.width)
-
-            fun revealBucketForProgress(progress: Double): Int =
-                (kotlin.math.ceil(progress * POLYGON_REVEAL_BUCKET_COUNT - 1e-9).toInt() - 1)
-                    .coerceIn(0, POLYGON_REVEAL_BUCKET_COUNT - 1)
-
-            fun nearestRouteOnPath(
-                x: Double,
-                y: Double,
-                routes: List<Route>,
-                pathIndex: Int
-            ): RouteMatch {
-                val route = routes.getOrNull(pathIndex) ?: return nearestRoute(x, y, routes)
-                if (route.totalLength <= 0.0 || !route.totalLength.isFinite()) {
-                    return nearestRoute(x, y, routes)
-                }
-
-                var nearestDistanceSquared = Double.POSITIVE_INFINITY
-                var nearestProgress = 0.0
-                route.segments.forEach { segment ->
-                    val offsetX = x - segment.startX
-                    val offsetY = y - segment.startY
-                    val projection = (
-                        (offsetX * segment.deltaX + offsetY * segment.deltaY) /
-                            (segment.length * segment.length)
-                        ).coerceIn(0.0, 1.0)
-                    val differenceX = offsetX - segment.deltaX * projection
-                    val differenceY = offsetY - segment.deltaY * projection
-                    val distanceSquared = differenceX * differenceX + differenceY * differenceY
-                    val nearestScale = if (nearestDistanceSquared.isFinite()) abs(nearestDistanceSquared) else 0.0
-                    val tieTolerance = maxOf(abs(distanceSquared), nearestScale, 1.0) * 1e-12
-                    if (distanceSquared < nearestDistanceSquared - tieTolerance) {
-                        nearestDistanceSquared = distanceSquared
-                        nearestProgress = (segment.startDistance + segment.length * projection) / route.totalLength
-                    }
-                }
-                return RouteMatch(pathIndex = pathIndex, progress = nearestProgress.coerceIn(0.0, 1.0))
-            }
-
-            for (y in 0 until yellowArtwork.height) {
-                regionMask.getPixels(regionPixels, 0, yellowArtwork.width, 0, y, yellowArtwork.width, 1)
-                yellowArtwork.getPixels(artworkPixels, 0, yellowArtwork.width, 0, y, yellowArtwork.width, 1)
-                var runStart = -1
-                var runBucket: Pair<Int, Int>? = null
-                for (x in 0..yellowArtwork.width) {
-                    val bucket = if (x < yellowArtwork.width &&
-                        Color.alpha(regionPixels[x]) > 0 &&
-                        Color.alpha(artworkPixels[x]) > 0
-                    ) {
-                        val px = x + 0.5
-                        val py = y + 0.5
-                        val strokeOverride = findStrokeForPoint(px, py)
-                        val routeMatch = if (strokeOverride != null) {
-                            nearestRouteOnPath(px, py, routes, strokeOverride)
-                        } else {
-                            nearestRoute(px, py, routes)
-                        }
-                        val ownerPath = routeMatch.pathIndex
-                        val revealProgress = routeMatch.progress
-                        (ownerPath to revealBucketForProgress(revealProgress))
-                    } else {
-                        null
-                    }
-
-                    if (bucket != runBucket) {
-                        if (runStart >= 0) {
-                            val (pathIndex, pathBucket) = checkNotNull(runBucket)
-                            runsByPathAndBucket[pathIndex][pathBucket].addRect(
-                                runStart.toFloat(),
-                                y.toFloat(),
-                                x.toFloat(),
-                                y + 1f,
-                                Path.Direction.CW
-                            )
-                        }
-                        runStart = if (bucket != null) x else -1
-                        runBucket = bucket
-                    }
-                }
-            }
-
-            regionMask.recycle()
-
             return PolygonRevealData(
                 yellowArtwork,
                 regionPath,
-                runsByPathAndBucket,
+                allStrokes,
+                coordinateWidth,
+                coordinateHeight,
                 connections
             )
         }
-
-        private fun nearestRoute(
-            x: Double,
-            y: Double,
-            routes: List<Route>
-        ): RouteMatch {
-            var nearestDistanceSquared = Double.POSITIVE_INFINITY
-            var nearestPathIndex = -1
-            var nearestProgress = 0.0
-            routes.forEachIndexed { pathIndex, route ->
-                if (route.totalLength > 0.0 && route.totalLength.isFinite()) {
-                    route.segments.forEach { segment ->
-                        val offsetX = x - segment.startX
-                        val offsetY = y - segment.startY
-                        val projection = (
-                            (offsetX * segment.deltaX + offsetY * segment.deltaY) /
-                                (segment.length * segment.length)
-                            ).coerceIn(0.0, 1.0)
-                        val differenceX = offsetX - segment.deltaX * projection
-                        val differenceY = offsetY - segment.deltaY * projection
-                        val distanceSquared = differenceX * differenceX + differenceY * differenceY
-                        val nearestScale =
-                            if (nearestDistanceSquared.isFinite()) abs(nearestDistanceSquared) else 0.0
-                        val tieTolerance = maxOf(abs(distanceSquared), nearestScale, 1.0) * 1e-12
-                        if (distanceSquared < nearestDistanceSquared - tieTolerance) {
-                            nearestDistanceSquared = distanceSquared
-                            nearestPathIndex = pathIndex
-                            nearestProgress =
-                                (segment.startDistance + segment.length * projection) /
-                                    route.totalLength
-                        }
-                    }
-                }
-            }
-            check(nearestPathIndex >= 0) { "Artwork pixel has no usable animation path" }
-            return RouteMatch(
-                pathIndex = nearestPathIndex,
-                progress = nearestProgress.coerceIn(0.0, 1.0)
-            )
-        }
-
     }
 
     private data class RouteSegment(
@@ -348,55 +178,97 @@ internal class PolygonRevealData private constructor(
         val totalLength: Double
     )
 
-    private data class RouteMatch(
-        val pathIndex: Int,
-        val progress: Double
-    )
-
     internal class Playback(private val data: PolygonRevealData) {
-        private val visiblePaths = data.runsByPathAndBucket.map { Path() }
-        private val lastBuckets = IntArray(data.runsByPathAndBucket.size) { -1 }
-
-        fun reset() {
-            visiblePaths.forEach(Path::reset)
-            lastBuckets.fill(-1)
-        }
+        fun reset() {}
 
         fun pathAt(pathIndex: Int, progress: Float): Path? {
-            if (pathIndex !in visiblePaths.indices) return null
-            val boundedProgress = progress.coerceIn(0f, 1f)
-            if (boundedProgress <= 0f) return null
-            val targetBucket = floor(boundedProgress * POLYGON_REVEAL_BUCKET_COUNT)
-                .toInt()
-                .minus(1)
-                .coerceIn(0, POLYGON_REVEAL_BUCKET_COUNT - 1)
-            val visiblePath = visiblePaths[pathIndex]
-            if (targetBucket < lastBuckets[pathIndex]) {
-                visiblePath.reset()
-                lastBuckets[pathIndex] = -1
+            val stroke = data.strokes.getOrNull(pathIndex) ?: return null
+            if (stroke.nodes.size < 2) return null
+
+            val routeScaleX = data.yellowArtwork.width.toDouble() / data.coordinateWidth
+            val routeScaleY = data.yellowArtwork.height.toDouble() / data.coordinateHeight
+            val widthScale = hypot(routeScaleX, routeScaleY) / kotlin.math.sqrt(2.0)
+
+            var totalLength = 0.0
+            for (index in 0 until stroke.nodes.lastIndex) {
+                val start = stroke.nodes[index]
+                val end = stroke.nodes[index + 1]
+                val dx = (end.x - start.x).toDouble() * routeScaleX
+                val dy = (end.y - start.y).toDouble() * routeScaleY
+                totalLength += hypot(dx, dy)
             }
-            for (bucket in (lastBuckets[pathIndex] + 1)..targetBucket) {
-                visiblePath.addPath(data.runsByPathAndBucket[pathIndex][bucket])
+            if (totalLength <= 0.0) return null
+
+            var remaining = totalLength * progress.coerceIn(0f, 1f)
+            val maskPath = Path()
+            val segmentPath = Path()
+            val segmentFill = Path()
+            val strokePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeCap = Paint.Cap.ROUND
+                strokeJoin = Paint.Join.ROUND
             }
-            lastBuckets[pathIndex] = targetBucket
-            return visiblePath
+            var hasMask = false
+
+            for (segmentIndex in 0 until stroke.nodes.lastIndex) {
+                if (remaining <= 0.0) break
+
+                val start = stroke.nodes[segmentIndex]
+                val end = stroke.nodes[segmentIndex + 1]
+                val rawDx = (end.x - start.x).toDouble() * routeScaleX
+                val rawDy = (end.y - start.y).toDouble() * routeScaleY
+                val segmentLength = hypot(rawDx, rawDy)
+                if (segmentLength <= 0.0) continue
+
+                val visibleLength = min(remaining, segmentLength)
+                val fraction = visibleLength / segmentLength
+                val visibleEndX = (start.x.toDouble() * routeScaleX) + ((end.x.toDouble() * routeScaleX) - (start.x.toDouble() * routeScaleX)) * fraction
+                val visibleEndY = (start.y.toDouble() * routeScaleY) + ((end.y.toDouble() * routeScaleY) - (start.y.toDouble() * routeScaleY)) * fraction
+
+                val centerOffset = stroke.segmentCenterOffsets.getOrNull(segmentIndex)?.toDouble() ?: 0.0
+                val segmentWidth = stroke.segmentWidths.getOrNull(segmentIndex) ?: stroke.width
+                strokePaint.strokeWidth = (segmentWidth * widthScale).toFloat()
+
+                val startXCoord = start.x.toDouble() * routeScaleX
+                val startYCoord = start.y.toDouble() * routeScaleY
+
+                val (shiftedStartX, shiftedStartY) = if (abs(centerOffset) > 0.001 && segmentLength > 0.0) {
+                    val nx = -rawDy / segmentLength
+                    val ny = rawDx / segmentLength
+                    (startXCoord + nx * centerOffset) to (startYCoord + ny * centerOffset)
+                } else {
+                    startXCoord to startYCoord
+                }
+
+                val (shiftedEndX, shiftedEndY) = if (abs(centerOffset) > 0.001 && segmentLength > 0.0) {
+                    val nx = -rawDy / segmentLength
+                    val ny = rawDx / segmentLength
+                    val partialDx = visibleEndX - startXCoord
+                    val partialDy = visibleEndY - startYCoord
+                    (startXCoord + partialDx + nx * centerOffset) to (startYCoord + partialDy + ny * centerOffset)
+                } else {
+                    visibleEndX to visibleEndY
+                }
+
+                segmentPath.reset()
+                segmentPath.moveTo(shiftedStartX.toFloat(), shiftedStartY.toFloat())
+                segmentPath.lineTo(shiftedEndX.toFloat(), shiftedEndY.toFloat())
+
+                segmentFill.reset()
+                strokePaint.getFillPath(segmentPath, segmentFill)
+
+                if (hasMask) {
+                    maskPath.op(segmentFill, Path.Op.UNION)
+                } else {
+                    maskPath.set(segmentFill)
+                    hasMask = true
+                }
+
+                remaining -= visibleLength
+            }
+            return maskPath.takeIf { hasMask }
         }
     }
-}
-
-private fun isPointInPath(path: Path, x: Float, y: Float): Boolean {
-    val bounds = RectF()
-    path.computeBounds(bounds, true)
-    if (!bounds.contains(x, y)) return false
-    val region = android.graphics.Region()
-    val clip = android.graphics.Region(
-        bounds.left.toInt() - 1,
-        bounds.top.toInt() - 1,
-        bounds.right.toInt() + 1,
-        bounds.bottom.toInt() + 1
-    )
-    region.setPath(path, clip)
-    return region.contains(x.toInt(), y.toInt())
 }
 
 internal fun createYellowArtwork(source: Bitmap): Bitmap {
