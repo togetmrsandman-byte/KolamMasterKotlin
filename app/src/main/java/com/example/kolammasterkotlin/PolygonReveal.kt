@@ -62,52 +62,7 @@ internal class PolygonRevealData private constructor(
                 "Invalid path coordinate dimensions"
             }
 
-            val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
-            val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
             val allStrokes = step.paths.flatMap { it.strokes }
-            val routes = allStrokes.map { stroke ->
-                val segments = mutableListOf<RouteSegment>()
-                var totalLength = 0.0
-                for (index in 0 until stroke.nodes.lastIndex) {
-                    val start = stroke.nodes[index]
-                    val end = stroke.nodes[index + 1]
-                    val centerOffset = stroke.segmentCenterOffsets.getOrNull(index) ?: 0f
-
-                    val rawDeltaX = (end.x.toDouble() - start.x.toDouble())
-                    val rawDeltaY = (end.y.toDouble() - start.y.toDouble())
-                    val rawLength = hypot(rawDeltaX, rawDeltaY)
-
-                    val (startXCoord, startYCoord) = if (abs(centerOffset) > 0.001 && rawLength > 0.0) {
-                        val nx = -rawDeltaY / rawLength
-                        val ny = rawDeltaX / rawLength
-                        (start.x.toDouble() + nx * centerOffset) to (start.y.toDouble() + ny * centerOffset)
-                    } else {
-                        start.x.toDouble() to start.y.toDouble()
-                    }
-
-                    val deltaX = rawDeltaX * routeScaleX
-                    val deltaY = rawDeltaY * routeScaleY
-                    val startX = startXCoord * routeScaleX
-                    val startY = startYCoord * routeScaleY
-                    val length = hypot(deltaX, deltaY)
-
-                    if (length > 0.0 && length.isFinite()) {
-                        segments += RouteSegment(
-                            startX = startX,
-                            startY = startY,
-                            deltaX = deltaX,
-                            deltaY = deltaY,
-                            length = length,
-                            startDistance = totalLength
-                        )
-                        totalLength += length
-                    }
-                }
-                Route(segments, totalLength)
-            }
-            require(routes.any { it.totalLength > 0.0 && it.totalLength.isFinite() }) {
-                "Polygon step has no usable animation route"
-            }
 
             val regionPath = Path().apply { fillType = Path.FillType.WINDING }
             polygons.forEach { polygon ->
@@ -138,20 +93,32 @@ internal class PolygonRevealData private constructor(
                 regionPath.addPath(path)
             }
 
-            val routePath = Path()
-            routes.forEach { route ->
-                route.segments.forEachIndexed { segIdx, seg ->
-                    val x1 = seg.startX.toFloat()
-                    val y1 = seg.startY.toFloat()
-                    val x2 = (seg.startX + seg.deltaX).toFloat()
-                    val y2 = (seg.startY + seg.deltaY).toFloat()
-                    if (segIdx == 0) {
-                        routePath.moveTo(x1, y1)
+            // Include offset stroke lines in regionPath to prevent boundary clipping
+            val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
+            val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
+            allStrokes.forEach { stroke ->
+                for (index in 0 until stroke.nodes.lastIndex) {
+                    val start = stroke.nodes[index]
+                    val end = stroke.nodes[index + 1]
+                    val centerOffset = stroke.segmentCenterOffsets.getOrNull(index)?.toDouble() ?: 0.0
+                    val rawDx = (end.x - start.x).toDouble() * routeScaleX
+                    val rawDy = (end.y - start.y).toDouble() * routeScaleY
+                    val len = hypot(rawDx, rawDy)
+                    if (len > 0.0) {
+                        val nx = -rawDy / len
+                        val ny = rawDx / len
+                        val x1 = (start.x.toDouble() * routeScaleX) + nx * centerOffset
+                        val y1 = (start.y.toDouble() * routeScaleY) + ny * centerOffset
+                        val x2 = (end.x.toDouble() * routeScaleX) + nx * centerOffset
+                        val y2 = (end.y.toDouble() * routeScaleY) + ny * centerOffset
+                        val p = Path().apply {
+                            moveTo(x1.toFloat(), y1.toFloat())
+                            lineTo(x2.toFloat(), y2.toFloat())
+                        }
+                        regionPath.addPath(p)
                     }
-                    routePath.lineTo(x2, y2)
                 }
             }
-            regionPath.addPath(routePath)
 
             return PolygonRevealData(
                 yellowArtwork,
@@ -163,20 +130,6 @@ internal class PolygonRevealData private constructor(
             )
         }
     }
-
-    private data class RouteSegment(
-        val startX: Double,
-        val startY: Double,
-        val deltaX: Double,
-        val deltaY: Double,
-        val length: Double,
-        val startDistance: Double
-    )
-
-    private data class Route(
-        val segments: List<RouteSegment>,
-        val totalLength: Double
-    )
 
     internal class Playback(private val data: PolygonRevealData) {
         fun reset() {}
@@ -227,7 +180,12 @@ internal class PolygonRevealData private constructor(
 
                 val centerOffset = stroke.segmentCenterOffsets.getOrNull(segmentIndex)?.toDouble() ?: 0.0
                 val segmentWidth = stroke.segmentWidths.getOrNull(segmentIndex) ?: stroke.width
-                strokePaint.strokeWidth = (segmentWidth * widthScale).toFloat()
+                val scaledWidth = (segmentWidth * widthScale) - 2.0
+                if (scaledWidth <= 0.0) {
+                    remaining -= visibleLength
+                    continue
+                }
+                strokePaint.strokeWidth = scaledWidth.toFloat()
 
                 val startXCoord = start.x.toDouble() * routeScaleX
                 val startYCoord = start.y.toDouble() * routeScaleY
