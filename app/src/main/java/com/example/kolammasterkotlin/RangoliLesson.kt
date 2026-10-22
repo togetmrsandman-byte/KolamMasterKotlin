@@ -220,7 +220,9 @@ internal data class RangoliLesson(
                 require(width > 0f && width.isFinite()) { "Invalid Rangoli stroke width" }
                 val segmentWidthArray = stroke.optJSONArray("segmentWidths")
                 val segmentWidths = segmentWidthArray.toFloatList()
-                LessonStroke(width, segmentWidths, nodes)
+                val offsetArray = stroke.optJSONArray("segmentCenterOffsets")
+                val segmentCenterOffsets = offsetArray.toFloatList()
+                LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes)
             }
         }
 

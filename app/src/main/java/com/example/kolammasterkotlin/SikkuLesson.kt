@@ -11,6 +11,7 @@ internal data class LessonPoint(val x: Float, val y: Float)
 internal data class LessonStroke(
     val width: Float,
     val segmentWidths: List<Float>,
+    val segmentCenterOffsets: List<Float>,
     val nodes: List<LessonPoint>
 )
 
@@ -106,7 +107,19 @@ internal data class SikkuLesson(
                                         }
                                     }
                                 }
-                                strokes += LessonStroke(width, segmentWidths, nodes)
+
+                                val offsetArray = stroke.optJSONArray("segmentCenterOffsets")
+                                val segmentCenterOffsets = if (offsetArray == null) {
+                                    emptyList()
+                                } else {
+                                    buildList {
+                                        for (offsetIndex in 0 until offsetArray.length()) {
+                                            add(offsetArray.getDouble(offsetIndex).toFloat())
+                                        }
+                                    }
+                                }
+
+                                strokes += LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes)
                             }
                             add(LessonPath(strokes))
                         }
