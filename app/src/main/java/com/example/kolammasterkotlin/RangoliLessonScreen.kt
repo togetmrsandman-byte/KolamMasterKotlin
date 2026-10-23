@@ -85,8 +85,9 @@ internal fun RangoliLessonScreen(
             val loopStartedAt = SystemClock.elapsedRealtime()
             while (activeStrokeIndex < structuralStep.strokeCount) {
                 val strokeIndex = activeStrokeIndex
+                val stroke = structuralStep.strokes[strokeIndex]
                 val durationMillis = scaledAnimationDuration(
-                    currentStep.animationDurationMillis,
+                    stroke.durationMillis,
                     playbackSpeed,
                     progress.value
                 )
@@ -277,6 +278,7 @@ internal fun RangoliLessonScreen(
                                 completedStepIndices = completedStepIndices + stepIndex
                                 stepIndex++
                             }
+                            playbackSpeed = 1f
                         }
                     },
                     enabled = true,

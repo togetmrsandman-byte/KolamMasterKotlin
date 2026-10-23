@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import org.json.JSONObject
 import java.io.File
 import java.io.IOException
+import kotlin.math.roundToInt
 
 internal data class LessonPoint(val x: Float, val y: Float)
 
@@ -12,8 +13,19 @@ internal data class LessonStroke(
     val width: Float,
     val segmentWidths: List<Float>,
     val segmentCenterOffsets: List<Float>,
-    val nodes: List<LessonPoint>
-)
+    val nodes: List<LessonPoint>,
+    val speed: Float = 1.0f
+) {
+    val durationMillis: Int
+        get() = when {
+            speed <= 0.5f -> 4000
+            speed <= 0.75f -> 2667
+            speed <= 1.0f -> 2000
+            speed <= 1.25f -> 1000
+            speed <= 1.5f -> 500
+            else -> (2000f / speed).roundToInt()
+        }
+}
 
 internal data class LessonPath(val strokes: List<LessonStroke>)
 
@@ -27,7 +39,7 @@ internal data class LessonStep(
     val strokeCount: Int
         get() = strokes.size
     val animationDurationMillis: Int
-        get() = 2000
+        get() = strokes.sumOf { it.durationMillis }
 }
 
 internal data class SikkuLesson(
@@ -41,7 +53,12 @@ internal data class SikkuLesson(
 ) {
     companion object {
         fun load(directory: File): SikkuLesson {
-            val preview = decodeImage(File(directory, "preview.webp"))
+            val revealFile = File(directory, "reveal.webp")
+            val preview = if (revealFile.isFile) {
+                decodeImage(revealFile)
+            } else {
+                decodeImage(File(directory, "preview.webp"))
+            }
             val dots = decodeImage(File(directory, "dots.webp"))
             if (preview.width != dots.width || preview.height != dots.height) {
                 throw IOException("Sikku lesson image dimensions do not match")
@@ -64,10 +81,12 @@ internal data class SikkuLesson(
                 createYellowArtwork(preview)
             }
 
-            val lessonArray = root.getJSONArray("lessons")
+            val stepArray = root.optJSONArray("steps") ?: root.optJSONArray("lessons")
+                ?: throw IOException("path.json has no steps or lessons")
             val steps = buildList {
-                for (lessonIndex in 0 until lessonArray.length()) {
-                    val lesson = lessonArray.getJSONObject(lessonIndex)
+                for (lessonIndex in 0 until stepArray.length()) {
+                    val lesson = stepArray.getJSONObject(lessonIndex)
+                    val stepNumber = lesson.optInt("step", lesson.optInt("lesson", lessonIndex + 1))
                     val paths = lesson.getJSONArray("paths")
                     val lessonPaths = buildList {
                         for (pathIndex in 0 until paths.length()) {
@@ -78,6 +97,9 @@ internal data class SikkuLesson(
                                 val stroke = pathStrokes.getJSONObject(strokeIndex)
                                 val width = stroke.getDouble("width").toFloat()
                                 require(width > 0f && width.isFinite()) { "Invalid stroke width" }
+                                val speed = stroke.optDouble("speed", path.optDouble("speed", 1.0))
+                                    .toFloat()
+                                    .takeIf { it > 0f && it.isFinite() } ?: 1.0f
                                 val nodesArray = stroke.getJSONArray("nodes")
                                 val nodes = buildList {
                                     for (nodeIndex in 0 until nodesArray.length()) {
@@ -119,20 +141,22 @@ internal data class SikkuLesson(
                                     }
                                 }
 
-                                strokes += LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes)
+                                strokes += LessonStroke(
+                                    width,
+                                    segmentWidths,
+                                    segmentCenterOffsets,
+                                    nodes,
+                                    speed
+                                )
                             }
                             add(LessonPath(strokes))
                         }
                     }
-                    require(lessonPaths.any { it.strokes.isNotEmpty() }) {
-                        "Lesson has no drawing strokes"
-                    }
-                    val number = lesson.getInt("lesson")
                     val step = LessonStep(
-                        number = number,
+                        number = stepNumber,
                         paths = lessonPaths
                     )
-                    val polygonStep = polygonDataByStep[number]
+                    val polygonStep = polygonDataByStep[step.number]
                         ?.takeIf { it.polygons.isNotEmpty() }
                     add(
                         if (polygonStep == null) {
@@ -152,18 +176,11 @@ internal data class SikkuLesson(
                     )
                 }
             }
-            require(steps.isNotEmpty()) { "Path data has no lessons" }
 
-            val tintedFile = File(directory, "tinted.webp")
-            val tinted = if (steps.any { it.polygonReveal == null } && tintedFile.isFile) {
-                decodeImage(tintedFile).also {
-                    if (preview.width != it.width || preview.height != it.height) {
-                        throw IOException("Sikku lesson image dimensions do not match")
-                    }
-                }
-            } else {
-                preview
-            }
+            val tinted = preview
+
+            val dotInformation = root.optString("dotInformation", root.optString("dots"))
+                .takeIf { it.isNotBlank() }
 
             return SikkuLesson(
                 preview = preview,
@@ -172,20 +189,9 @@ internal data class SikkuLesson(
                 coordinateWidth = coordinateWidth,
                 coordinateHeight = coordinateHeight,
                 steps = steps,
-                dotInformation = readDotInformation(directory)
+                dotInformation = dotInformation
             )
         }
-
-        private fun readDotInformation(directory: File): String? =
-            directory.listFiles()
-                ?.filter { it.isFile && it.extension.equals("json", ignoreCase = true) &&
-                    !it.name.equals("path.json", ignoreCase = true) }
-                .orEmpty()
-                .firstNotNullOfOrNull { file ->
-                    JSONObject(file.readText(Charsets.UTF_8))
-                        .optString("dotInformation")
-                        .takeIf(String::isNotBlank)
-                }
 
         private fun decodeImage(file: File): Bitmap =
             BitmapFactory.decodeFile(file.path)

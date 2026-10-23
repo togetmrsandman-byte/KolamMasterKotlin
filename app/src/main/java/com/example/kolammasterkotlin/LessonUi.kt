@@ -8,6 +8,8 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
@@ -357,15 +359,28 @@ internal fun PlaybackSpeedControl(
                 bottom = 10.dp
             )
         ) {
-            PlaybackControlLabel(stringResource(R.string.speed_label, playbackSpeedLabel(speed)))
+            PlaybackControlLabel("Speed ▾")
         }
         DropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
             playbackSpeeds.forEach { option ->
+                val isSelected = option == speed
                 DropdownMenuItem(
-                    text = { Text(playbackSpeedLabel(option)) },
+                    modifier = Modifier
+                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        .background(
+                            color = if (isSelected) KolamGold else Color.Transparent,
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(4.dp)
+                        ),
+                    text = {
+                        Text(
+                            text = playbackSpeedLabel(option),
+                            fontWeight = if (isSelected) androidx.compose.ui.text.font.FontWeight.Bold else androidx.compose.ui.text.font.FontWeight.Normal,
+                            color = if (isSelected) Color.White else androidx.compose.material3.LocalContentColor.current
+                        )
+                    },
                     onClick = {
                         onSpeedChange(option)
                         expanded = false

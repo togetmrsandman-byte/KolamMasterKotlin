@@ -95,8 +95,9 @@ internal fun SikkuLessonScreen(
             val loopStartedAt = SystemClock.elapsedRealtime()
             while (activeStrokeIndex < step.strokeCount) {
                 val strokeIndex = activeStrokeIndex
+                val stroke = step.strokes[strokeIndex]
                 val durationMillis = scaledAnimationDuration(
-                    step.animationDurationMillis,
+                    stroke.durationMillis,
                     playbackSpeed,
                     progress.value
                 )
@@ -300,6 +301,7 @@ internal fun SikkuLessonScreen(
                                 completedStepIndices = completedStepIndices + stepIndex
                                 stepIndex++
                             }
+                            playbackSpeed = 1f
                         }
                     },
                     enabled = true,

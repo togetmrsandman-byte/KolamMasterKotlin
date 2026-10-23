@@ -18,7 +18,7 @@ internal data class RangoliStructuralStep(
     val strokeCount: Int
         get() = strokes.size
     val animationDurationMillis: Int
-        get() = 2000
+        get() = strokes.sumOf { it.durationMillis }
 }
 
 internal data class RangoliStep(
@@ -42,11 +42,16 @@ internal data class RangoliLesson(
             val totalSteps = manifest.getInt("totalSteps")
             require(totalSteps > 0) { "Rangoli manifest has no lesson steps" }
 
-            val previewName = manifest.getString("previewImage")
+            val previewName = manifest.optString("previewImage", "preview.webp")
             val preview = decodeImage(File(directory, previewName))
+
             val artworkFile = File(directory, "artwork.webp")
             val artwork = if (artworkFile.isFile) decodeImage(artworkFile) else preview
             requireSameDimensions(preview, artwork, artworkFile.name)
+
+            val revealArtworkFile = File(directory, "reveal.webp")
+            val revealArtwork = if (revealArtworkFile.isFile) decodeImage(revealArtworkFile) else artwork
+            requireSameDimensions(preview, revealArtwork, revealArtworkFile.name)
 
             val fillSteps = manifest.optJSONArray("fillSteps").toIntSet().sorted()
             val fillImages = findFillImages(directory)
@@ -63,7 +68,7 @@ internal data class RangoliLesson(
             val yellowArtwork = if (polygonDataByStep.isEmpty()) {
                 null
             } else {
-                createRangoliYellowArtwork(artwork)
+                createRangoliYellowArtwork(revealArtwork)
             }
             val pathLessons = readPathLessons(pathRoot)
             val structuralSteps = pathLessons.mapNotNull { (number, lessonJson) ->
@@ -165,15 +170,15 @@ internal data class RangoliLesson(
         }
 
         private fun readPathLessons(root: JSONObject): Map<Int, JSONObject> {
-            val entries = root.optJSONArray("lessons")
-                ?: root.optJSONArray("steps")
-                ?: throw IOException("Rangoli path.json has no lessons or steps")
+            val entries = root.optJSONArray("steps")
+                ?: root.optJSONArray("lessons")
+                ?: throw IOException("Rangoli path.json has no steps or lessons")
             return buildMap {
                 for (index in 0 until entries.length()) {
                     val entry = entries.getJSONObject(index)
                     val number = entry.optInt(
-                        "lessonNumber",
-                        entry.optInt("lesson", entry.optInt("step", 0))
+                        "step",
+                        entry.optInt("lesson", entry.optInt("lessonNumber", 0))
                     )
                     if (number > 0) put(number, entry)
                 }
@@ -231,11 +236,15 @@ internal data class RangoliLesson(
 
                 val width = stroke.optDouble("width", path.optDouble("width", 18.0)).toFloat()
                 require(width > 0f && width.isFinite()) { "Invalid Rangoli stroke width" }
+                val speed = stroke.optDouble("speed", path.optDouble("speed", 1.0))
+                    .toFloat()
+                    .takeIf { it > 0f && it.isFinite() } ?: 1.0f
+
                 val segmentWidthArray = stroke.optJSONArray("segmentWidths")
                 val segmentWidths = segmentWidthArray.toSegmentWidthList()
                 val offsetArray = stroke.optJSONArray("segmentCenterOffsets")
                 val segmentCenterOffsets = offsetArray.toSegmentOffsetList()
-                LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes)
+                LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes, speed)
             }
         }
 

@@ -64,7 +64,7 @@ internal data class LessonCatalogueEntry(
 
     val normalizedType: String?
         get() = when {
-            lessonType.equals("rangoli", ignoreCase = true) -> "Rangoli"
+            lessonType.equals("rangoli", ignoreCase = true) || kolamType.equals("rangoli", ignoreCase = true) -> "Rangoli"
             kolamType.equals("sikku", ignoreCase = true) -> "Sikku"
             kolamType.equals("pulli", ignoreCase = true) -> "Pulli"
             else -> null
