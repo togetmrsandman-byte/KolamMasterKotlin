@@ -219,9 +219,9 @@ internal data class RangoliLesson(
                 val width = stroke.optDouble("width", path.optDouble("width", 18.0)).toFloat()
                 require(width > 0f && width.isFinite()) { "Invalid Rangoli stroke width" }
                 val segmentWidthArray = stroke.optJSONArray("segmentWidths")
-                val segmentWidths = segmentWidthArray.toFloatList()
+                val segmentWidths = segmentWidthArray.toSegmentWidthList()
                 val offsetArray = stroke.optJSONArray("segmentCenterOffsets")
-                val segmentCenterOffsets = offsetArray.toFloatList()
+                val segmentCenterOffsets = offsetArray.toSegmentOffsetList()
                 LessonStroke(width, segmentWidths, segmentCenterOffsets, nodes)
             }
         }
@@ -248,7 +248,7 @@ internal data class RangoliLesson(
                 (0 until length()).map { getInt(it) }.toSet()
             }
 
-        private fun JSONArray?.toFloatList(): List<Float> =
+        private fun JSONArray?.toSegmentWidthList(): List<Float> =
             if (this == null) {
                 emptyList()
             } else {
@@ -259,6 +259,21 @@ internal data class RangoliLesson(
                             "Invalid Rangoli segment width"
                         }
                         add(width)
+                    }
+                }
+            }
+
+        private fun JSONArray?.toSegmentOffsetList(): List<Float> =
+            if (this == null) {
+                emptyList()
+            } else {
+                buildList {
+                    for (index in 0 until length()) {
+                        val offset = getDouble(index).toFloat()
+                        require(offset.isFinite()) {
+                            "Invalid Rangoli segment center offset"
+                        }
+                        add(offset)
                     }
                 }
             }
