@@ -8,9 +8,22 @@ import java.io.File
 import java.io.IOException
 import java.util.Locale
 
+internal data class RangoliStructuralStep(
+    val number: Int,
+    val paths: List<LessonPath>,
+    val polygonReveal: RangoliPolygonRevealData? = null
+) {
+    val strokes: List<LessonStroke>
+        get() = paths.flatMap { it.strokes }
+    val strokeCount: Int
+        get() = strokes.size
+    val animationDurationMillis: Int
+        get() = 2000
+}
+
 internal data class RangoliStep(
     val number: Int,
-    val structuralLesson: LessonStep?,
+    val structuralLesson: RangoliStructuralStep?,
     val fillBitmap: Bitmap?,
     val animationDurationMillis: Int
 )
@@ -46,11 +59,11 @@ internal data class RangoliLesson(
                     coordinateWidth.isFinite() && coordinateHeight.isFinite()
             ) { "Invalid Rangoli path coordinate dimensions" }
 
-            val polygonDataByStep = readStepPolygonData(pathRoot)
+            val polygonDataByStep = readRangoliStepPolygonData(pathRoot)
             val yellowArtwork = if (polygonDataByStep.isEmpty()) {
                 null
             } else {
-                createYellowArtwork(artwork)
+                createRangoliYellowArtwork(artwork)
             }
             val pathLessons = readPathLessons(pathRoot)
             val structuralSteps = pathLessons.mapNotNull { (number, lessonJson) ->
@@ -65,7 +78,7 @@ internal data class RangoliLesson(
                     require(paths.any { it.strokes.isNotEmpty() }) {
                         "Rangoli structural step $number has no strokes"
                     }
-                    val structuralLesson = LessonStep(
+                    val structuralLesson = RangoliStructuralStep(
                         number = number,
                         paths = paths
                     )
@@ -75,7 +88,7 @@ internal data class RangoliLesson(
                         structuralLesson
                     } else {
                         structuralLesson.copy(
-                            polygonReveal = PolygonRevealData.create(
+                            polygonReveal = RangoliPolygonRevealData.create(
                                 polygons = polygonStep.polygons,
                                 step = structuralLesson,
                                 coordinateWidth = coordinateWidth,

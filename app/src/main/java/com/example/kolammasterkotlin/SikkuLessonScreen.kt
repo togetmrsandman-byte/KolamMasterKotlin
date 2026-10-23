@@ -5,7 +5,6 @@ import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
-import android.graphics.Path
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
 import android.graphics.RectF
@@ -385,15 +384,16 @@ private fun drawLessonLayers(
     for (completedStep in completedSteps) {
         val polygonReveal = completedStep.polygonReveal
         if (polygonReveal != null) {
+            val playback = polygonPlaybacks[completedStep.number]
             for (strokeIndex in 0 until completedStep.strokeCount) {
                 drawPolygonArtwork(
                     canvas = canvas,
                     imageRect = imageRect,
                     data = polygonReveal,
-                    playback = null,
+                    playback = playback,
                     pathIndex = strokeIndex,
                     progress = 1f,
-                    artwork = lesson.preview,
+                    artwork = lesson.tinted,
                     colorFilter = artworkColorFilter
                 )
             }

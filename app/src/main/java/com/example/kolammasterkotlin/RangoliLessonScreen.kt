@@ -63,7 +63,7 @@ internal fun RangoliLessonScreen(
         lesson.steps.mapNotNull { rangoliStep ->
             rangoliStep.structuralLesson?.let { step ->
                 step.polygonReveal?.let {
-                    step.number to PolygonRevealData.Playback(it)
+                    step.number to RangoliPolygonRevealData.Playback(it)
                 }
             }
         }.toMap()
@@ -305,7 +305,7 @@ private fun RangoliArtwork(
     progress: Float,
     activeStrokeIndex: Int,
     showPreview: Boolean,
-    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>,
+    polygonPlaybacks: Map<Int, RangoliPolygonRevealData.Playback>,
     modifier: Modifier
 ) {
     Canvas(modifier = modifier) {
@@ -336,7 +336,7 @@ private fun drawRangoliLayers(
     progress: Float,
     activeStrokeIndex: Int,
     showPreview: Boolean,
-    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
+    polygonPlaybacks: Map<Int, RangoliPolygonRevealData.Playback>
 ) {
     val scale = min(width / lesson.preview.width, height / lesson.preview.height)
     val drawnWidth = lesson.preview.width * scale
@@ -394,18 +394,19 @@ private fun drawCompletedRangoliStep(
     step: RangoliStep,
     imageRect: RectF,
     imagePaint: Paint,
-    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
+    polygonPlaybacks: Map<Int, RangoliPolygonRevealData.Playback>
 ) {
     if (step.structuralLesson != null) {
         val structuralLesson = step.structuralLesson
         val polygonReveal = structuralLesson.polygonReveal
         if (polygonReveal != null) {
+            val playback = polygonPlaybacks[structuralLesson.number]
             for (strokeIndex in 0 until structuralLesson.strokeCount) {
-                drawPolygonArtwork(
+                drawRangoliPolygonArtwork(
                     canvas = canvas,
                     imageRect = imageRect,
                     data = polygonReveal,
-                    playback = null,
+                    playback = playback,
                     pathIndex = strokeIndex,
                     progress = 1f,
                     artwork = lesson.artwork
@@ -425,7 +426,7 @@ private fun drawCurrentRangoliStep(
     imagePaint: Paint,
     progress: Float,
     activeStrokeIndex: Int,
-    polygonPlaybacks: Map<Int, PolygonRevealData.Playback>
+    polygonPlaybacks: Map<Int, RangoliPolygonRevealData.Playback>
 ) {
     val structuralLesson = step.structuralLesson
     if (structuralLesson != null) {
@@ -433,7 +434,7 @@ private fun drawCurrentRangoliStep(
         for (strokeIndex in 0..activeStrokeIndex.coerceAtMost(structuralLesson.strokeCount - 1)) {
             val strokeProgress = if (strokeIndex < activeStrokeIndex) 1f else progress
             if (polygonReveal != null) {
-                drawPolygonArtwork(
+                drawRangoliPolygonArtwork(
                     canvas = canvas,
                     imageRect = imageRect,
                     data = polygonReveal,
