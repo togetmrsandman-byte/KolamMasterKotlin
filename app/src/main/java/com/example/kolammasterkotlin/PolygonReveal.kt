@@ -64,7 +64,10 @@ internal class PolygonRevealData private constructor(
 
             val allStrokes = step.paths.flatMap { it.strokes }
 
-            val regionPath = Path().apply { fillType = Path.FillType.WINDING }
+            // Only the exported polygon rings define the valid shape. The route stroke path is
+            // the permitted boundary mask and is applied separately below; this keeps the final
+            // reveal as the intersection of the intended polygon region and the actual route path.
+            val regionPath = Path().apply { fillType = Path.FillType.EVEN_ODD }
             polygons.forEach { polygon ->
                 require(polygon.vertices.size >= 3) {
                     "Polygon region has fewer than three vertices"
@@ -91,33 +94,6 @@ internal class PolygonRevealData private constructor(
                     close()
                 }
                 regionPath.addPath(path)
-            }
-
-            // Include offset stroke lines in regionPath to prevent boundary clipping
-            val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
-            val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
-            allStrokes.forEach { stroke ->
-                for (index in 0 until stroke.nodes.lastIndex) {
-                    val start = stroke.nodes[index]
-                    val end = stroke.nodes[index + 1]
-                    val centerOffset = stroke.segmentCenterOffsets.getOrNull(index)?.toDouble() ?: 0.0
-                    val rawDx = (end.x - start.x).toDouble() * routeScaleX
-                    val rawDy = (end.y - start.y).toDouble() * routeScaleY
-                    val len = hypot(rawDx, rawDy)
-                    if (len > 0.0) {
-                        val nx = -rawDy / len
-                        val ny = rawDx / len
-                        val x1 = (start.x.toDouble() * routeScaleX) + nx * centerOffset
-                        val y1 = (start.y.toDouble() * routeScaleY) + ny * centerOffset
-                        val x2 = (end.x.toDouble() * routeScaleX) + nx * centerOffset
-                        val y2 = (end.y.toDouble() * routeScaleY) + ny * centerOffset
-                        val p = Path().apply {
-                            moveTo(x1.toFloat(), y1.toFloat())
-                            lineTo(x2.toFloat(), y2.toFloat())
-                        }
-                        regionPath.addPath(p)
-                    }
-                }
             }
 
             return PolygonRevealData(
