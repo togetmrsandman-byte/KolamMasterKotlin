@@ -442,7 +442,8 @@ private fun drawCurrentRangoliStep(
                     data = polygonReveal,
                     playback = polygonPlaybacks[structuralLesson.number],
                     pathIndex = strokeIndex,
-                    progress = strokeProgress
+                    progress = strokeProgress,
+                    artwork = lesson.tinted
                 )
             }
         }

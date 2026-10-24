@@ -45,13 +45,13 @@ internal data class RangoliLesson(
             val previewName = manifest.optString("previewImage", "preview.webp")
             val preview = decodeImage(File(directory, previewName))
 
-            val artworkFile = File(directory, "artwork.webp")
-            val artwork = if (artworkFile.isFile) decodeImage(artworkFile) else preview
-            requireSameDimensions(preview, artwork, artworkFile.name)
-
             val revealArtworkFile = File(directory, "reveal.webp")
-            val revealArtwork = if (revealArtworkFile.isFile) decodeImage(revealArtworkFile) else artwork
+            require(revealArtworkFile.isFile) {
+                "Rangoli lesson is missing reveal.webp"
+            }
+            val revealArtwork = decodeImage(revealArtworkFile)
             requireSameDimensions(preview, revealArtwork, revealArtworkFile.name)
+            val artwork = revealArtwork
 
             val fillSteps = manifest.optJSONArray("fillSteps").toIntSet().sorted()
             val fillImages = findFillImages(directory)
@@ -118,12 +118,10 @@ internal data class RangoliLesson(
                 it.structuralLesson?.polygonReveal == null
             }
             val tintedFile = File(directory, "tinted.webp")
-            val tinted = if (!hasPolygonBackedSteps ||
-                (hasLegacyStructuralSteps && tintedFile.isFile)
-            ) {
+            val tinted = if (tintedFile.isFile) {
                 decodeImage(tintedFile).also { requireSameDimensions(preview, it, tintedFile.name) }
             } else {
-                artwork
+                revealArtwork
             }
             val fillLessonSteps = fillSteps.map { number ->
                 require(number in 1..totalSteps) {
