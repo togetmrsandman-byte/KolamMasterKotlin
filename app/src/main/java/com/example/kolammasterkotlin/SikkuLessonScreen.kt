@@ -357,6 +357,7 @@ internal fun SikkuLessonScreen(
                             } else if (stepIndex == lesson.steps.lastIndex) {
                                 completedStepIndices = lesson.steps.indices.toSet()
                                 complete = true
+                                resetZoom()
                             } else {
                                 completedStepIndices = completedStepIndices + stepIndex
                                 resetZoom()
@@ -367,7 +368,7 @@ internal fun SikkuLessonScreen(
 
                     },
                     enabled = true,
-                    shining = complete,
+
                     containerColor = if (complete) KolamAccent else null,
                     contentColor = if (complete) KolamButtonText else null,
                     modifier = Modifier

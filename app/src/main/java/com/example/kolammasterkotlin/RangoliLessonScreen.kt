@@ -334,6 +334,7 @@ internal fun RangoliLessonScreen(
                             if (stepIndex == lesson.steps.lastIndex) {
                                 completedStepIndices = lesson.steps.indices.toSet()
                                 complete = true
+                                resetZoom()
                             } else {
                                 completedStepIndices = completedStepIndices + stepIndex
                                 resetZoom()
