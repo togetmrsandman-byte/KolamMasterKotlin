@@ -64,7 +64,7 @@ internal class RangoliPolygonRevealData private constructor(
 
             val allStrokes = step.paths.flatMap { it.strokes }
 
-            val regionPath = Path().apply { fillType = Path.FillType.WINDING }
+            val regionPath = Path().apply { fillType = Path.FillType.EVEN_ODD }
             polygons.forEach { polygon ->
                 require(polygon.vertices.size >= 3) {
                     "Polygon region has fewer than three vertices"
