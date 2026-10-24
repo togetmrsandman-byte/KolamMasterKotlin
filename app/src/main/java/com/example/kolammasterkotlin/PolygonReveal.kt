@@ -96,6 +96,34 @@ internal class PolygonRevealData private constructor(
                 regionPath.addPath(path)
             }
 
+            // Restore the older route-boundary logic for testing: include offset stroke lines
+            // in the region mask so boundary geometry contributes to the reveal area.
+            val routeScaleX = yellowArtwork.width.toDouble() / coordinateWidth
+            val routeScaleY = yellowArtwork.height.toDouble() / coordinateHeight
+            allStrokes.forEach { stroke ->
+                for (index in 0 until stroke.nodes.lastIndex) {
+                    val start = stroke.nodes[index]
+                    val end = stroke.nodes[index + 1]
+                    val centerOffset = stroke.segmentCenterOffsets.getOrNull(index)?.toDouble() ?: 0.0
+                    val rawDx = (end.x - start.x).toDouble() * routeScaleX
+                    val rawDy = (end.y - start.y).toDouble() * routeScaleY
+                    val len = hypot(rawDx, rawDy)
+                    if (len > 0.0) {
+                        val nx = -rawDy / len
+                        val ny = rawDx / len
+                        val x1 = (start.x.toDouble() * routeScaleX) + nx * centerOffset
+                        val y1 = (start.y.toDouble() * routeScaleY) + ny * centerOffset
+                        val x2 = (end.x.toDouble() * routeScaleX) + nx * centerOffset
+                        val y2 = (end.y.toDouble() * routeScaleY) + ny * centerOffset
+                        val p = Path().apply {
+                            moveTo(x1.toFloat(), y1.toFloat())
+                            lineTo(x2.toFloat(), y2.toFloat())
+                        }
+                        regionPath.addPath(p)
+                    }
+                }
+            }
+
             return PolygonRevealData(
                 yellowArtwork,
                 regionPath,
