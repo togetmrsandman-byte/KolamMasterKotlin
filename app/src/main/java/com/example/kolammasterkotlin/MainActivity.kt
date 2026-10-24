@@ -2312,6 +2312,29 @@ private fun KolamMasterApp(
             else -> onGoBack()
         }
     }
+
+    var exitPressedOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(screen) {
+        if (screen != AppScreen.Landing) {
+            exitPressedOnce = false
+        }
+    }
+
+    BackHandler(enabled = publishPickerLesson == null && !drawerOpen && screen is AppScreen.Landing) {
+        if (exitPressedOnce) {
+            var curr = context
+            while (curr is android.content.ContextWrapper) {
+                if (curr is android.app.Activity) {
+                    curr.finish()
+                    break
+                }
+                curr = curr.baseContext
+            }
+        } else {
+            exitPressedOnce = true
+            android.widget.Toast.makeText(context, "Press back again to exit.", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
 }
 
 @Composable
