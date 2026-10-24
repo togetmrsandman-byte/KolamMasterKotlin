@@ -11,6 +11,7 @@ import android.graphics.RectF
 import android.os.SystemClock
 import android.util.Log
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,7 +37,10 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
@@ -70,10 +74,20 @@ internal fun SikkuLessonScreen(
     var completedStepIndices by remember { mutableStateOf(emptySet<Int>()) }
     var replayRequest by remember { mutableIntStateOf(0) }
     var playbackSpeed by rememberSaveable { mutableFloatStateOf(1f) }
+    var zoom by rememberSaveable { mutableFloatStateOf(1f) }
+    var panX by rememberSaveable { mutableFloatStateOf(0f) }
+    var panY by rememberSaveable { mutableFloatStateOf(0f) }
+    var artworkWidth by remember { mutableFloatStateOf(0f) }
+    var artworkHeight by remember { mutableFloatStateOf(0f) }
     var activeStrokeIndex by remember(stepIndex, replayRequest) { mutableIntStateOf(0) }
     var animatedStepIndex by remember { mutableIntStateOf(Int.MIN_VALUE) }
     var animatedReplayRequest by remember { mutableIntStateOf(Int.MIN_VALUE) }
     val progress = remember(stepIndex, replayRequest) { Animatable(0f) }
+    val resetZoom = {
+        zoom = 1f
+        panX = 0f
+        panY = 0f
+    }
     val polygonPlaybacks = remember(lesson) {
         lesson.steps.mapNotNull { step ->
             step.polygonReveal?.let { step.number to PolygonRevealData.Playback(it) }
@@ -188,8 +202,47 @@ internal fun SikkuLessonScreen(
                 showPreview = !started,
                 showDots = started,
                 polygonPlaybacks = polygonPlaybacks,
-                modifier = Modifier.fillMaxSize()
-            )
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onSizeChanged { size ->
+                        artworkWidth = size.width.toFloat()
+                        artworkHeight = size.height.toFloat()
+                    }
+                    .pointerInput(stepIndex) {
+                        detectTransformGestures { _, pan, zoomChange, _ ->
+                            val nextZoom = (zoom * zoomChange).coerceIn(1f, 4f)
+                            val contentWidth = if (artworkWidth > 0f && artworkHeight > 0f) {
+                                lesson.preview.width * min(
+                                    artworkWidth / lesson.preview.width,
+                                    artworkHeight / lesson.preview.height
+                                )
+                            } else {
+                                0f
+                            }
+                            val contentHeight = if (artworkWidth > 0f && artworkHeight > 0f) {
+                                lesson.preview.height * min(
+                                    artworkWidth / lesson.preview.width,
+                                    artworkHeight / lesson.preview.height
+                                )
+                            } else {
+                                0f
+                            }
+                            val allowedPanX = ((contentWidth * nextZoom - artworkWidth) / 2f)
+                                .coerceAtLeast(0f)
+                            val allowedPanY = ((contentHeight * nextZoom - artworkHeight) / 2f)
+                                .coerceAtLeast(0f)
+                            zoom = nextZoom
+                            panX = (panX + pan.x).coerceIn(-allowedPanX, allowedPanX)
+                            panY = (panY + pan.y).coerceIn(-allowedPanY, allowedPanY)
+                        }
+                    }
+                    .graphicsLayer {
+                        scaleX = zoom
+                        scaleY = zoom
+                        translationX = panX
+                        translationY = panY
+                    }
+             )
             if (complete) {
                 FlowerCelebration(Modifier.fillMaxSize())
             }
@@ -197,7 +250,10 @@ internal fun SikkuLessonScreen(
 
         when {
             !started -> Button(
-                onClick = { started = true },
+                onClick = {
+                    resetZoom()
+                    started = true
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(stringResource(R.string.start))
@@ -226,6 +282,7 @@ internal fun SikkuLessonScreen(
                                 .filter { it < stepIndex }
                                 .toSet()
                         }
+                        resetZoom()
                     },
                     enabled = complete || stepIndex >= 0,
                     modifier = Modifier
@@ -257,6 +314,7 @@ internal fun SikkuLessonScreen(
                                 .toSet()
                             replayRequest++
                         }
+                        resetZoom()
                     },
                     enabled = complete || stepIndex >= 0,
                     modifier = Modifier
@@ -290,19 +348,23 @@ internal fun SikkuLessonScreen(
                     },
                     onClick = {
                         if (complete) {
+                            resetZoom()
                             onPublish()
                         } else {
                             if (stepIndex < 0) {
+                                resetZoom()
                                 stepIndex = 0
                             } else if (stepIndex == lesson.steps.lastIndex) {
                                 completedStepIndices = lesson.steps.indices.toSet()
                                 complete = true
                             } else {
                                 completedStepIndices = completedStepIndices + stepIndex
+                                resetZoom()
                                 stepIndex++
                             }
                             playbackSpeed = 1f
                         }
+
                     },
                     enabled = true,
                     shining = complete,
