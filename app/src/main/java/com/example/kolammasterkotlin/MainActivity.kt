@@ -256,8 +256,26 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+    private val inactivityHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    private val inactivityRunnable = Runnable {
+        finishAffinity()
+    }
+
+    private fun resetInactivityTimer() {
+        inactivityHandler.removeCallbacks(inactivityRunnable)
+        inactivityHandler.postDelayed(inactivityRunnable, 5 * 60 * 1000L)
+    }
+
+    override fun dispatchTouchEvent(ev: android.view.MotionEvent?): Boolean {
+        if (ev?.action == android.view.MotionEvent.ACTION_DOWN) {
+            resetInactivityTimer()
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        resetInactivityTimer()
         onboardingPermissionFlow = OnboardingPermissionFlow(
             savedInstanceState?.getBoolean(ONBOARDING_PERMISSION_PENDING_STATE_KEY) == true
         )
@@ -417,9 +435,15 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        resetInactivityTimer()
         recordCurrentUserActivity()
         AnnouncementRepository.requestRefresh(this)
         refreshLauncherBadgeFromCache()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        inactivityHandler.removeCallbacks(inactivityRunnable)
     }
 
     private fun recordCurrentUserActivity() {
