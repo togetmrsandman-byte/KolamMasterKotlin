@@ -1574,20 +1574,23 @@ private fun KolamMasterApp(
             return@LaunchedEffect
         }
 
-        val enteringAnnouncements = screen == AppScreen.Announcements &&
-            !wasAnnouncementsScreenVisible
         wasAnnouncementsScreenVisible = screen == AppScreen.Announcements
-        val shouldRefresh = !announcementDataLoaded ||
-            lastAnnouncementRefreshSignal != announcementRefreshSignal ||
-            lastAnnouncementRefreshKey != announcementRefreshKey ||
-            enteringAnnouncements
-        if (!shouldRefresh) return@LaunchedEffect
 
         if (!announcementDataLoaded) {
             announcements = announcementRepository.loadCached(currentAccount)
             announcementUnread = announcements.any { !it.isRead }
             announcementLoading = announcements.isEmpty()
-        } else if (announcements.isEmpty()) {
+            announcementDataLoaded = true
+        }
+
+        val isCacheStale = announcements.isEmpty() || !announcementRepository.isFresh(currentAccount.id)
+        val shouldRefresh = isCacheStale ||
+            lastAnnouncementRefreshSignal != announcementRefreshSignal ||
+            lastAnnouncementRefreshKey != announcementRefreshKey
+
+        if (!shouldRefresh) return@LaunchedEffect
+
+        if (announcements.isEmpty()) {
             announcementLoading = true
         }
         announcementError = null
@@ -2167,6 +2170,7 @@ private fun KolamMasterApp(
                                 ?.value
                                 .orEmpty()
                         },
+                        onContactDetailRefreshHandled = { contactDetailRefreshKey = 0 },
                         onBegin = {
                             scope.launch {
                                 rootAlpha.animateTo(
@@ -2440,7 +2444,8 @@ private fun AppScreenContent(
     onAnnouncementDetailBack: () -> Unit,
     onMarkAllAnnouncementsRead: () -> Unit,
     onBegin: () -> Unit,
-    onMenuAction: (DrawerAction) -> Unit
+    onMenuAction: (DrawerAction) -> Unit,
+    onContactDetailRefreshHandled: () -> Unit
 ) {
     when (screen) {
         AppScreen.ChooseLanguage -> LanguageSelectionScreen(onLanguageSelected)
@@ -2530,7 +2535,8 @@ private fun AppScreenContent(
                     onLoadMessages = onLoadContactMessages,
                     onSendMessage = onSendContactMessage,
                     onUploadImage = onUploadContactImage,
-                    externalRefreshKey = contactDetailRefreshKey
+                    externalRefreshKey = contactDetailRefreshKey,
+                    onExternalRefreshHandled = onContactDetailRefreshHandled
                 )
             } else if (isContactSignedIn && isNewContactConversation) {
                 ContactNewConversationDestination(

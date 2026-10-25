@@ -121,7 +121,8 @@ internal fun ContactConversationDetailDestination(
     onUploadImage: suspend (ByteArray) -> String,
     accountId: String? = null,
     localCache: ContactLocalCache? = null,
-    externalRefreshKey: Int = 0
+    externalRefreshKey: Int = 0,
+    onExternalRefreshHandled: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -218,6 +219,9 @@ internal fun ContactConversationDetailDestination(
             externalRefreshKey != lastHandledExternalRefreshKey
         lastHandledRetryKey = retryKey
         lastHandledExternalRefreshKey = externalRefreshKey
+        if (mustRefresh && externalRefreshKey > 0) {
+            onExternalRefreshHandled()
+        }
         if (!mustRefresh &&
             latestCachedMessages != null &&
             localCache?.isFresh(latestCachedMessages.savedAtMillis) == true

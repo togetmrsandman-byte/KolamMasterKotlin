@@ -363,7 +363,7 @@ internal class ContactLocalCache(context: Context) {
         const val IMAGE_CONNECT_TIMEOUT_MILLIS = 10_000
         const val IMAGE_READ_TIMEOUT_MILLIS = 15_000
         const val COPY_BUFFER_SIZE = 16 * 1024
-        const val CACHE_FRESHNESS_MILLIS = 30_000L
+        const val CACHE_FRESHNESS_MILLIS = 24L * 60L * 60L * 1000L
         const val TAG = "ContactLocalCache"
     }
 }

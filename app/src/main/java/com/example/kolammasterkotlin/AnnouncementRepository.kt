@@ -309,6 +309,13 @@ internal class AnnouncementRepository(
         }
     }
 
+    fun isFresh(userId: String, nowMillis: Long = System.currentTimeMillis()): Boolean {
+        val savedAt = preferences.getLong(timestampKey(userId), 0L)
+        return savedAt > 0L && nowMillis - savedAt < 24L * 60L * 60L * 1000L
+    }
+
+    private fun timestampKey(userId: String): String = "${cacheKey(userId)}:updated-at"
+
     private fun saveCache(userId: String, announcements: List<Announcement>) {
         val snapshot = JSONArray().apply {
             announcements.take(MAX_ANNOUNCEMENTS).forEach { announcement ->
@@ -323,7 +330,12 @@ internal class AnnouncementRepository(
                 )
             }
         }
-        check(preferences.edit().putString(cacheKey(userId), snapshot.toString()).commit()) {
+        check(
+            preferences.edit()
+                .putString(cacheKey(userId), snapshot.toString())
+                .putLong(timestampKey(userId), System.currentTimeMillis())
+                .commit()
+        ) {
             "Could not persist the announcement cache."
         }
     }
