@@ -1244,11 +1244,14 @@ class MainActivity : ComponentActivity() {
                         File(cacheDir, "catalogue-lessons"),
                         packageUrl.toByteArray(Charsets.UTF_8).sha256Hex()
                     )
-                    KmpLessonExtractor.extractPackage(
-                        encryptedPackage = downloadLessonPackage(packageUrl),
-                        sharedSecret = KmpSecret.value(),
-                        destination = destination
-                    )
+                    val isCachedValid = destination.isDirectory && File(destination, "path.json").isFile
+                    if (!isCachedValid) {
+                        KmpLessonExtractor.extractPackage(
+                            encryptedPackage = downloadLessonPackage(packageUrl),
+                            sharedSecret = KmpSecret.value(),
+                            destination = destination
+                        )
+                    }
                     if (lessonType == "Rangoli") {
                         AppScreen.RangoliReady(
                             RangoliLesson.load(destination),
