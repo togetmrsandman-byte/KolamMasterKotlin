@@ -55,7 +55,7 @@ internal data class SikkuLesson(
     val dotInformation: String?
 ) {
     companion object {
-        fun load(directory: File): SikkuLesson {
+        fun load(directory: File, catalogueDotInformation: String? = null): SikkuLesson {
             val revealFile = File(directory, "reveal.webp")
             val preview = if (revealFile.isFile) {
                 decodeImage(revealFile)
@@ -182,8 +182,9 @@ internal data class SikkuLesson(
 
             val tinted = preview
 
-            val dotInformation = root.optString("dotInformation", root.optString("dots"))
-                .takeIf { it.isNotBlank() }
+            val dotInformation = catalogueDotInformation
+                ?: root.optString("dotInformation", root.optString("dots"))
+                    .takeIf { it.isNotBlank() }
 
             return SikkuLesson(
                 preview = preview,

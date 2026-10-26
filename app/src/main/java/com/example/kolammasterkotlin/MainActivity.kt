@@ -1254,12 +1254,12 @@ class MainActivity : ComponentActivity() {
                     }
                     if (lessonType == "Rangoli") {
                         AppScreen.RangoliReady(
-                            RangoliLesson.load(destination),
+                            RangoliLesson.load(destination, lesson.dotInformation),
                             lesson.toPublishLessonDetails()
                         )
                     } else {
                         AppScreen.SikkuReady(
-                            SikkuLesson.load(destination),
+                            SikkuLesson.load(destination, lesson.dotInformation),
                             lesson.toPublishLessonDetails()
                         )
                     }

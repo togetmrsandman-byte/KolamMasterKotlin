@@ -34,10 +34,11 @@ internal data class RangoliLesson(
     val tinted: Bitmap,
     val coordinateWidth: Float,
     val coordinateHeight: Float,
-    val steps: List<RangoliStep>
+    val steps: List<RangoliStep>,
+    val dotInformation: String? = null
 ) {
     companion object {
-        fun load(directory: File): RangoliLesson {
+        fun load(directory: File, catalogueDotInformation: String? = null): RangoliLesson {
             val manifest = findManifest(directory)
             val totalSteps = manifest.getInt("totalSteps")
             require(totalSteps > 0) { "Rangoli manifest has no lesson steps" }
@@ -142,13 +143,18 @@ internal data class RangoliLesson(
                 )
             }
 
+            val dotInformation = catalogueDotInformation
+                ?: pathRoot.optString("dotInformation", pathRoot.optString("dots"))
+                    .takeIf { it.isNotBlank() }
+
             return RangoliLesson(
                 preview = preview,
                 artwork = artwork,
                 tinted = tinted,
                 coordinateWidth = coordinateWidth,
                 coordinateHeight = coordinateHeight,
-                steps = steps
+                steps = steps,
+                dotInformation = dotInformation
             )
         }
 
