@@ -18,7 +18,10 @@ internal data class LessonStroke(
 ) {
     val durationMillis: Int
         get() = when {
+            speed <= 0.33f -> 6000
+            speed <= 0.4f -> 5000
             speed <= 0.5f -> 4000
+            speed <= 0.67f -> 3000
             speed <= 0.75f -> 2667
             speed <= 1.0f -> 2000
             speed <= 1.25f -> 1000

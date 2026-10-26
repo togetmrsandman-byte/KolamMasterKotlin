@@ -58,7 +58,7 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
-internal val playbackSpeeds = listOf(0.5f, 0.75f, 1f, 1.25f, 1.5f)
+internal val playbackSpeeds = listOf(0.33f, 0.4f, 0.5f, 0.67f, 0.75f, 1f, 1.25f, 1.5f)
 internal val PlaybackControlHeight = 40.dp
 private val DefaultPlaybackLabelFontSize = 14.sp
 private val LocalPlaybackLabelFontSize = compositionLocalOf { DefaultPlaybackLabelFontSize }
