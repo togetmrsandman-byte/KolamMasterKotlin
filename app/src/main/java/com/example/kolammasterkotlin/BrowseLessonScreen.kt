@@ -115,6 +115,15 @@ internal class BrowseCatalogueState {
     var query by mutableStateOf("")
     var difficulties by mutableStateOf<Set<String>>(emptySet())
     var types by mutableStateOf<Set<String>>(emptySet())
+
+    fun reset() {
+        query = ""
+        difficulties = emptySet()
+        types = emptySet()
+        try {
+            gridState.requestScrollToItem(0)
+        } catch (_: Exception) {}
+    }
 }
 
 internal data class BrowseCatalogueItem(

@@ -1942,6 +1942,9 @@ private fun KolamMasterApp(
     val handleAnnouncementDetailBack: () -> Unit = { selectedAnnouncementId = null }
     LaunchedEffect(screen) {
         if (screen != AppScreen.MyKolams) myFoldersSelectedFolderId.value = null
+        if (screen != AppScreen.Browse) {
+            browseCatalogueState.reset()
+        }
     }
     val handleScreenBack: () -> Unit = {
         when {
