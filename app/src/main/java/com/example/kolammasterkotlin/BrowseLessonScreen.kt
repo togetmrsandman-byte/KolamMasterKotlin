@@ -120,9 +120,6 @@ internal class BrowseCatalogueState {
         query = ""
         difficulties = emptySet()
         types = emptySet()
-        try {
-            gridState.requestScrollToItem(0)
-        } catch (_: Exception) {}
     }
 }
 
