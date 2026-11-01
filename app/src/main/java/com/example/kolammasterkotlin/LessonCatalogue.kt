@@ -50,9 +50,7 @@ internal data class LessonCatalogueEntry(
     val tagTranslations: CatalogueTagTranslations = CatalogueTagTranslations()
 ) {
     val requiredRewardedAdCount: Int
-        get() = difficulty.rewardedAdCount()
-            ?: category.rewardedAdCount()
-            ?: 2
+        get() = 1
 
     val normalizedDifficulty: String?
         get() = when (category?.trim()?.lowercase()) {
