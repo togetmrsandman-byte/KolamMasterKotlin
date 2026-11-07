@@ -563,7 +563,8 @@ internal fun BrowseLessonScreen(
                                 }
                             )
                         }
-                        if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT) {
+                        val hasLockedRevealedLessons = sections.revealedLessons.any { it.lesson.access == CatalogueAccess.LOCKED }
+                        if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT && hasLockedRevealedLessons) {
                             item(span = { GridItemSpan(maxLineSpan) }) {
                                 ThumbnailRevealBanner(
                                     text = stringResource(R.string.watch_short_ad),
@@ -571,6 +572,8 @@ internal fun BrowseLessonScreen(
                                     loadingText = stringResource(R.string.loading_ad)
                                 )
                             }
+                        }
+                        if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT) {
                             itemsIndexed(
                                 items = sections.revealedLessons,
                                 key = { _, item ->
