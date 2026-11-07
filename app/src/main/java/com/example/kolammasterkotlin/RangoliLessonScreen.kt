@@ -254,10 +254,7 @@ internal fun RangoliLessonScreen(
                             stepIndex = (lesson.steps.lastIndex - 1).coerceAtLeast(0)
                             completedStepIndices = (0 until stepIndex).toSet()
                         } else {
-                            val previousTeachingStepIndex = (stepIndex - 1 downTo 0).firstOrNull {
-                                lesson.steps[it].structuralLesson != null
-                            } ?: 0
-                            stepIndex = previousTeachingStepIndex
+                            stepIndex = (stepIndex - 1).coerceAtLeast(0)
                             completedStepIndices = completedStepIndices
                                 .filter { it < stepIndex }
                                 .toSet()

@@ -103,9 +103,9 @@ internal fun LessonStatusRow(
                     contentColor = contentColor,
                     shadowElevation = 2.dp
                 ) {
-                    Text(
+                    AutoFitStatusText(
                         text = text,
-                        style = MaterialTheme.typography.labelLarge,
+                        color = contentColor,
                         modifier = Modifier.padding(ButtonDefaults.ContentPadding)
                     )
                 }
@@ -274,6 +274,37 @@ internal fun dotsOrderStatusText(dotInformation: String?, localizedHeading: Stri
         return localizedHeading + dotInformation.substring(englishHeading.length)
     }
     return "$localizedHeading\n$dotInformation"
+}
+
+@Composable
+internal fun AutoFitStatusText(
+    text: String,
+    modifier: Modifier = Modifier,
+    initialFontSize: Float = MaterialTheme.typography.labelLarge.fontSize.value.takeIf { it > 0f } ?: 14f,
+    minFontSize: Float = 10f,
+    color: Color = Color.Unspecified
+) {
+    var fontSize by remember(text, initialFontSize, minFontSize) {
+        mutableFloatStateOf(initialFontSize)
+    }
+    Text(
+        text = text,
+        modifier = modifier,
+        style = MaterialTheme.typography.labelLarge.copy(
+            fontSize = fontSize.sp,
+            lineHeight = (fontSize * 1.15f).sp
+        ),
+        color = color,
+        maxLines = 2,
+        softWrap = true,
+        textAlign = TextAlign.Center,
+        overflow = TextOverflow.Clip,
+        onTextLayout = { layout ->
+            if ((layout.hasVisualOverflow || layout.lineCount > 2) && fontSize > minFontSize) {
+                fontSize -= 0.5f
+            }
+        }
+    )
 }
 
 @Composable
