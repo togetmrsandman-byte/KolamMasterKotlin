@@ -30,13 +30,22 @@ internal class InitialAssetSetup(
     suspend fun run(onProgress: suspend (AssetSetupProgress) -> Unit): Boolean {
         if (isComplete()) return true
 
-        val lessons = loadLessons().take(INITIAL_LESSON_COUNT)
-        val thumbnailUrls = lessons.map { it.firstThumbnailUrl.orEmpty() }
-        require(thumbnailUrls.none(String::isBlank)) {
-            "One or more initial lessons do not have a thumbnail URL."
+        val lessons = try {
+            loadLessons().take(INITIAL_LESSON_COUNT)
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (exception: Exception) {
+            Log.w(TAG, "Could not load lesson catalogue during onboarding.", exception)
+            emptyList()
         }
-        val uniqueThumbnailUrls = thumbnailUrls.distinct()
+        val thumbnailUrls = lessons.map { it.firstThumbnailUrl.orEmpty() }
+        val uniqueThumbnailUrls = thumbnailUrls.filter { it.isNotBlank() }.distinct()
         val total = uniqueThumbnailUrls.size
+        if (total == 0) {
+            markComplete()
+            onProgress(AssetSetupProgress(0, 0, AssetSetupMessage.Complete))
+            return true
+        }
         onProgress(
             AssetSetupProgress(0, total, AssetSetupMessage.PreparingLearnThumbnails)
         )
