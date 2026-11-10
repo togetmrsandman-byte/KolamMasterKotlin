@@ -73,6 +73,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.res.stringResource
@@ -253,12 +254,14 @@ internal fun BrowseLessonScreen(
     var filtersOpen by remember { mutableStateOf(false) }
     val searchFocusRequester = remember { FocusRequester() }
     var shouldFocusSearch by remember { mutableStateOf(false) }
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(shouldFocusSearch) {
         if (shouldFocusSearch) {
             delay(50)
             try {
                 searchFocusRequester.requestFocus()
+                keyboardController?.show()
             } catch (_: Exception) {}
             shouldFocusSearch = false
         }
@@ -478,8 +481,8 @@ internal fun BrowseLessonScreen(
                     filtersOpen = true
                     shouldFocusSearch = true
                 },
-                onOpenFilters = {
-                    filtersOpen = true
+                onToggleFilters = {
+                    filtersOpen = !filtersOpen
                 },
                 focusRequester = searchFocusRequester
             )
@@ -813,6 +816,7 @@ internal fun BrowseLessonScreen(
                 )
 
                 Spacer(Modifier.height(4.dp))
+                val keyboardController = LocalSoftwareKeyboardController.current
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -823,6 +827,8 @@ internal fun BrowseLessonScreen(
                             browseState.difficulties = emptySet()
                             browseState.types = emptySet()
                             resetGridPosition()
+                            shouldFocusSearch = true
+                            keyboardController?.show()
                         },
                         modifier = Modifier.weight(1f),
                         border = BorderStroke(1.dp, KolamButtonYellow),
@@ -836,7 +842,10 @@ internal fun BrowseLessonScreen(
                         )
                     }
                     Button(
-                        onClick = { filtersOpen = false },
+                        onClick = {
+                            keyboardController?.hide()
+                            filtersOpen = false
+                        },
                         modifier = Modifier.weight(1f),
                         colors = androidx.compose.material3.ButtonDefaults.buttonColors(
                             containerColor = KolamButtonYellow,
@@ -1275,9 +1284,10 @@ private fun SearchField(
     filtersOpen: Boolean,
     activeFilterCount: Int,
     onOpenSearch: () -> Unit,
-    onOpenFilters: () -> Unit,
+    onToggleFilters: () -> Unit,
     focusRequester: FocusRequester
 ) {
+    val keyboardController = LocalSoftwareKeyboardController.current
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1301,6 +1311,18 @@ private fun SearchField(
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
                 singleLine = true,
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                ),
+                keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                    onSearch = {
+                        keyboardController?.hide()
+                    },
+                    onDone = {
+                        keyboardController?.hide()
+                    }
+                ),
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = KolamText),
                 decorationBox = { innerTextField ->
                     Box(
@@ -1318,7 +1340,7 @@ private fun SearchField(
             )
         }
         Spacer(Modifier.size(8.dp))
-        val isHighlighted = filtersOpen || activeFilterCount > 0
+        val isHighlighted = filtersOpen || query.isNotBlank() || activeFilterCount > 0
         Text(
             text = if (activeFilterCount == 0) {
                 stringResource(R.string.filter)
@@ -1330,7 +1352,7 @@ private fun SearchField(
                 .background(
                     if (isHighlighted) KolamGold else KolamElevated
                 )
-                .clickable(onClick = onOpenFilters)
+                .clickable(onClick = onToggleFilters)
                 .padding(horizontal = 14.dp, vertical = 14.dp),
             color = if (isHighlighted) KolamBackground else KolamText,
             fontSize = 14.sp,
