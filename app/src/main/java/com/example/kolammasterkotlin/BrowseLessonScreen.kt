@@ -32,6 +32,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Button
@@ -60,6 +61,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.focus.FocusState
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
@@ -245,6 +251,18 @@ internal fun BrowseLessonScreen(
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var filtersOpen by remember { mutableStateOf(false) }
+    val searchFocusRequester = remember { FocusRequester() }
+    var shouldFocusSearch by remember { mutableStateOf(false) }
+
+    LaunchedEffect(shouldFocusSearch) {
+        if (shouldFocusSearch) {
+            delay(50)
+            try {
+                searchFocusRequester.requestFocus()
+            } catch (_: Exception) {}
+            shouldFocusSearch = false
+        }
+    }
     val languageCode = LocalConfiguration.current.locales[0].toLanguageTag()
     val context = androidx.compose.ui.platform.LocalContext.current
     val localizedContext = context.withSelectedAppLanguage()
@@ -456,7 +474,14 @@ internal fun BrowseLessonScreen(
                 filtersOpen = filtersOpen,
                 activeFilterCount =
                     browseState.difficulties.size + browseState.types.size,
-                onToggleFilters = { filtersOpen = !filtersOpen }
+                onOpenSearch = {
+                    filtersOpen = true
+                    shouldFocusSearch = true
+                },
+                onOpenFilters = {
+                    filtersOpen = true
+                },
+                focusRequester = searchFocusRequester
             )
             Spacer(Modifier.height(8.dp))
             revealMessage?.let {
@@ -747,7 +772,7 @@ internal fun BrowseLessonScreen(
                         onClick = {}
                     )
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
                     text = stringResource(R.string.difficulty),
@@ -786,6 +811,42 @@ internal fun BrowseLessonScreen(
                         resetGridPosition()
                     }
                 )
+
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = {
+                            browseState.query = ""
+                            browseState.difficulties = emptySet()
+                            browseState.types = emptySet()
+                            resetGridPosition()
+                        },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, KolamButtonYellow),
+                        shape = RoundedCornerShape(10.dp),
+                        colors = kolamStandardButtonColors()
+                    ) {
+                        Text(
+                            "Clear",
+                            color = KolamButtonText,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                    Button(
+                        onClick = { filtersOpen = false },
+                        modifier = Modifier.weight(1f),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = KolamButtonYellow,
+                            contentColor = KolamButtonText
+                        ),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(stringResource(R.string.ok), fontWeight = FontWeight.SemiBold)
+                    }
+                }
             }
         }
 
@@ -1213,7 +1274,9 @@ private fun SearchField(
     onQueryChange: (String) -> Unit,
     filtersOpen: Boolean,
     activeFilterCount: Int,
-    onToggleFilters: () -> Unit
+    onOpenSearch: () -> Unit,
+    onOpenFilters: () -> Unit,
+    focusRequester: FocusRequester
 ) {
     Row(
         modifier = Modifier
@@ -1227,17 +1290,22 @@ private fun SearchField(
                 .fillMaxSize()
                 .clip(RoundedCornerShape(10.dp))
                 .background(KolamSubtleSurface)
+                .clickable(onClick = onOpenSearch)
                 .padding(horizontal = 14.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             BasicTextField(
                 value = query,
                 onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(color = KolamText),
                 decorationBox = { innerTextField ->
-                    Box {
+                    Box(
+                        modifier = Modifier.clickable(onClick = onOpenSearch)
+                    ) {
                         if (query.isEmpty()) {
                             Text(
                                 stringResource(R.string.search_lessons),
@@ -1250,6 +1318,7 @@ private fun SearchField(
             )
         }
         Spacer(Modifier.size(8.dp))
+        val isHighlighted = filtersOpen || activeFilterCount > 0
         Text(
             text = if (activeFilterCount == 0) {
                 stringResource(R.string.filter)
@@ -1259,11 +1328,11 @@ private fun SearchField(
             modifier = Modifier
                 .clip(RoundedCornerShape(10.dp))
                 .background(
-                    if (filtersOpen) KolamGold else KolamElevated
+                    if (isHighlighted) KolamGold else KolamElevated
                 )
-                .clickable(onClick = onToggleFilters)
+                .clickable(onClick = onOpenFilters)
                 .padding(horizontal = 14.dp, vertical = 14.dp),
-            color = if (filtersOpen) KolamBackground else KolamText,
+            color = if (isHighlighted) KolamBackground else KolamText,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold
         )
