@@ -139,6 +139,10 @@
     <string name="loading_rewarded_ad">Loading rewarded ad…</string>
     <string name="unable_show_rewarded_ad">Unable to show a rewarded ad right now.</string>
     <string name="uploading_photos">Uploading photos and submitting…</string>
+    <string name="uploading_submission">Uploading submission…</string>
+    <string name="publish_upload_timeout">The image upload timed out. Please try again.</string>
+    <string name="publish_server_error">We\'re having trouble submitting your publication right now. Please try again later.</string>
+    <string name="publish_image_upload_failed">The images could not be uploaded. Please try again.</string>
     <string name="kolam_submit_failed">The kolam could not be submitted. Please try again.</string>
     <string name="no_reward_not_submitted">No reward was earned, so the kolam was not submitted.</string>
     <string name="rewarded_ad_failed">The rewarded ad could not be shown (error %1$d). Please try again.</string>

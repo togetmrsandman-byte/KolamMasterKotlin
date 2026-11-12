@@ -126,7 +126,6 @@ internal fun GalleryPublishScreen(
     val noRewardMessage = stringResource(R.string.no_reward_not_submitted)
     val rewardedAdFailedPattern = stringResource(R.string.rewarded_ad_failed)
     val preparePublishFailedMessage = stringResource(R.string.prepare_publish_failed)
-    val submittedPublishingMessage = stringResource(R.string.uploading_photos)
     val loadAdMessage = stringResource(R.string.loading_rewarded_ad)
     val publishSignInMessage = stringResource(R.string.publish_signin_required)
     val waitConversionMessage = stringResource(R.string.publish_wait_conversion)
@@ -134,6 +133,10 @@ internal fun GalleryPublishScreen(
     val photoRequiredMessage = stringResource(R.string.publish_add_photo)
     val missingLessonDetailsMessage = stringResource(R.string.publish_missing_lesson_details)
     val publishSuccessMessage = stringResource(R.string.publish_success_message)
+    val uploadingSubmissionMessage = stringResource(R.string.uploading_submission)
+    val uploadTimeoutMessage = stringResource(R.string.publish_upload_timeout)
+    val serverErrorMessage = stringResource(R.string.publish_server_error)
+    val imageUploadFailedMessage = stringResource(R.string.publish_image_upload_failed)
     val photos = remember { mutableStateListOf<GalleryPublishPhoto>() }
     val convertingPhotos = remember { mutableStateListOf<Uri>() }
     val processingUris = remember { mutableSetOf<String>() }
@@ -149,6 +152,11 @@ internal fun GalleryPublishScreen(
     val creatorEmail = creatorEmailForPublish(account).orEmpty()
     var isBusy by remember { mutableStateOf(false) }
     var isSubmitted by remember { mutableStateOf(false) }
+    val userId = account?.id.orEmpty()
+    val lessonId = lesson.lessonId
+    var hasEarnedPublishReward by rememberSaveable(userId, lessonId) {
+        mutableStateOf(PublishRewardStore.isEarned(context, userId, lessonId))
+    }
     var message by remember { mutableStateOf<String?>(null) }
     var photoPickerError by remember { mutableStateOf<String?>(null) }
     fun addPhotos(uris: List<Uri>, onFinished: (() -> Unit)? = null) {
@@ -503,60 +511,81 @@ internal fun GalleryPublishScreen(
                             message = missingLessonDetailsMessage
                             return@Button
                         }
-                        isBusy = true
-                        message = loadAdMessage
-                        scope.launch {
-                            try {
-                                val activity = context.findActivity()
-                                    ?: throw IllegalStateException(unableShowRewardedAdMessage)
-                                showPublishRewardedAd(
-                                    activity = activity,
-                                    onRewardEarned = {
-                                        scope.launch {
-                                            try {
-                                                message = submittedPublishingMessage
-                                                repository.submit(
-                                                    currentAccount,
-                                                    lesson,
-                                                    creatorName,
-                                                    creatorEmailForPublish(currentAccount),
-                                                    photos.map(GalleryPublishPhoto::webpBytes)
-                                                )
-                                                isSubmitted = true
-                                                onPublishSuccess()
-                                                message = null
-                                            } catch (exception: CancellationException) {
-                                                throw exception
-                                            } catch (exception: Exception) {
-                                                message = NetworkErrors.messageFor(
-                                                    exception,
-                                                    publishSubmitFailedMessage
-                                                )
-                                                isBusy = false
-                                            }
-                                        }
-                                    },
-                                    onDismissedWithoutReward = {
-                                        isBusy = false
-                                        message = noRewardMessage
-                                    },
-                                    onFailed = { adError ->
-                                        isBusy = false
-                                        message = String.format(
-                                            java.util.Locale.getDefault(),
-                                            rewardedAdFailedPattern,
-                                            adError.code
-                                        )
+                        val submitAction = {
+                            isBusy = true
+                            message = uploadingSubmissionMessage
+                            scope.launch {
+                                try {
+                                    repository.submit(
+                                        currentAccount,
+                                        lesson,
+                                        creatorName,
+                                        creatorEmailForPublish(currentAccount),
+                                        photos.map(GalleryPublishPhoto::webpBytes)
+                                    )
+                                    isSubmitted = true
+                                    PublishRewardStore.setEarned(context, currentAccount.id, lesson.lessonId, false)
+                                    hasEarnedPublishReward = false
+                                    onPublishSuccess()
+                                    message = null
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (exception: Exception) {
+                                    message = when {
+                                        NetworkErrors.isNetworkFailure(exception) ->
+                                            NetworkErrors.DISPLAY_TEXT
+                                        exception is NetworkOperationTimeoutException || exception.cause is NetworkOperationTimeoutException ->
+                                            uploadTimeoutMessage
+                                        exception is GalleryPublishUploadException || exception.message?.contains("upload", ignoreCase = true) == true ->
+                                            imageUploadFailedMessage
+                                        NetworkErrors.isHttpFailure(exception) || (exception is HttpStatusFailureException && exception.statusCode >= 500) ->
+                                            serverErrorMessage
+                                        else ->
+                                            exception.message?.takeIf(String::isNotBlank) ?: publishSubmitFailedMessage
                                     }
-                                )
-                            } catch (exception: CancellationException) {
-                                throw exception
-                            } catch (exception: Exception) {
-                                isBusy = false
-                                message = NetworkErrors.messageFor(
-                                    exception,
-                                    preparePublishFailedMessage
-                                )
+                                    isBusy = false
+                                }
+                            }
+                        }
+
+                        if (hasEarnedPublishReward) {
+                            submitAction()
+                        } else {
+                            isBusy = true
+                            message = loadAdMessage
+                            scope.launch {
+                                try {
+                                    val activity = context.findActivity()
+                                        ?: throw IllegalStateException(unableShowRewardedAdMessage)
+                                    showPublishRewardedAd(
+                                        activity = activity,
+                                        onRewardEarned = {
+                                            PublishRewardStore.setEarned(context, currentAccount.id, lesson.lessonId, true)
+                                            hasEarnedPublishReward = true
+                                            submitAction()
+                                        },
+                                        onDismissedWithoutReward = {
+                                            isBusy = false
+                                            message = noRewardMessage
+                                        },
+                                        onFailed = { adError ->
+                                            isBusy = false
+                                            message = String.format(
+                                                java.util.Locale.getDefault(),
+                                                rewardedAdFailedPattern,
+                                                adError.code
+                                            )
+                                        }
+                                    )
+                                } catch (exception: CancellationException) {
+                                    throw exception
+                                } catch (exception: Exception) {
+                                    isBusy = false
+                                    message = NetworkErrors.messageFor(
+                                        exception,
+                                        preparePublishFailedMessage
+                                    )
+                                }
                             }
                         }
                     },
@@ -568,10 +597,11 @@ internal fun GalleryPublishScreen(
                     )
                 ) {
                     Text(
-                        stringResource(
-                            if (isPreparingInitialImages) R.string.preparing_photos
-                            else R.string.watch_ad_submit
-                        )
+                        text = when {
+                            isPreparingInitialImages -> stringResource(R.string.preparing_photos)
+                            hasEarnedPublishReward -> "Submit"
+                            else -> stringResource(R.string.watch_ad_submit)
+                        }
                     )
                 }
             }

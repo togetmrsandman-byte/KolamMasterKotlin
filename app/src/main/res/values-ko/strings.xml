@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">보상형 광고 로드 중…</string>
     <string name="unable_show_rewarded_ad">현재 보상형 광고를 표시할 수 없습니다.</string>
     <string name="uploading_photos">사진 업로드 및 제출 중…</string>
+    <string name="uploading_submission">제출물 업로드 중…</string>
+    <string name="publish_upload_timeout">이미지 업로드 시간이 초과되었습니다. 다시 시도해 주세요.</string>
+    <string name="publish_server_error">현재 제출물 전송에 문제가 발생했습니다. 나중에 다시 시도해 주세요.</string>
+    <string name="publish_image_upload_failed">이미지를 업로드할 수 없습니다. 다시 시도해 주세요.</string>
     <string name="kolam_submit_failed">콜람을 제출하지 못했습니다. 다시 시도하세요.</string>
     <string name="no_reward_not_submitted">보상을 받지 못해 콜람이 제출되지 않았습니다.</string>
     <string name="rewarded_ad_failed">보상형 광고를 표시하지 못했습니다(오류 %1$d). 다시 시도하세요.</string>

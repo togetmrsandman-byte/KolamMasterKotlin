@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">ಬಹುಮಾನ ಜಾಹೀರಾತು ಲೋಡ್ ಆಗುತ್ತಿದೆ…</string>
     <string name="unable_show_rewarded_ad">ಈಗ ಬಹುಮಾನ ಜಾಹೀರಾತು ತೋರಿಸಲಾಗುವುದಿಲ್ಲ.</string>
     <string name="uploading_photos">ಫೋಟೋಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿ ಸಲ್ಲಿಸಲಾಗುತ್ತಿದೆ…</string>
+    <string name="uploading_submission">ಸಲ್ಲಿಕೆಯನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಲಾಗುತ್ತಿದೆ…</string>
+    <string name="publish_upload_timeout">ಚಿತ್ರ ಅಪ್‌ಲೋಡ್ ಸಮಯ ಮೀರಿತು. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="publish_server_error">ಪ್ರಸ್ತುತ ನಿಮ್ಮ ಪ್ರಕಟಣೆಯನ್ನು ಸಲ್ಲಿಸಲು ಸಮಸ್ಯೆ ಎದುರಾಗಿದೆ. ದಯವಿಟ್ಟು ನಂತರ ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="publish_image_upload_failed">ಚಿತ್ರಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="kolam_submit_failed">ಕೋಲಂ ಸಲ್ಲಿಸಲಾಗಲಿಲ್ಲ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="no_reward_not_submitted">ಬಹುಮಾನ ಸಿಗದ ಕಾರಣ ಕೋಲಂ ಸಲ್ಲಿಸಲಾಗಿಲ್ಲ.</string>
     <string name="rewarded_ad_failed">ಬಹುಮಾನ ಜಾಹೀರಾತು ತೋರಿಸಲಾಗಲಿಲ್ಲ (ದೋಷ %1$d). ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>

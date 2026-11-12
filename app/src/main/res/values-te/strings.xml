@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">రివార్డ్ ప్రకటన లోడ్ అవుతోంది…</string>
     <string name="unable_show_rewarded_ad">ప్రస్తుతం రివార్డ్ ప్రకటనను చూపలేము.</string>
     <string name="uploading_photos">ఫోటోలను అప్‌లోడ్ చేసి సమర్పిస్తోంది…</string>
+    <string name="uploading_submission">సమర్పణ అప్‌లోడ్ చేయబడుతోంది…</string>
+    <string name="publish_upload_timeout">చిత్రం అప్‌లోడ్ సమయం ముగిసింది. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
+    <string name="publish_server_error">ప్రస్తుతం మీ ప్రచురణను సమర్పించడంలో సమస్య ఉంది. దయచేసి తర్వాత మళ్లీ ప్రయత్నించండి.</string>
+    <string name="publish_image_upload_failed">చిత్రాలను అప్‌లోడ్ చేయడం సాధ్యపడలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="kolam_submit_failed">కోలాన్ని సమర్పించలేకపోయాం. మళ్లీ ప్రయత్నించండి.</string>
     <string name="no_reward_not_submitted">రివార్డ్ రాలేదు కాబట్టి కోలం సమర్పించబడలేదు.</string>
     <string name="rewarded_ad_failed">రివార్డ్ ప్రకటన చూపలేకపోయాం (లోపం %1$d). మళ్లీ ప్రయత్నించండి.</string>

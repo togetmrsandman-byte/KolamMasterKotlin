@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">Đang tải quảng cáo nhận thưởng…</string>
     <string name="unable_show_rewarded_ad">Hiện không thể hiển thị quảng cáo nhận thưởng.</string>
     <string name="uploading_photos">Đang tải ảnh lên và gửi…</string>
+    <string name="uploading_submission">Đang tải lên bài gửi…</string>
+    <string name="publish_upload_timeout">Quá thời gian tải lên hình ảnh. Vui lòng thử lại.</string>
+    <string name="publish_server_error">Chúng tôi đang gặp sự cố khi gửi bài đăng của bạn. Vui lòng thử lại sau.</string>
+    <string name="publish_image_upload_failed">Không thể tải lên hình ảnh. Vui lòng thử lại.</string>
     <string name="kolam_submit_failed">Không thể gửi kolam. Vui lòng thử lại.</string>
     <string name="no_reward_not_submitted">Không nhận được thưởng nên kolam chưa được gửi.</string>
     <string name="rewarded_ad_failed">Không thể hiển thị quảng cáo nhận thưởng (lỗi %1$d). Vui lòng thử lại.</string>

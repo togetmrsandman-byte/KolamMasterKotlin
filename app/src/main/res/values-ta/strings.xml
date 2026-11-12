@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">வெகுமதி விளம்பரம் ஏற்றப்படுகிறது…</string>
     <string name="unable_show_rewarded_ad">இப்போது வெகுமதி விளம்பரத்தைக் காட்ட முடியவில்லை.</string>
     <string name="uploading_photos">படங்கள் பதிவேற்றப்பட்டு சமர்ப்பிக்கப்படுகின்றன…</string>
+    <string name="uploading_submission">பதிவேற்றம் செய்யப்படுகிறது…</string>
+    <string name="publish_upload_timeout">பட பதிவேற்றம் காலாவதியானது. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="publish_server_error">தற்போது உங்கள் வெளியீட்டைச் சமர்ப்பிப்பதில் சிக்கல் உள்ளது. பின்னர் மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="publish_image_upload_failed">படங்களைப் பதிவேற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
     <string name="kolam_submit_failed">கோலத்தைச் சமர்ப்பிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
     <string name="no_reward_not_submitted">வெகுமதி கிடைக்காததால் கோலம் சமர்ப்பிக்கப்படவில்லை.</string>
     <string name="rewarded_ad_failed">வெகுமதி விளம்பரத்தைக் காட்ட முடியவில்லை (பிழை %1$d). மீண்டும் முயற்சிக்கவும்.</string>

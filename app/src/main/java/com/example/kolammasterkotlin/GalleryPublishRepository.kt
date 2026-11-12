@@ -288,7 +288,7 @@ private data class GalleryPublishImageReference(
     val uploadUrl: String
 )
 
-private class GalleryPublishUploadException(val statusCode: Int) :
+internal class GalleryPublishUploadException(val statusCode: Int) :
     IOException("R2 upload failed with HTTP $statusCode.")
 
 internal fun ByteArray.isLosslessWebpPayload(): Boolean =
@@ -430,3 +430,27 @@ internal class GalleryPublishException(
     message: String,
     cause: Throwable? = null
 ) : IOException(message, cause)
+
+internal object PublishRewardStore {
+    private const val PREFERENCES_NAME = "kolam_master_publish_reward"
+    private const val KEY_PREFIX = "reward_earned_"
+
+    fun isEarned(context: android.content.Context, userId: String, lessonId: String): Boolean {
+        if (userId.isBlank() || lessonId.isBlank()) return false
+        val prefs = context.getSharedPreferences(preName(userId), android.content.Context.MODE_PRIVATE)
+        return prefs.getBoolean("$KEY_PREFIX$lessonId", false)
+    }
+
+    fun setEarned(context: android.content.Context, userId: String, lessonId: String, earned: Boolean) {
+        if (userId.isBlank() || lessonId.isBlank()) return
+        val prefs = context.getSharedPreferences(preName(userId), android.content.Context.MODE_PRIVATE)
+        prefs.edit().putBoolean("$KEY_PREFIX$lessonId", earned).apply()
+    }
+
+    private fun preName(userId: String): String = "${PREFERENCES_NAME}_${userId.sha256Hex()}"
+
+    private fun String.sha256Hex(): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(toByteArray(Charsets.UTF_8))
+            .joinToString("") { byte -> "%02x".format(byte) }
+}

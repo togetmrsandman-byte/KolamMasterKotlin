@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">กำลังโหลดโฆษณารางวัล…</string>
     <string name="unable_show_rewarded_ad">ไม่สามารถแสดงโฆษณารางวัลได้ในขณะนี้</string>
     <string name="uploading_photos">กำลังอัปโหลดและส่งรูปภาพ…</string>
+    <string name="uploading_submission">กำลังอัปโหลดการส่ง…</string>
+    <string name="publish_upload_timeout">การอัปโหลดรูปภาพหมดเวลา กรุณาลองใหม่อีกครั้ง</string>
+    <string name="publish_server_error">เกิดปัญหาในการส่งผลงานของคุณในขณะนี้ กรุณาลองใหม่อีกครั้งในภายหลัง</string>
+    <string name="publish_image_upload_failed">ไม่สามารถอัปโหลดรูปภาพได้ กรุณาลองใหม่อีกครั้ง</string>
     <string name="kolam_submit_failed">ส่งโกลัมไม่ได้ โปรดลองอีกครั้ง</string>
     <string name="no_reward_not_submitted">ไม่ได้รับรางวัล จึงไม่ได้ส่งโกลัม</string>
     <string name="rewarded_ad_failed">แสดงโฆษณารางวัลไม่ได้ (ข้อผิดพลาด %1$d) โปรดลองอีกครั้ง</string>

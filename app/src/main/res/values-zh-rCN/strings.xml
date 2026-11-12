@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">正在加载奖励广告…</string>
     <string name="unable_show_rewarded_ad">目前无法显示奖励广告。</string>
     <string name="uploading_photos">正在上传照片并提交…</string>
+    <string name="uploading_submission">正在上传提交内容…</string>
+    <string name="publish_upload_timeout">图片上传超时。请重试。</string>
+    <string name="publish_server_error">我们目前提交您的发布内容时遇到问题。请稍后重试。</string>
+    <string name="publish_image_upload_failed">无法上传图片。请重试。</string>
     <string name="kolam_submit_failed">无法提交 Kolam，请重试。</string>
     <string name="no_reward_not_submitted">未获得奖励，因此未提交 Kolam。</string>
     <string name="rewarded_ad_failed">无法显示奖励广告（错误 %1$d），请重试。</string>

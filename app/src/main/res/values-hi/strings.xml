@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">पुरस्कृत विज्ञापन लोड हो रहा है…</string>
     <string name="unable_show_rewarded_ad">अभी पुरस्कृत विज्ञापन नहीं दिखाया जा सकता।</string>
     <string name="uploading_photos">फ़ोटो अपलोड और सबमिट हो रही हैं…</string>
+    <string name="uploading_submission">सबमिशन अपलोड हो रहा है…</string>
+    <string name="publish_upload_timeout">छवि अपलोड करने का समय समाप्त हो गया। कृपया पुनः प्रयास करें।</string>
+    <string name="publish_server_error">अभी आपका प्रकाशन सबमिट करने में समस्या आ रही है। कृपया बाद में पुनः प्रयास करें।</string>
+    <string name="publish_image_upload_failed">छवियाँ अपलोड नहीं की जा सकें। कृपया पुनः प्रयास करें。</string>
     <string name="kolam_submit_failed">कोलम सबमिट नहीं हो सका। फिर से कोशिश करें।</string>
     <string name="no_reward_not_submitted">कोई पुरस्कार नहीं मिला, इसलिए कोलम सबमिट नहीं हुआ।</string>
     <string name="rewarded_ad_failed">पुरस्कृत विज्ञापन नहीं दिख सका (त्रुटि %1$d)। फिर से कोशिश करें।</string>

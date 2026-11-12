@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">リワード広告を読み込み中…</string>
     <string name="unable_show_rewarded_ad">現在リワード広告を表示できません。</string>
     <string name="uploading_photos">写真をアップロードして送信中…</string>
+    <string name="uploading_submission">提出物をアップロード中…</string>
+    <string name="publish_upload_timeout">画像のアップロードがタイムアウトしました。もう一度お試しください。</string>
+    <string name="publish_server_error">現在、投稿の送信で問題が発生しています。後ほどもう一度お試しください。</string>
+    <string name="publish_image_upload_failed">画像をアップロードできませんでした。もう一度お試しください。</string>
     <string name="kolam_submit_failed">Kolam を送信できませんでした。もう一度お試しください。</string>
     <string name="no_reward_not_submitted">報酬を獲得できなかったため、Kolam は送信されませんでした。</string>
     <string name="rewarded_ad_failed">リワード広告を表示できませんでした（エラー %1$d）。もう一度お試しください。</string>

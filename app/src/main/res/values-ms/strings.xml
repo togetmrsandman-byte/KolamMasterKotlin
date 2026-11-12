@@ -138,6 +138,10 @@
     <string name="loading_rewarded_ad">Memuatkan iklan ganjaran…</string>
     <string name="unable_show_rewarded_ad">Iklan ganjaran tidak dapat dipaparkan sekarang.</string>
     <string name="uploading_photos">Memuat naik foto dan menghantar…</string>
+    <string name="uploading_submission">Memuat naik penyerahan…</string>
+    <string name="publish_upload_timeout">Muat naik imej tamat masa. Sila cuba lagi.</string>
+    <string name="publish_server_error">Kami menghadapi masalah menghantar penerbitan anda sekarang. Sila cuba lagi kemudian.</string>
+    <string name="publish_image_upload_failed">Imej tidak dapat dimuat naik. Sila cuba lagi.</string>
     <string name="kolam_submit_failed">Kolam tidak dapat dihantar. Sila cuba lagi.</string>
     <string name="no_reward_not_submitted">Tiada ganjaran diperoleh, jadi kolam tidak dihantar.</string>
     <string name="rewarded_ad_failed">Iklan ganjaran tidak dapat dipaparkan (ralat %1$d). Sila cuba lagi.</string>
