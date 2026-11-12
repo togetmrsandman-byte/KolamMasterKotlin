@@ -75,6 +75,22 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        create("release") {
+            val storeFilePath = localProperties.getProperty("storeFile")?.trim()?.takeIf { it.isNotEmpty() }
+            val storePwd = localProperties.getProperty("storePassword")?.trim()?.takeIf { it.isNotEmpty() }
+            val kAlias = localProperties.getProperty("keyAlias")?.trim()?.takeIf { it.isNotEmpty() }
+            val kPwd = localProperties.getProperty("keyPassword")?.trim()?.takeIf { it.isNotEmpty() }
+
+            if (storeFilePath != null && storePwd != null && kAlias != null && kPwd != null) {
+                storeFile = file(storeFilePath)
+                storePassword = storePwd
+                keyAlias = kAlias
+                keyPassword = kPwd
+            }
+        }
+    }
+
     buildTypes {
         debug {
             buildConfigField(
@@ -86,6 +102,7 @@ android {
                 configuredAdMobApplicationId ?: testAdMobApplicationId
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField(
                 "String",
                 "PUBLISH_REWARDED_AD_UNIT_ID",

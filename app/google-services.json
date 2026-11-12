@@ -1,26 +1,36 @@
 {
   "project_info": {
-    "project_number": "799488150571",
-    "project_id": "kolam-master-a5a87",
-    "storage_bucket": "kolam-master-a5a87.firebasestorage.app"
+    "project_number": "350376338634",
+    "project_id": "kolam-master",
+    "storage_bucket": "kolam-master.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:799488150571:android:906b6151b2bf9a669fae6e",
+        "mobilesdk_app_id": "1:350376338634:android:af60e0d557a50f0f468033",
         "android_client_info": {
           "package_name": "com.kolammaster.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
-          "current_key": "AIzaSyBs6VqFSbC6DtV7aHUSVqZB6AsEd7F_bAo"
+          "current_key": "AIzaSyADoRugSCY_tjQaHWB1CdFKGetTiNRjUnE"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

@@ -106,8 +106,8 @@ private const val THUMBNAIL_REVEAL_BATCH_SIZE = 20
 private const val REWARDED_AD_TIMEOUT_MILLIS = 120_000L
 private const val ADMOB_NETWORK_ERROR_CODE = 2
 
-// Replace with the production rewarded-ad unit ID before release.
-private const val REWARDED_THUMBNAIL_AD_UNIT_ID = "ca-app-pub-3940256099942544/5224354917"
+private val REWARDED_THUMBNAIL_AD_UNIT_ID: String
+    get() = BuildConfig.PUBLISH_REWARDED_AD_UNIT_ID
 
 internal data class LessonCatalogueUiState(
     val entries: List<LessonCatalogueEntry> = emptyList(),
@@ -1116,59 +1116,36 @@ private fun GuestLessonUnlockWarningDialog(
     onSignIn: () -> Unit,
     onCancel: () -> Unit
 ) {
-    val lessonUnlockProtectionDescription =
-        stringResource(R.string.lesson_unlock_protect_progress)
     Dialog(onDismissRequest = onCancel) {
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .widthIn(max = 420.dp),
-            shape = RoundedCornerShape(24.dp),
-            color = KolamText,
+            shape = RoundedCornerShape(28.dp),
+            color = Color.White,
             tonalElevation = 8.dp
         ) {
             BoxWithConstraints {
                 val compact = maxWidth < 360.dp
                 Column(
                     modifier = Modifier
-                        .padding(24.dp)
+                        .padding(28.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(18.dp)
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(44.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(KolamElevated),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "✓",
-                                color = KolamBronze,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.semantics {
-                                    contentDescription = lessonUnlockProtectionDescription
-                                }
-                            )
-                        }
-                        Text(
-                            text = stringResource(R.string.lesson_unlocked),
-                            color = KolamText,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
+                    Text(
+                        text = stringResource(R.string.lesson_unlocked),
+                        color = Color(0xFF101A2C),
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(
                         text = stringResource(R.string.local_unlock_signin_message),
-                        color = KolamMutedText,
+                        color = Color(0xFF35435A),
                         fontSize = 15.sp,
                         lineHeight = 22.sp
                     )
+                    Spacer(Modifier.height(4.dp))
                     if (compact) {
                         Column(
                             modifier = Modifier.fillMaxWidth(),
@@ -1176,21 +1153,36 @@ private fun GuestLessonUnlockWarningDialog(
                         ) {
                             Button(
                                 onClick = onSignIn,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = KolamButtonYellow
-                                )
+                                    containerColor = KolamButtonYellow,
+                                    contentColor = KolamButtonText
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(stringResource(R.string.sign_in_with_google))
+                                Text(
+                                    stringResource(R.string.sign_in_with_google),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
-                            Button(
+                            OutlinedButton(
                                 onClick = onCancel,
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = KolamButtonYellow
-                                )
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(48.dp),
+                                border = BorderStroke(1.dp, KolamButtonYellow),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = kolamStandardButtonColors()
                             ) {
-                                Text(stringResource(R.string.cancel))
+                                Text(
+                                    "Continue as Guest",
+                                    color = Color(0xFF101A2C),
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold
+                                )
                             }
                         }
                     } else {
@@ -1198,23 +1190,40 @@ private fun GuestLessonUnlockWarningDialog(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Button(
-                                onClick = onSignIn,
-                                modifier = Modifier.weight(1f),
-                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = KolamButtonYellow
-                                )
+                            OutlinedButton(
+                                onClick = onCancel,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
+                                border = BorderStroke(1.dp, KolamButtonYellow),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = kolamStandardButtonColors()
                             ) {
-                                Text(stringResource(R.string.sign_in_with_google))
+                                Text(
+                                    "Continue as Guest",
+                                    color = Color(0xFF101A2C),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
                             }
                             Button(
-                                onClick = onCancel,
-                                modifier = Modifier.weight(1f),
+                                onClick = onSignIn,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp),
                                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = KolamButtonYellow
-                                )
+                                    containerColor = KolamButtonYellow,
+                                    contentColor = KolamButtonText
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             ) {
-                                Text(stringResource(R.string.cancel))
+                                Text(
+                                    stringResource(R.string.sign_in_with_google),
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1
+                                )
                             }
                         }
                     }
