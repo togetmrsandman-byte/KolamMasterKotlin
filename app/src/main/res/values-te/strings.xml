@@ -115,6 +115,7 @@
     <string name="publish">ప్రచురించండి</string>
     <string name="kolam_completed">కోలం పూర్తయింది</string>
     <string name="speed_label">వేగం %1$s</string>
+    <string name="speed_control">వేగం</string>
     <string name="step_progress">దశ %1$d / %2$d</string>
     <string name="publish_photo_unavailable">ఫోటో అందుబాటులో లేదు</string>
     <string name="submitted_for_review">సమీక్షకు సమర్పించబడింది</string>

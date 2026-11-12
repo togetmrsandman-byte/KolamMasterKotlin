@@ -115,6 +115,7 @@
     <string name="publish">公開</string>
     <string name="kolam_completed">コーラムが完成しました</string>
     <string name="speed_label">速度 %1$s</string>
+    <string name="speed_control">速度</string>
     <string name="step_progress">ステップ %1$d / %2$d</string>
     <string name="publish_photo_unavailable">写真を利用できません</string>
     <string name="submitted_for_review">審査に提出しました</string>

@@ -116,6 +116,7 @@
     <string name="publish">Publish</string>
     <string name="kolam_completed">Kolam Completed</string>
     <string name="speed_label">Speed %1$s</string>
+    <string name="speed_control">Speed</string>
     <string name="step_progress">Step %1$d of %2$d</string>
     <string name="publish_photo_unavailable">Photo unavailable</string>
     <string name="submitted_for_review">Submitted for Review</string>

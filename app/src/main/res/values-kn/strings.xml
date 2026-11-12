@@ -115,6 +115,7 @@
     <string name="publish">ಪ್ರಕಟಿಸಿ</string>
     <string name="kolam_completed">ಕೋಲಂ ಪೂರ್ಣಗೊಂಡಿದೆ</string>
     <string name="speed_label">ವೇಗ %1$s</string>
+    <string name="speed_control">ವೇಗ</string>
     <string name="step_progress">ಹಂತ %1$d / %2$d</string>
     <string name="publish_photo_unavailable">ಫೋಟೋ ಲಭ್ಯವಿಲ್ಲ</string>
     <string name="submitted_for_review">ಪರಿಶೀಲನೆಗೆ ಸಲ್ಲಿಸಲಾಗಿದೆ</string>

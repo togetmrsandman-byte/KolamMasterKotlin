@@ -115,6 +115,7 @@
     <string name="publish">प्रकाशित करें</string>
     <string name="kolam_completed">कोलम पूरा हुआ</string>
     <string name="speed_label">गति %1$s</string>
+    <string name="speed_control">गति</string>
     <string name="step_progress">चरण %1$d / %2$d</string>
     <string name="publish_photo_unavailable">फ़ोटो उपलब्ध नहीं है</string>
     <string name="submitted_for_review">समीक्षा के लिए भेजा गया</string>

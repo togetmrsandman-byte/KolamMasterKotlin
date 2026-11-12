@@ -115,6 +115,7 @@
     <string name="publish">Đăng</string>
     <string name="kolam_completed">Đã hoàn thành Kolam</string>
     <string name="speed_label">Tốc độ %1$s</string>
+    <string name="speed_control">Tốc độ</string>
     <string name="step_progress">Bước %1$d trên %2$d</string>
     <string name="publish_photo_unavailable">Ảnh không khả dụng</string>
     <string name="submitted_for_review">Đã gửi để xét duyệt</string>

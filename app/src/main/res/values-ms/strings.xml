@@ -115,6 +115,7 @@
     <string name="publish">Terbitkan</string>
     <string name="kolam_completed">Kolam Selesai</string>
     <string name="speed_label">Kelajuan %1$s</string>
+    <string name="speed_control">Kelajuan</string>
     <string name="step_progress">Langkah %1$d daripada %2$d</string>
     <string name="publish_photo_unavailable">Foto tidak tersedia</string>
     <string name="submitted_for_review">Dihantar untuk Semakan</string>

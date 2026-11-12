@@ -115,6 +115,7 @@
     <string name="publish">เผยแพร่</string>
     <string name="kolam_completed">ทำโกลัมเสร็จแล้ว</string>
     <string name="speed_label">ความเร็ว %1$s</string>
+    <string name="speed_control">ความเร็ว</string>
     <string name="step_progress">ขั้นตอนที่ %1$d จาก %2$d</string>
     <string name="publish_photo_unavailable">ไม่มีรูปภาพ</string>
     <string name="submitted_for_review">ส่งเพื่อตรวจสอบแล้ว</string>

@@ -390,7 +390,7 @@ internal fun PlaybackSpeedControl(
                 bottom = 10.dp
             )
         ) {
-            PlaybackControlLabel("Speed ▾")
+            PlaybackControlLabel("${stringResource(R.string.speed_control)} ▾")
         }
         DropdownMenu(
             expanded = expanded,

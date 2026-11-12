@@ -115,6 +115,7 @@
     <string name="publish">게시</string>
     <string name="kolam_completed">콜람 완성</string>
     <string name="speed_label">속도 %1$s</string>
+    <string name="speed_control">속도</string>
     <string name="step_progress">%1$d / %2$d 단계</string>
     <string name="publish_photo_unavailable">사진을 사용할 수 없음</string>
     <string name="submitted_for_review">검토를 위해 제출됨</string>

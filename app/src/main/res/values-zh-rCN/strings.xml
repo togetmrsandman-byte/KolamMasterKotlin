@@ -115,6 +115,7 @@
     <string name="publish">发布</string>
     <string name="kolam_completed">Kolam 已完成</string>
     <string name="speed_label">速度 %1$s</string>
+    <string name="speed_control">速度</string>
     <string name="step_progress">第 %1$d 步，共 %2$d 步</string>
     <string name="publish_photo_unavailable">照片不可用</string>
     <string name="submitted_for_review">已提交审核</string>
