@@ -824,6 +824,7 @@ class MainActivity : ComponentActivity() {
         isAuthProcessing = true
         authLoadingMessage = R.string.account_deletion_progress
         authError = null
+        val localizedContext = withSelectedAppLanguage()
         lifecycleScope.launch {
             try {
                 runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
@@ -838,18 +839,18 @@ class MainActivity : ComponentActivity() {
                         registerFcmToken(it)
                     }
                 }
-                authErrorTitle = getString(R.string.account_deletion)
-                authError = getString(R.string.account_deletion_success)
+                authErrorTitle = localizedContext.getString(R.string.account_deletion)
+                authError = localizedContext.getString(R.string.account_deletion_success)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 Log.e("AccountDeletion", "Could not delete the current account.", exception)
-                authErrorTitle = getString(R.string.account_deletion)
+                authErrorTitle = localizedContext.getString(R.string.account_deletion)
                 authError = if (NetworkErrors.isNetworkFailure(exception)) {
-                    getString(R.string.account_deletion_failed)
+                    localizedContext.getString(R.string.account_deletion_failed)
                 } else {
                     exception.message?.takeIf(String::isNotBlank)
-                        ?: getString(R.string.account_deletion_failed)
+                        ?: localizedContext.getString(R.string.account_deletion_failed)
                 }
             } finally {
                 clearAuthProcessing()
@@ -2105,6 +2106,8 @@ private fun KolamMasterApp(
                         onGoogleSignIn = onGoogleSignIn,
                         onContinueAsGuest = onContinueAsGuest,
                         onSignOut = onSignOut,
+                        onDeleteAccount = onDeleteAccount,
+                        onDismissAuthError = onDismissAuthError,
                         onLanguageChange = onLanguageChange,
                         onLanguageSelected = onLanguageSelected,
                         onLanguageBack = onLanguageBack,
@@ -2433,6 +2436,8 @@ private fun AppScreenContent(
     onGoogleSignIn: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
+    onDismissAuthError: () -> Unit,
     onLanguageChange: (String) -> Unit,
     onLanguageSelected: (String) -> Unit,
     onLanguageBack: () -> Unit,

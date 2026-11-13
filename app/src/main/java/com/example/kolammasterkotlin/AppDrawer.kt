@@ -254,6 +254,7 @@ private fun DrawerMenuRow(
     label: String,
     unread: Boolean = false,
     unreadDescription: String = "Unread Support messages",
+    textColor: Color = KolamText,
     onClick: () -> Unit
 ) {
     Row(
@@ -275,7 +276,7 @@ private fun DrawerMenuRow(
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            color = KolamText,
+            color = textColor,
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold
         )
@@ -1118,21 +1119,25 @@ internal fun openStoreFlow(
 
 @Composable
 private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
+    val localizedContext = LocalContext.current.withSelectedAppLanguage()
     var showConfirmDialog by remember { mutableStateOf(false) }
-    DrawerMenuRow(stringResource(R.string.delete_my_account)) {
+    DrawerMenuRow(
+        stringResource(R.string.delete_my_account),
+        textColor = Color(0xFFFF4D4D)
+    ) {
         showConfirmDialog = true
     }
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text(stringResource(R.string.delete_account_title)) },
-            text = { Text(stringResource(R.string.delete_account_message)) },
+            title = { Text(localizedContext.getString(R.string.delete_account_title)) },
+            text = { Text(localizedContext.getString(R.string.delete_account_message)) },
             dismissButton = {
                 TextButton(
                     onClick = { showConfirmDialog = false },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(stringResource(R.string.cancel))
+                    Text(localizedContext.getString(R.string.cancel))
                 }
             },
             confirmButton = {
@@ -1143,7 +1148,7 @@ private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
                     },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(stringResource(R.string.delete))
+                    Text(localizedContext.getString(R.string.delete))
                 }
             }
         )
