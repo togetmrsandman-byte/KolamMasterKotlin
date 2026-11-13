@@ -53,6 +53,13 @@
     <string name="try_again">Thử lại</string>
     <string name="close">Đóng</string>
     <string name="ok">OK</string>
+    <string name="account_deletion">Xóa tài khoản</string>
+    <string name="delete_my_account">Xóa tài khoản của tôi</string>
+    <string name="delete_account_title">Xóa tài khoản của bạn?</string>
+    <string name="delete_account_message">Tài khoản và dữ liệu liên quan của bạn sẽ bị xóa vĩnh viễn. Điều này bao gồm các bài học đã mở khóa, thư mục và dấu trang đã lưu, hình ảnh cộng đồng và bài gửi trong thư viện, các cuộc trò chuyện và tệp đính kèm từ Contact Us, và các dữ liệu khác liên quan đến tài khoản. Bạn sẽ mất quyền truy cập vào tài khoản của mình. Hành động này không thể hoàn tác.</string>
+    <string name="account_deletion_progress">Vui lòng đợi trong khi chúng tôi xóa tài khoản của bạn.</string>
+    <string name="account_deletion_success">Tài khoản của bạn đã được xóa thành công. Bạn hiện là người dùng khách.</string>
+    <string name="account_deletion_failed">Không thể hoàn tất việc xóa tài khoản. Vui lòng thử lại.</string>
     <string name="load_folders">Đang tải thư mục…</string>
     <string name="create_folder">Tạo thư mục</string>
     <string name="confirm_delete_folder">Bạn có chắc muốn xóa không?</string>

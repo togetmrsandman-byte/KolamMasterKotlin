@@ -53,6 +53,13 @@
     <string name="try_again">ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ</string>
     <string name="close">ಮುಚ್ಚಿ</string>
     <string name="ok">ಸರಿ</string>
+    <string name="account_deletion">ಖಾತೆ ಅಳಿಸುವಿಕೆ</string>
+    <string name="delete_my_account">ನನ್ನ ಖಾತೆಯನ್ನು ಅಳಿಸಿ</string>
+    <string name="delete_account_title">ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಅಳಿಸಿ</string>
+    <string name="delete_account_message">ನಿಮ್ಮ ಖಾತೆ ಮತ್ತು ಸಂಬಂಧಿತ ಡೇಟಾವನ್ನು ಶಾಶ್ವತವಾಗಿ ಅಳಿಸಲಾಗುತ್ತದೆ. ಇದರಲ್ಲಿ আন್ಲಾಕ್ ಮಾಡಲಾದ ಪಾಠಗಳು, ಉಳಿಸಿದ ಫೋಲ್ಡರ್‌ಗಳು ಮತ್ತು ಬುಕ್ಮಾರ್ಕ್‌ಗಳು, ಸಮುದಾಯ ಚಿತ್ರಗಳು ಮತ್ತು ಗ್ಯಾಲರಿ ಸಲ್ಲಿಕೆಗಳು, Contact Us ಚರ್ಚೆಗಳು ಮತ್ತು ಅಟ್ಯಾಚ್ಮೆಂಟ್ಳು, ಹಾಗೆಯೇ ಇತರ ಖಾತೆ-ಸಂಬಂಧಿತ ಡೇಟಾವೂ ಸೇರಿವೆ. ನೀವು ನಿಮ್ಮ ಖಾತೆಗೆ ಪ್ರವೇಶದ ಬಗ್ಗೆ ಕಳೆದುಕೊಳ್ಳುತ್ತೀರಿ. ಈ ಕ್ರಿಯೆಯನ್ನು ಹಿಂತಿರುಗಿಸಲಾಗುವುದಿಲ್ಲ.</string>
+    <string name="account_deletion_progress">ನಾವು ನಿಮ್ಮ ಖಾತೆಯನ್ನು ತೆಗೆದುಹಾಕುವವರೆಗೆ ದಯವಿಟ್ಟು ಕಾಯಿರಿ.</string>
+    <string name="account_deletion_success">ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ. ನೀವು ಈಗ ಅತಿಥಿ ಬಳಕೆದಾರರಾಗಿದ್ದೀರಿ.</string>
+    <string name="account_deletion_failed">ಖಾತೆ ಅಳಿಸುವಿಕೆಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
     <string name="load_folders">ಫೋಲ್ಡರ್‌ಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ…</string>
     <string name="create_folder">ಫೋಲ್ಡರ್ ರಚಿಸಿ</string>
     <string name="confirm_delete_folder">ಅಳಿಸಲು ಖಚಿತವೇ?</string>

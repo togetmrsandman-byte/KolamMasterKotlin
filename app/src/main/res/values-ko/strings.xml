@@ -53,6 +53,13 @@
     <string name="try_again">다시 시도</string>
     <string name="close">닫기</string>
     <string name="ok">확인</string>
+    <string name="account_deletion">계정 삭제</string>
+    <string name="delete_my_account">내 계정 삭제</string>
+    <string name="delete_account_title">계정을 삭제하시겠습니까?</string>
+    <string name="delete_account_message">계정 및 관련 데이터가 영구적으로 삭제됩니다. 여기에는 잠금 해제된 레슨, 저장된 폴더 및 북마크, 커뮤니티 사진 및 갤러리 제출물, 문의하기 대화 및 첨부 파일, 그리고 기타 계정 관련 데이터가 포함됩니다. 계정 접근 권한을 잃게 됩니다. 이 작업은 취소할 수 없습니다.</string>
+    <string name="account_deletion_progress">계정을 삭제하는 동안 잠시 기다려 주세요.</string>
+    <string name="account_deletion_success">계정이 성공적으로 삭제되었습니다. 이제 게스트 사용자입니다.</string>
+    <string name="account_deletion_failed">계정 삭제를 완료할 수 없습니다. 다시 시도해 주세요.</string>
     <string name="load_folders">폴더를 불러오는 중…</string>
     <string name="create_folder">폴더 만들기</string>
     <string name="confirm_delete_folder">정말 삭제하시겠어요?</string>

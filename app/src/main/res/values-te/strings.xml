@@ -53,6 +53,13 @@
     <string name="try_again">మళ్లీ ప్రయత్నించండి</string>
     <string name="close">మూసివేయండి</string>
     <string name="ok">సరే</string>
+    <string name="account_deletion">ఖాతా తొలగింపు</string>
+    <string name="delete_my_account">నా ఖాతాను తొలగించు</string>
+    <string name="delete_account_title">మీ ఖాతాను తొలగించండి</string>
+    <string name="delete_account_message">మీ ఖాతా మరియు సంబంధిత డేటా శాశ్వతంగా తొలగించబడతాయి. ఇందులో అన్లాక్ చేసిన పాఠాలు, సేవ్ చేసిన ఫోల్డర్‌లు మరియు బుక్‌మార్క్‌లు, కమ్యూనిటీ చిత్రాలు మరియు గ్యాలరీ సమర్పనలు, Contact Us చర్చలు మరియు అటాచ్‌మెంట్‌లు, మరియు ఇతర ఖాతా-సంబంధిత డేటా ఉంటాయి. మీరు మీ ఖాతాకు ఉన్న ప్రాప్యతను కోల్పోతారు. ఈ చర్యను రద్దు చేయలేరు.</string>
+    <string name="account_deletion_progress">మేము మీ ఖాతాను తొలగిస్తున్నప్పుడు దయచేసి వేచి ఉండండి.</string>
+    <string name="account_deletion_success">మీ ఖాతా విజయవంతంగా తొలగించబడింది. మీరు ఇప్పుడు అతిథి వినియోగదారు.</string>
+    <string name="account_deletion_failed">ఖాతా తొలగింపు పూర్తి కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
     <string name="load_folders">ఫోల్డర్‌లు లోడ్ అవుతున్నాయి…</string>
     <string name="create_folder">ఫోల్డర్‌ను సృష్టించండి</string>
     <string name="confirm_delete_folder">తొలగించాలనుకుంటున్నారా?</string>
@@ -303,7 +310,7 @@
     <string name="history_sangam_title">సంగం సాహిత్య ప్రస్తావన</string>
     <string name="history_sangam_description">ప్రాచీన తమిళ సంగం సాహిత్యంలో అలంకరించిన ప్రవేశద్వారాలు, ప్రాంగణాల ప్రస్తావనలు ఉన్నాయి. ఆ కాలంలోనే నేల అలంకరణ ఉండేదని ఇది చూపిస్తుంది.</string>
     <string name="history_festival_title">పండుగ సంప్రదాయాలు</string>
-    <string name="history_festival_description">పండుగలు, ప్రత్యేక సందర్భాల్లో వేడుకలను సూచించడానికి, సందర్శకులను ఆహ్వానించడానికి కోలాలను పెద్దగా, మరింత విపులంగా వేస్తారు.</string>
+    <string name="history_festival_description">పండుగలు, ప్రత్యేక సందర్భాల్లో వేడుకలను సూచించడానికి, సందర్శకులను ఆహ్వానించడానికి కోలాలను పెద్దగా, మరింత విపులంగా వేయబడతాయి.</string>
     <string name="history_modern_science_title">ఆధునిక కంప్యూటర్ శాస్త్రానికి సృజనాత్మక వేదిక</string>
     <string name="history_modern_science_discovery">1970లు, 1980ల్లో Dr. Gift Siromoney నేతృత్వంలోని Madras Christian College కంప్యూటర్ శాస్త్రవేత్తలు ఒక కీలకమైన విషయాన్ని గుర్తించారు: Sikku Kolamలు అధునాతన దృశ్య అల్గారిథమ్‌లు.</string>
     <string name="history_modern_science_languages">చుక్కల చుట్టూ గీతలను తిప్పే నియమాలు కంప్యూటర్ ప్రోగ్రామింగ్‌లోని అధికారిక చిత్ర భాషలు, array grammarలకు సరిగ్గా సరిపోతాయని వారు కనుగొన్నారు.</string>

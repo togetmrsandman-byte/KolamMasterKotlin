@@ -54,6 +54,13 @@
     <string name="try_again">Try again</string>
     <string name="close">Close</string>
     <string name="ok">OK</string>
+    <string name="account_deletion">Account Deletion</string>
+    <string name="delete_my_account">Delete My Account</string>
+    <string name="delete_account_title">Delete your account</string>
+    <string name="delete_account_message">Your account and associated data will be permanently deleted. This includes unlocked lessons, saved folders and bookmarks, community pictures and gallery submissions, Contact Us conversations and attachments, and other account-associated data. You will lose access to your account. This action cannot be undone.</string>
+    <string name="account_deletion_progress">Please wait while we\'re removing your account.</string>
+    <string name="account_deletion_success">Your account has been deleted successfully. You are now a guest user.</string>
+    <string name="account_deletion_failed">Account deletion could not be completed. Please try again.</string>
     <string name="load_folders">Loading folders…</string>
     <string name="create_folder">Create Folder</string>
     <string name="confirm_delete_folder">Are you sure you want to delete?</string>

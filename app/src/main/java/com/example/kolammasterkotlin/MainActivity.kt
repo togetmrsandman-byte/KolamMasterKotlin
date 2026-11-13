@@ -357,6 +357,7 @@ class MainActivity : ComponentActivity() {
                     onGoogleSignIn = ::beginGoogleSignIn,
                     onContinueAsGuest = ::continueAsGuest,
                     onSignOut = ::signOutToGuest,
+                    onDeleteAccount = ::deleteCurrentAccount,
                     onDismissAuthError = { authError = null },
                     onLanguageChange = { language ->
                         saveLanguage(language)
@@ -814,6 +815,44 @@ class MainActivity : ComponentActivity() {
                 Log.e("InitialAssetSetup", "Could not prepare initial app images.", exception)
                 assetSetupRunning = false
                 assetSetupError = R.string.some_images_failed
+            }
+        }
+    }
+
+    private fun deleteCurrentAccount() {
+        if (isAuthProcessing) return
+        isAuthProcessing = true
+        authLoadingMessage = R.string.account_deletion_progress
+        authError = null
+        lifecycleScope.launch {
+            try {
+                runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
+                    SupabaseGuestAuth.deleteAccount()
+                }
+                googleSignInClient.signOut()
+                runBoundedNetworkOperation(SIGN_IN_SDK_TIMEOUT_MILLIS) {
+                    SupabaseGuestAuth.signOutAndCreateGuest()
+                    accountState = SupabaseGuestAuth.currentAccount()
+                    accountState?.let {
+                        restoreLessonUnlocks(it)
+                        registerFcmToken(it)
+                    }
+                }
+                authErrorTitle = getString(R.string.account_deletion)
+                authError = getString(R.string.account_deletion_success)
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e("AccountDeletion", "Could not delete the current account.", exception)
+                authErrorTitle = getString(R.string.account_deletion)
+                authError = if (NetworkErrors.isNetworkFailure(exception)) {
+                    getString(R.string.account_deletion_failed)
+                } else {
+                    exception.message?.takeIf(String::isNotBlank)
+                        ?: getString(R.string.account_deletion_failed)
+                }
+            } finally {
+                clearAuthProcessing()
             }
         }
     }
@@ -1407,6 +1446,7 @@ private fun KolamMasterApp(
     onGoogleSignIn: () -> Unit,
     onContinueAsGuest: () -> Unit,
     onSignOut: () -> Unit,
+    onDeleteAccount: () -> Unit,
     onDismissAuthError: () -> Unit,
     onLanguageChange: (String) -> Unit,
     onLanguageSelected: (String) -> Unit,
@@ -2072,8 +2112,7 @@ private fun KolamMasterApp(
                         onLoadCommunityLesson = onLoadCommunityLesson,
                         onCheckMoreThumbnails = onCheckMoreThumbnails,
                         communityLessonOpenError = communityLessonOpenError,
-                        onDismissCommunityLessonOpenError =
-                            onDismissCommunityLessonOpenError,
+                        onDismissCommunityLessonOpenError = onDismissCommunityLessonOpenError,
                         onCommunityLessonMissing = {
                             communityLessonRequestId = null
                             onCommunityLessonMissing()
@@ -2097,22 +2136,12 @@ private fun KolamMasterApp(
                         contactConversations = contactConversations,
                         isContactLoading = isContactLoading,
                         contactLoadError = contactLoadError,
-                        isContactSignedIn = contactAccountId != null &&
-                            !contactSignInRequired,
+                        isContactSignedIn = contactAccountId != null && !contactSignInRequired,
                         onRetryContactLoad = { contactRetryKey++ },
                         isNewContactConversation = isNewContactConversation,
                         selectedContactConversationId = selectedContactConversationId,
-                        onContactConversationSelected = {
-                            selectedContactConversationId = it
-                            verifiedContactConversation = null
-                            val hasPendingRefresh =
-                                SupportUnreadStore.consumeConversationRefreshSignal(context, it)
-                            if (hasPendingRefresh) {
-                                contactDetailRefreshKey++
-                            }
-                            SupportUnreadStore.clearConversation(context, it)
-                            unreadContactConversationIds =
-                                SupportUnreadStore.unreadConversationIds(context)
+                        onContactConversationSelected = { conversationId ->
+                            selectedContactConversationId = conversationId
                         },
                         onLoadContactMessages = contactRepository::getContactMessages,
                         onLoadContactConversation = { conversationId ->
@@ -2128,34 +2157,8 @@ private fun KolamMasterApp(
                         onSendContactMessage = contactRepository::sendContactMessage,
                         onUploadContactImage = contactRepository::uploadContactImage,
                         unreadContactConversationIds = unreadContactConversationIds,
-                        announcements = announcements,
-                        announcementsLoading = announcementLoading,
-                        announcementsError = announcementError,
-                        announcementsActionError = announcementActionError,
-                        announcementNetworkRetryAction = announcementNetworkRetryAction,
-                        onDismissAnnouncementNetworkError = {
-                            announcementNetworkRetryAction = null
-                        },
-                        selectedAnnouncement = announcements.firstOrNull {
-                            it.id == selectedAnnouncementId
-                        },
-                        communitySubmissions = communitySubmissions,
-                        communityLoading = communityLoading,
-                        communityError = communityError,
-                        onRefreshCommunity = { communityRefreshKey++ },
-                        isMarkingAllAnnouncementsRead = isMarkingAllAnnouncementsRead,
-                        onRetryAnnouncements = { announcementRefreshKey++ },
-                        onAnnouncementSelected = { selectedAnnouncementId = it.id },
-                        onAnnouncementDetailBack = handleAnnouncementDetailBack,
-                        onMarkAllAnnouncementsRead = {
-                            submitMarkAllAnnouncementsRead(
-                                announcementIdsForMarkAll(announcements)
-                            )
-                        },
                         onNewContactConversation = {
-                            if (contactAccountId != null) {
-                                isNewContactConversation = true
-                            }
+                            isNewContactConversation = true
                         },
                         onCreateContactConversation = { phone, subject, initialMessage, imageBytes ->
                             val createdConversation = createContactConversationForAccount(
@@ -2173,7 +2176,29 @@ private fun KolamMasterApp(
                                 ?.value
                                 .orEmpty()
                         },
-                        onContactDetailRefreshHandled = { contactDetailRefreshKey = 0 },
+                        announcements = announcements,
+                        announcementsLoading = announcementLoading,
+                        announcementsError = announcementError,
+                        announcementsActionError = announcementActionError,
+                        announcementNetworkRetryAction = announcementNetworkRetryAction,
+                        onDismissAnnouncementNetworkError = {
+                            announcementError = null
+                            announcementNetworkRetryAction = null
+                        },
+                        selectedAnnouncement = announcements.firstOrNull { it.id == selectedAnnouncementId },
+                        communitySubmissions = communitySubmissions,
+                        communityLoading = communityLoading,
+                        communityError = communityError,
+                        onRefreshCommunity = { communityRefreshKey++ },
+                        isMarkingAllAnnouncementsRead = isMarkingAllAnnouncementsRead,
+                        onRetryAnnouncements = { announcementRefreshKey++ },
+                        onAnnouncementSelected = { announcement ->
+                            selectedAnnouncementId = announcement.id
+                        },
+                        onAnnouncementDetailBack = { selectedAnnouncementId = null },
+                        onMarkAllAnnouncementsRead = {
+                            submitMarkAllAnnouncementsRead(announcements.map { it.id })
+                        },
                         onBegin = {
                             scope.launch {
                                 rootAlpha.animateTo(
@@ -2194,7 +2219,8 @@ private fun KolamMasterApp(
                                 )
                             }
                         },
-                        onMenuAction = onMenuAction
+                        onMenuAction = onMenuAction,
+                        onContactDetailRefreshHandled = { contactDetailRefreshKey = 0 }
                     )
                 }
             }
@@ -2215,7 +2241,9 @@ private fun KolamMasterApp(
                         }
                     },
                     unreadContactUs = hasUnreadSupportNotifications,
-                    unreadAnnouncements = announcementUnread
+                    unreadAnnouncements = announcementUnread,
+                    showDeleteAccountOption = account?.takeUnless { it.isGuest } != null,
+                    onDeleteAccountClick = onDeleteAccount
                 )
             }
         }
@@ -2330,6 +2358,16 @@ private fun KolamMasterApp(
                 }
             }
         )
+    }
+
+    BackHandler(enabled = publishPickerLesson == null &&
+        drawerOpen &&
+        screen !is AppScreen.Landing &&
+        screen !is AppScreen.ChooseLanguage &&
+        screen !is AppScreen.Opening &&
+        screen !is AppScreen.DownloadingAssets
+    ) {
+        drawerOpen = false
     }
 
     BackHandler(enabled = publishPickerLesson == null &&

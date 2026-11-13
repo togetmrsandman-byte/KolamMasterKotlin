@@ -194,4 +194,43 @@ object SupabaseGuestAuth {
                 connection.disconnect()
             }
         }
+
+    suspend fun deleteAccount() = withContext(Dispatchers.IO) {
+        val account = currentAccount() ?: throw IllegalStateException("No signed-in account to delete.")
+        val accessToken = accessTokenFor(account.id)
+        val connection = URL(
+            "${BuildConfig.SUPABASE_URL}/functions/v1/delete-account"
+        ).openConnection() as HttpURLConnection
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 30_000
+            connection.readTimeout = 30_000
+            connection.doOutput = true
+            connection.setRequestProperty("apikey", BuildConfig.SUPABASE_PUBLISHABLE_KEY)
+            connection.setRequestProperty("Authorization", "Bearer $accessToken")
+            connection.setRequestProperty("Content-Type", "application/json")
+
+            val statusCode = connection.responseCode
+            val responseBody = (if (statusCode in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            })?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
+            val response = try {
+                JSONObject(responseBody)
+            } catch (_: Exception) {
+                JSONObject()
+            }
+            if (statusCode !in 200..299 || response.optBoolean("success") != true) {
+                throw HttpStatusFailureException(
+                    statusCode = statusCode,
+                    message = response.optString("error").ifBlank {
+                        "Account deletion request failed with HTTP $statusCode."
+                    }
+                )
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
 }

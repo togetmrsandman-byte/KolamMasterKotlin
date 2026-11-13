@@ -53,6 +53,13 @@
     <string name="try_again">Cuba lagi</string>
     <string name="close">Tutup</string>
     <string name="ok">OK</string>
+    <string name="account_deletion">Pemadaman Akaun</string>
+    <string name="delete_my_account">Padam Akaun Saya</string>
+    <string name="delete_account_title">Padamkan akaun anda?</string>
+    <string name="delete_account_message">Akaun anda dan data berkaitan akan dipadamkan secara kekal. Ini termasuk pelajaran yang dibuka kunci, folder dan penanda halaman yang disimpan, gambar komuniti dan penyerahan galeri, perbualan Contact Us dan lampiran, serta data lain yang berkaitan dengan akaun. Anda akan kehilangan akses kepada akaun anda. Tindakan ini tidak boleh dibatalkan.</string>
+    <string name="account_deletion_progress">Sila tunggu sementara kami mengalih keluar akaun anda.</string>
+    <string name="account_deletion_success">Akaun anda telah berjaya dipadamkan. Anda kini pengguna tetamu.</string>
+    <string name="account_deletion_failed">Pemadaman akaun tidak dapat diselesaikan. Sila cuba lagi.</string>
     <string name="load_folders">Memuatkan folder…</string>
     <string name="create_folder">Cipta Folder</string>
     <string name="confirm_delete_folder">Adakah anda pasti mahu memadam?</string>

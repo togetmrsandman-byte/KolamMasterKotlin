@@ -53,6 +53,13 @@
     <string name="try_again">ลองอีกครั้ง</string>
     <string name="close">ปิด</string>
     <string name="ok">ตกลง</string>
+    <string name="account_deletion">การลบบัญชี</string>
+    <string name="delete_my_account">ลบบัญชีของฉัน</string>
+    <string name="delete_account_title">ลบบัญชีของคุณ</string>
+    <string name="delete_account_message">บัญชีและข้อมูลที่เกี่ยวข้องของคุณจะถูกลบอย่างถาวร ซึ่งรวมถึงบทเรียนที่ปลดล็อกแล้ว โฟลเดอร์และบุ๊กมาร์กที่บันทึกไว้ รูปภาพชุมชนและการส่งเข้ากลุ่มอัลบั้ม การสนทนาและไฟล์แนบจาก Contact Us และข้อมูลอื่นๆ ที่เกี่ยวข้องกับบัญชีของคุณ คุณจะสูญเสียการเข้าถึงบัญชีของคุณ การดำเนินการนี้ไม่สามารถยกเลิกได้</string>
+    <string name="account_deletion_progress">โปรดรอสักครู่ในขณะที่เราลบบัญชีของคุณ</string>
+    <string name="account_deletion_success">ลบบัญชีของคุณสำเร็จแล้ว ตอนนี้คุณเป็นผู้ใช้ทั่วไป</string>
+    <string name="account_deletion_failed">ไม่สามารถลบบัญชีได้ กรุณาลองใหม่อีกครั้ง</string>
     <string name="load_folders">กำลังโหลดโฟลเดอร์…</string>
     <string name="create_folder">สร้างโฟลเดอร์</string>
     <string name="confirm_delete_folder">ต้องการลบใช่ไหม</string>

@@ -53,6 +53,13 @@
     <string name="try_again">மீண்டும் முயற்சிக்கவும்</string>
     <string name="close">மூடு</string>
     <string name="ok">சரி</string>
+    <string name="account_deletion">கணக்கு நீக்கம்</string>
+    <string name="delete_my_account">எனது கணக்கை நீக்கு</string>
+    <string name="delete_account_title">உங்கள் கணக்கை நீக்கு</string>
+    <string name="delete_account_message">உங்கள் கணக்கும் தொடர்புடைய தரவும் நிரந்தரமாக நீக்கப்படும். இதில் அன்லாக் செய்யப்பட்ட பாடங்கள், சேமிக்கப்பட்ட கோப்புறைகள் மற்றும் புக்மார்க்குகள், சமூகம் படங்கள் மற்றும் கேலரி சமர்ப்பிப்புகள், Contact Us உரையாடல்கள் மற்றும் இணைப்புகள், மற்றும் பிற கணக்கு-தொடர்புடைய தரவுகள் ஆகியவை அடங்கும். நீங்கள் உங்கள் கணக்கிற்கான அணுகலை இழப்பீர்கள். இந்த நடவடிக்கை மீண்டும் மாற்ற முடியாது.</string>
+    <string name="account_deletion_progress">உங்கள் கணக்கு அகற்றப்படும் வரை காத்திருக்கவும்.</string>
+    <string name="account_deletion_success">உங்கள் கணக்கு வெற்றிகரமாக நீக்கப்பட்டது. நீங்கள் இப்போது விருந்தினர் பயனர்.</string>
+    <string name="account_deletion_failed">கணக்கு நீக்கத்தை முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
     <string name="load_folders">கோப்புறைகள் ஏற்றப்படுகின்றன…</string>
     <string name="create_folder">கோப்புறையை உருவாக்கு</string>
     <string name="confirm_delete_folder">நிச்சயமாக நீக்க வேண்டுமா?</string>

@@ -53,6 +53,13 @@
     <string name="try_again">再試行</string>
     <string name="close">閉じる</string>
     <string name="ok">OK</string>
+    <string name="account_deletion">アカウントの削除</string>
+    <string name="delete_my_account">アカウントを削除</string>
+    <string name="delete_account_title">アカウントを削除しますか？</string>
+    <string name="delete_account_message">アカウントと関連データは完全に削除されます。これには、ロック解除されたレッスン、保存されたフォルダとブックマーク、コミュニティ写真とギャラリー投稿、「お問い合わせ」���会話と添付ファイル、その他のアカウントに関連するデータが含まれます。アカウントへのアクセス権を失います。この操作は取り消せません。</string>
+    <string name="account_deletion_progress">アカウントを削除しています。しばらくお待ちください。</string>
+    <string name="account_deletion_success">アカウントが正常に削除されました。あなたは現在ゲストユーザーです。</string>
+    <string name="account_deletion_failed">アカウントの削除を完了できませんでした。もう一度お試しください。</string>
     <string name="load_folders">フォルダを読み込み中…</string>
     <string name="create_folder">フォルダを作成</string>
     <string name="confirm_delete_folder">削除してもよろしいですか？</string>

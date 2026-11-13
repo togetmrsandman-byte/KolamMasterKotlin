@@ -53,6 +53,13 @@
     <string name="try_again">फिर कोशिश करें</string>
     <string name="close">बंद करें</string>
     <string name="ok">ठीक है</string>
+    <string name="account_deletion">खाता हटाना</string>
+    <string name="delete_my_account">मेरा खाता हटाएं</string>
+    <string name="delete_account_title">अपना खाता हटाएं</string>
+    <string name="delete_account_message">आपका खाता और संबंधित डेटा स्थायी रूप से हटा दिया जाएगा। इसमें अनलॉक की गई पाठ, सहेजे गए फ़ोल्डर और बुकमार्क, सामुदायिक चित्र और गैलरी सबमिशन, Contact Us वार्तालाप और अटैचमेंट, और अन्य खाते से जुड़ा डेटा शामिल हैं। आप अपने खाते तक पहुंच खो देंगे। यह कार्रवाई वापस नहीं की जा सकती।</string>
+    <string name="account_deletion_progress">कृपया प्रतीक्षा करें, जब तक हम आपका खाता हटा रहे हैं।</string>
+    <string name="account_deletion_success">आपका खाता सफलतापूर्वक हटा दिया गया है। अब आप अतिथि उपयोगकर्ता हैं।</string>
+    <string name="account_deletion_failed">खाता हटाना पूरा नहीं किया जा सका। कृपया पुनः प्रयास करें।</string>
     <string name="load_folders">फ़ोल्डर लोड हो रहे हैं…</string>
     <string name="create_folder">फ़ोल्डर बनाएँ</string>
     <string name="confirm_delete_folder">क्या आप वाकई हटाना चाहते हैं?</string>

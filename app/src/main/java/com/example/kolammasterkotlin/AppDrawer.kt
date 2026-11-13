@@ -24,7 +24,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -155,9 +154,11 @@ internal fun DrawerOverlay(
     onBack: () -> Unit,
     onSelect: (DrawerAction) -> Unit,
     unreadContactUs: Boolean = false,
-    unreadAnnouncements: Boolean = false
+    unreadAnnouncements: Boolean = false,
+    showDeleteAccountOption: Boolean = false,
+    onDeleteAccountClick: () -> Unit = {}
 ) {
-    BoxWithConstraints(
+    Box(
         modifier = Modifier
             .fillMaxSize()
     ) {
@@ -233,6 +234,9 @@ internal fun DrawerOverlay(
                 }
                 if (settingsExpanded) {
                     SettingsNotifications()
+                    if (showDeleteAccountOption) {
+                        SettingsDeleteAccountAction(onDeleteAccountClick)
+                    }
                 }
                 DrawerMenuRow(stringResource(R.string.update_app)) {
                     onSelect(DrawerAction.UpdateApp)
@@ -1108,6 +1112,40 @@ internal fun openStoreFlow(
         context.startActivity(
             Intent(Intent.ACTION_VIEW, Uri.parse(packageUri))
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        )
+    }
+}
+
+@Composable
+private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    DrawerMenuRow(stringResource(R.string.delete_my_account)) {
+        showConfirmDialog = true
+    }
+    if (showConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showConfirmDialog = false },
+            title = { Text(stringResource(R.string.delete_account_title)) },
+            text = { Text(stringResource(R.string.delete_account_message)) },
+            dismissButton = {
+                TextButton(
+                    onClick = { showConfirmDialog = false },
+                    colors = kolamStandardButtonColors()
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showConfirmDialog = false
+                        onDeleteAccount()
+                    },
+                    colors = kolamStandardButtonColors()
+                ) {
+                    Text(stringResource(R.string.delete))
+                }
+            }
         )
     }
 }

@@ -53,6 +53,13 @@
     <string name="try_again">重试</string>
     <string name="close">关闭</string>
     <string name="ok">确定</string>
+    <string name="account_deletion">账户删除</string>
+    <string name="delete_my_account">删除我的账户</string>
+    <string name="delete_account_title">要删除您的账户吗？</string>
+    <string name="delete_account_message">您的账户及相关数据将被永久删除。这包括已解锁的课程、保存的文件夹和书签、社区图片和图库投稿、Contact Us 对话和附件，以及其他与账户相关的数据。您将失去对账户的访问权限。此操作无法撤消。</string>
+    <string name="account_deletion_progress">请稍候，我们正在删除您的账户。</string>
+    <string name="account_deletion_success">您的账户已成功删除。您现在是访客用户。</string>
+    <string name="account_deletion_failed">无法完成账户删除，请重试。</string>
     <string name="load_folders">正在加载文件夹…</string>
     <string name="create_folder">创建文件夹</string>
     <string name="confirm_delete_folder">确定要删除吗？</string>
