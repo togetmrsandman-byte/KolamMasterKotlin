@@ -39,7 +39,7 @@
                 android:resource="@xml/contact_file_paths" />
         </provider>
         <activity
-            android:name="com.kolammaster.app.MainActivity"
+            android:name="com.kolammaster.android.MainActivity"
             android:exported="true"
             android:label="@string/app_name"
             android:screenOrientation="portrait"
@@ -52,7 +52,7 @@
             </intent-filter>
         </activity>
         <service
-            android:name="com.kolammaster.app.notifications.KolamFirebaseMessagingService"
+            android:name="com.kolammaster.android.notifications.KolamFirebaseMessagingService"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.google.firebase.MESSAGING_EVENT" />

@@ -3,13 +3,27 @@
   <component name="AppInsightsSettings">
     <option name="tabSettings">
       <map>
+        <entry key="Android vitals">
+          <value>
+            <InsightsFilterSettings>
+              <option name="connection">
+                <ConnectionSetting>
+                  <option name="appId" value="com.kolammaster.android" />
+                </ConnectionSetting>
+              </option>
+              <option name="signal" value="SIGNAL_UNSPECIFIED" />
+              <option name="timeIntervalDays" value="SEVEN_DAYS" />
+              <option name="visibilityType" value="ALL" />
+            </InsightsFilterSettings>
+          </value>
+        </entry>
         <entry key="Firebase Crashlytics">
           <value>
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="com.kolammaster.app" />
-                  <option name="mobileSdkAppId" value="1:350376338634:android:af60e0d557a50f0f468033" />
+                  <option name="appId" value="com.kolammaster.android" />
+                  <option name="mobileSdkAppId" value="1:350376338634:android:12f2f6e0566f4b2b468033" />
                   <option name="projectId" value="kolam-master" />
                   <option name="projectNumber" value="350376338634" />
                 </ConnectionSetting>

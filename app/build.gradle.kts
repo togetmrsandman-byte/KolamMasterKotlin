@@ -60,13 +60,13 @@ val testPublishRewardedAdUnitId = "ca-app-pub-3940256099942544/5224354917"
 val testAdMobApplicationId = "ca-app-pub-3940256099942544~3347511713"
 
 android {
-    namespace = "com.kolammaster.app"
+    namespace = "com.kolammaster.android"
     compileSdk {
         version = release(37)
     }
 
     defaultConfig {
-        applicationId = "com.kolammaster.app"
+        applicationId = "com.kolammaster.android"
         minSdk = 24
         targetSdk = 37
         versionCode = 1

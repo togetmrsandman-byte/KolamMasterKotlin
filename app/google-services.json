@@ -7,12 +7,49 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:350376338634:android:af60e0d557a50f0f468033",
+        "mobilesdk_app_id": "1:350376338634:android:12f2f6e0566f4b2b468033",
         "android_client_info": {
-          "package_name": "com.kolammaster.app"
+          "package_name": "com.kolammaster.android"
         }
       },
       "oauth_client": [
+        {
+          "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyADoRugSCY_tjQaHWB1CdFKGetTiNRjUnE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:350376338634:android:af60e0d557a50f0f468033",
+        "android_client_info": {
+          "package_name": "com.kolammaster.android"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "350376338634-hjo5vruvhgs9nmflm63f80lqk18eoe1h.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kolammaster.android",
+            "certificate_hash": "d22c89fe6e7bf610f22bae369c2ef0fde2471139"
+          }
+        },
         {
           "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
           "client_type": 3
