@@ -63,6 +63,7 @@ internal fun MyFoldersDestination(
     onSignIn: () -> Unit,
     onCancel: () -> Unit,
     isSignInProcessing: Boolean,
+    onLoadLesson: (LessonCatalogueEntry) -> Unit = {},
     selectedFolderIdState: MutableState<String?> = remember(accountId) {
         mutableStateOf(null)
     },
@@ -321,6 +322,7 @@ internal fun MyFoldersDestination(
                                             FolderLessonCard(
                                                 lesson = lesson,
                                                 enabled = !isProcessing,
+                                                onView = { onLoadLesson(lesson) },
                                                 onRemove = onRemove
                                             )
                                         }
@@ -601,10 +603,13 @@ private fun UnavailableFolderLessonCard(
 private fun FolderLessonCard(
     lesson: LessonCatalogueEntry,
     enabled: Boolean,
+    onView: () -> Unit,
     onRemove: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onView),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(containerColor = FolderSurface),
         border = BorderStroke(1.dp, KolamSilverBorder)
@@ -618,6 +623,7 @@ private fun FolderLessonCard(
                 modifier = Modifier
                     .size(100.dp)
                     .aspectRatio(1f)
+                    .clickable(enabled = enabled, onClick = onView)
             )
             Column(
                 modifier = Modifier
@@ -647,9 +653,31 @@ private fun FolderLessonCard(
                         overflow = TextOverflow.Ellipsis
                     )
                 }
-                RemoveLessonButton(enabled, onRemove)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    ViewLessonButton(enabled, onView)
+                    RemoveLessonButton(enabled, onRemove)
+                }
             }
         }
+    }
+}
+
+@Composable
+private fun ViewLessonButton(enabled: Boolean, onClick: () -> Unit) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier.height(36.dp),
+        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+            horizontal = 12.dp,
+            vertical = 0.dp
+        ),
+        colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
+    ) {
+        Text(stringResource(R.string.view_folder))
     }
 }
 

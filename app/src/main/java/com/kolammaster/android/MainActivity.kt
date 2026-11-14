@@ -2551,6 +2551,7 @@ private fun AppScreenContent(
             onSignIn = onGoogleSignIn,
             onCancel = onGoBack,
             isSignInProcessing = isAuthProcessing,
+            onLoadLesson = onLoadLesson,
             selectedFolderIdState = selectedMyFolderId
         )
         AppScreen.Profile -> ProfileDestination(
