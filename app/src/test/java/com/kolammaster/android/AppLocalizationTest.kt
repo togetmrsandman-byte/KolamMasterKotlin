@@ -32,7 +32,7 @@ class AppLocalizationTest {
         assertEquals(12, supportedLanguageIdentifiers.map(::localeTagForLanguage).toSet().size)
         assertEquals("en", localeTagForLanguage("unknown"))
         assertEquals("en", localeTagForLanguage("English"))
-        assertEquals("zh-CN", localeTagForLanguage("Chinese (Simplified)"))
+        assertEquals("zh-rCN", localeTagForLanguage("Chinese (Simplified)"))
     }
 
     @Test

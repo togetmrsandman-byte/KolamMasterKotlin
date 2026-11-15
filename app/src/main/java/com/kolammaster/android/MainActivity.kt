@@ -273,6 +273,10 @@ class MainActivity : ComponentActivity() {
         return super.dispatchTouchEvent(ev)
     }
 
+    override fun attachBaseContext(newBase: android.content.Context) {
+        super.attachBaseContext(newBase.withSelectedAppLanguage())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         resetInactivityTimer()
@@ -290,6 +294,7 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = false
         }
 
+        val restoredScreenKey = savedInstanceState?.getString(SCREEN_STATE_KEY)
         val savedLanguage = getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
             .getString(LANGUAGE_KEY, null)
             ?.takeIf { it in supportedLanguageNames }
@@ -297,6 +302,20 @@ class MainActivity : ComponentActivity() {
         lessonUnlockRepository = LessonUnlockRepository(this)
         screenState = when {
             onboardingPermissionFlow.isWaitingForPermissionResult -> AppScreen.SignInInvitation
+            restoredScreenKey == "ChooseLanguage" -> AppScreen.ChooseLanguage
+            restoredScreenKey == "SignInInvitation" -> AppScreen.SignInInvitation
+            restoredScreenKey == "DownloadingAssets" -> AppScreen.DownloadingAssets
+            restoredScreenKey == "Opening" -> AppScreen.Opening
+            restoredScreenKey == "Landing" -> AppScreen.Landing
+            restoredScreenKey == "Browse" -> AppScreen.Browse
+            restoredScreenKey == "MyKolams" -> AppScreen.MyKolams
+            restoredScreenKey == "Profile" -> AppScreen.Profile
+            restoredScreenKey == "Language" -> AppScreen.Language
+            restoredScreenKey == "ContactUs" -> AppScreen.ContactUs
+            restoredScreenKey == "Announcements" -> AppScreen.Announcements
+            restoredScreenKey == "Community" -> AppScreen.Community
+            restoredScreenKey == "History" -> AppScreen.History
+            restoredScreenKey != null -> AppScreen.Landing
             savedLanguage == null -> AppScreen.ChooseLanguage
             isInitialAssetSetupComplete() -> AppScreen.Opening
             isInitialAssetAuthComplete(defaultValue = true) -> AppScreen.DownloadingAssets
@@ -424,6 +443,23 @@ class MainActivity : ComponentActivity() {
             ONBOARDING_PERMISSION_PENDING_STATE_KEY,
             onboardingPermissionFlow.isWaitingForPermissionResult
         )
+        val screenKey = when (screenState) {
+            AppScreen.ChooseLanguage -> "ChooseLanguage"
+            AppScreen.SignInInvitation -> "SignInInvitation"
+            AppScreen.DownloadingAssets -> "DownloadingAssets"
+            AppScreen.Opening -> "Opening"
+            AppScreen.Landing -> "Landing"
+            AppScreen.Browse -> "Browse"
+            AppScreen.MyKolams -> "MyKolams"
+            AppScreen.Profile -> "Profile"
+            AppScreen.Language -> "Language"
+            AppScreen.ContactUs -> "ContactUs"
+            AppScreen.Announcements -> "Announcements"
+            AppScreen.Community -> "Community"
+            AppScreen.History -> "History"
+            else -> "Landing"
+        }
+        outState.putString(SCREEN_STATE_KEY, screenKey)
         super.onSaveInstanceState(outState)
     }
 
@@ -1236,11 +1272,13 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun saveLanguage(language: String) {
+        if (activeLanguage == language) return
         activeLanguage = language
         getSharedPreferences(PREFERENCES_NAME, MODE_PRIVATE)
             .edit()
             .putString(LANGUAGE_KEY, language)
             .apply()
+        recreate()
     }
 
     private fun navigateTo(destination: AppScreen) {
@@ -1376,6 +1414,7 @@ class MainActivity : ComponentActivity() {
     private companion object {
         const val SIGN_IN_SDK_TIMEOUT_MILLIS = 90_000L
         const val GOOGLE_CHOOSER_TIMEOUT_MILLIS = 180_000L
+        const val SCREEN_STATE_KEY = "current_app_screen"
     }
 }
 

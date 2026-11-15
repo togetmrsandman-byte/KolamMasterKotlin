@@ -2,7 +2,6 @@ package com.kolammaster.android
 
 import android.content.res.Configuration
 import android.content.Context
-import android.view.ContextThemeWrapper
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -37,7 +36,7 @@ internal fun localeTagForLanguage(languageIdentifier: String): String =
         "Telugu" -> "te"
         "Malayalam" -> "ml"
         "Thai" -> "th"
-        "Chinese (Simplified)" -> "zh-CN"
+        "Chinese (Simplified)" -> "zh-rCN"
         "Vietnamese" -> "vi"
         "Malay" -> "ms"
         "Japanese" -> "ja"
@@ -58,9 +57,7 @@ internal fun Context.withAppLanguage(languageIdentifier: String): Context {
     val locale = Locale.forLanguageTag(localeTagForLanguage(languageIdentifier))
     configuration.setLocale(locale)
     configuration.setLayoutDirection(locale)
-    return ContextThemeWrapper(this, 0).apply {
-        applyOverrideConfiguration(configuration)
-    }
+    return createConfigurationContext(configuration)
 }
 
 @Composable

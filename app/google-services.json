@@ -14,34 +14,13 @@
       },
       "oauth_client": [
         {
-          "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
-      "api_key": [
-        {
-          "current_key": "AIzaSyADoRugSCY_tjQaHWB1CdFKGetTiNRjUnE"
-        }
-      ],
-      "services": {
-        "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "350376338634-g2d8t3depg7qmfstqp1dv19ferauhiit.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
-        }
-      }
-    },
-    {
-      "client_info": {
-        "mobilesdk_app_id": "1:350376338634:android:af60e0d557a50f0f468033",
-        "android_client_info": {
-          "package_name": "com.kolammaster.android"
-        }
-      },
-      "oauth_client": [
+          "client_id": "350376338634-9h19335drth9pshm23hqa1demlmgl9b6.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kolammaster.android",
+            "certificate_hash": "b2393c85823c368551cdb79f0f76a3efdee8b07f"
+          }
+        },
         {
           "client_id": "350376338634-hjo5vruvhgs9nmflm63f80lqk18eoe1h.apps.googleusercontent.com",
           "client_type": 1,
