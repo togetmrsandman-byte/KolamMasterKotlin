@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">ഞങ്ങൾ നിങ്ങളുടെ അക്കൗണ്ട് നീക്കം ചെയ്യുന്നതുവരെ ദയവായി കാത്തിരിക്കുക.</string>
     <string name="account_deletion_success">നിങ്ങളുടെ അക്കൗണ്ട് വിജയകരമായി നീക്കം ചെയ്തു. നിങ്ങൾ ഇപ്പോൾ ഒരു അതിഥി ഉപയോക്താവാണ്.</string>
     <string name="account_deletion_failed">അക്കൗണ്ട് നീക്കം ചെയ്യൽ പൂർത്തിയാക്കാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക.</string>
+    <string name="new_announcement_title">പുതിയ പ്രഖ്യാപനം</string>
+    <string name="new_announcement_message">നിങ്ങൾക്ക് ഒരു പുതിയ പ്രഖ്യാപനം ഉണ്ട്.</string>
     <string name="load_folders">ഫോൾഡറുകൾ ലോഡ് ചെയ്യുന്നു…</string>
     <string name="create_folder">ഫോൾഡർ സൃഷ്ടിക്കുക</string>
     <string name="confirm_delete_folder">നീക്കം ചെയ്യണമെന്ന് ഉറപ്പാണോ?</string>

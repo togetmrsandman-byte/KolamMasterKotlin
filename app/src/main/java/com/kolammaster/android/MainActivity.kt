@@ -371,6 +371,7 @@ class MainActivity : ComponentActivity() {
                     onVisibleLessonCountChanged = ::recordVisibleLessonCount,
                     onRetryAssetSetup = ::startInitialAssetSetup,
                     onGoBack = ::goBack,
+                    onExit = { finish() },
                     onHome = { setRoot(AppScreen.Landing) },
                     onReturnToCatalogue = { setRoot(AppScreen.Browse) },
                     onGoogleSignIn = ::beginGoogleSignIn,
@@ -1481,6 +1482,7 @@ private fun KolamMasterApp(
     onVisibleLessonCountChanged: (Int) -> Unit,
     onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
+    onExit: () -> Unit,
     onHome: () -> Unit,
     onReturnToCatalogue: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -2436,14 +2438,7 @@ private fun KolamMasterApp(
 
     BackHandler(enabled = publishPickerLesson == null && !drawerOpen && screen is AppScreen.Landing) {
         if (exitPressedOnce) {
-            var curr = context
-            while (curr is android.content.ContextWrapper) {
-                if (curr is android.app.Activity) {
-                    curr.finish()
-                    break
-                }
-                curr = curr.baseContext
-            }
+            onExit()
         } else {
             exitPressedOnce = true
             android.widget.Toast.makeText(context, "Press back again to exit.", android.widget.Toast.LENGTH_SHORT).show()
@@ -2559,7 +2554,9 @@ private fun AppScreenContent(
             },
             onMenuAction = onMenuAction,
             unreadSupport = unreadSupport,
-            unreadAnnouncements = unreadAnnouncements
+            unreadAnnouncements = unreadAnnouncements,
+            showDeleteAccountOption = account?.takeUnless { it.isGuest } != null,
+            onDeleteAccountClick = onDeleteAccount
         )
         AppScreen.Browse -> BrowseLessonScreen(
             catalogue = catalogue,
@@ -2655,7 +2652,8 @@ private fun AppScreenContent(
             onDismissNetworkDialog = onDismissAnnouncementNetworkError,
             onAnnouncementSelected = onAnnouncementSelected,
             onBackFromDetail = onAnnouncementDetailBack,
-            onMarkAllRead = onMarkAllAnnouncementsRead
+            onMarkAllRead = onMarkAllAnnouncementsRead,
+            activeLanguage = activeLanguage
         )
         AppScreen.Community -> CommunityScreen(
             submissions = communitySubmissions,

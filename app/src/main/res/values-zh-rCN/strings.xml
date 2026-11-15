@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">请稍候，我们正在删除您的账户。</string>
     <string name="account_deletion_success">您的账户已成功删除。您现在是访客用户。</string>
     <string name="account_deletion_failed">无法完成账户删除，请重试。</string>
+    <string name="new_announcement_title">新公告</string>
+    <string name="new_announcement_message">您有一条新公告。</string>
     <string name="load_folders">正在加载文件夹…</string>
     <string name="create_folder">创建文件夹</string>
     <string name="confirm_delete_folder">确定要删除吗？</string>

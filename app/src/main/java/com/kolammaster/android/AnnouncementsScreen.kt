@@ -75,7 +75,8 @@ internal fun AnnouncementsDestination(
     onDismissNetworkDialog: () -> Unit = {},
     onAnnouncementSelected: (Announcement) -> Unit,
     onBackFromDetail: () -> Unit,
-    onMarkAllRead: () -> Unit
+    onMarkAllRead: () -> Unit,
+    activeLanguage: String = DEFAULT_LANGUAGE_IDENTIFIER
 ) {
     BackHandler(enabled = selectedAnnouncement != null, onBack = onBackFromDetail)
     Column(
@@ -106,12 +107,14 @@ internal fun AnnouncementsDestination(
                 isMarkingAllRead = isMarkingAllRead,
                 onRetry = onRetry,
                 onAnnouncementSelected = onAnnouncementSelected,
-                onMarkAllRead = onMarkAllRead
+                onMarkAllRead = onMarkAllRead,
+                activeLanguage = activeLanguage
             )
         } else {
             AnnouncementDetail(
                 announcement = selectedAnnouncement,
-                onBack = onBackFromDetail
+                onBack = onBackFromDetail,
+                activeLanguage = activeLanguage
             )
         }
     }
@@ -134,7 +137,8 @@ private fun AnnouncementsList(
     isMarkingAllRead: Boolean,
     onRetry: () -> Unit,
     onAnnouncementSelected: (Announcement) -> Unit,
-    onMarkAllRead: () -> Unit
+    onMarkAllRead: () -> Unit,
+    activeLanguage: String = DEFAULT_LANGUAGE_IDENTIFIER
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -259,7 +263,7 @@ private fun AnnouncementsList(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = announcement.subject.ifBlank {
+                            text = announcement.localizedSubject(activeLanguage).ifBlank {
                                 stringResource(R.string.announcement)
                             },
                             modifier = Modifier.weight(1f),
@@ -288,7 +292,7 @@ private fun AnnouncementsList(
                         )
                     }
                     ClickableAnnouncementText(
-                        text = announcement.message,
+                        text = announcement.localizedMessage(activeLanguage),
                         color = KolamContainerSecondary,
                         fontSize = 14.sp,
                         lineHeight = 20.sp,
@@ -305,7 +309,8 @@ private fun AnnouncementsList(
 @Composable
 private fun AnnouncementDetail(
     announcement: Announcement,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    activeLanguage: String = DEFAULT_LANGUAGE_IDENTIFIER
 ) {
     var showImage by remember(announcement.id) { mutableStateOf(false) }
     Column(Modifier.fillMaxSize()) {
@@ -331,7 +336,7 @@ private fun AnnouncementDetail(
                     .verticalScroll(rememberScrollState())
             ) {
                 Text(
-                    text = announcement.subject.ifBlank { stringResource(R.string.announcement) },
+                    text = announcement.localizedSubject(activeLanguage).ifBlank { stringResource(R.string.announcement) },
                     color = KolamText,
                     fontSize = 23.sp,
                     fontWeight = FontWeight.Bold
@@ -345,7 +350,7 @@ private fun AnnouncementDetail(
                     )
                 }
                 ClickableAnnouncementText(
-                    text = announcement.message,
+                    text = announcement.localizedMessage(activeLanguage),
                     color = KolamText,
                     fontSize = 16.sp,
                     lineHeight = 24.sp,

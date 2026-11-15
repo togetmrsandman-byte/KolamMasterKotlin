@@ -252,11 +252,8 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
                 notificationIdValue = LauncherBadgeHelper.SUPPORT_ID
             }
             is PushNotificationPayload.Announcement -> {
-                title = payload.title ?: SUPPORT_TITLE
-                body = payload.body ?: run {
-                    LauncherBadgeHelper.updateExistingNotification(this, unreadCount)
-                    return
-                }
+                title = localizedContext.getString(R.string.new_announcement_title)
+                body = localizedContext.getString(R.string.new_announcement_message)
                 type = ANNOUNCEMENT_TYPE
                 notificationTag = LauncherBadgeHelper.ANNOUNCEMENT_TAG
                 notificationIdValue = LauncherBadgeHelper.ANNOUNCEMENT_ID

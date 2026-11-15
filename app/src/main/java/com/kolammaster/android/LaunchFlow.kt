@@ -563,12 +563,16 @@ internal fun LandingScreen(
     onDestination: (LandingDestination) -> Unit,
     onMenuAction: (DrawerAction) -> Unit,
     unreadSupport: Boolean = false,
-    unreadAnnouncements: Boolean = false
+    unreadAnnouncements: Boolean = false,
+    showDeleteAccountOption: Boolean = false,
+    onDeleteAccountClick: () -> Unit = {}
 ) {
     LandingPageFrame(
         onMenuAction = onMenuAction,
         unreadSupport = unreadSupport,
-        unreadAnnouncements = unreadAnnouncements
+        unreadAnnouncements = unreadAnnouncements,
+        showDeleteAccountOption = showDeleteAccountOption,
+        onDeleteAccountClick = onDeleteAccountClick
     ) {
         Spacer(Modifier.height(18.dp))
         LandingBubbles(
@@ -586,6 +590,8 @@ internal fun LandingPageFrame(
     onMenuAction: (DrawerAction) -> Unit,
     unreadSupport: Boolean = false,
     unreadAnnouncements: Boolean = false,
+    showDeleteAccountOption: Boolean = false,
+    onDeleteAccountClick: () -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
     var drawerOpen by remember { mutableStateOf(false) }
@@ -639,7 +645,9 @@ internal fun LandingPageFrame(
                 }
             },
             unreadContactUs = unreadSupport,
-            unreadAnnouncements = unreadAnnouncements
+            unreadAnnouncements = unreadAnnouncements,
+            showDeleteAccountOption = showDeleteAccountOption,
+            onDeleteAccountClick = onDeleteAccountClick
         )
     }
 }

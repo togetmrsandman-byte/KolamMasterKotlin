@@ -25,10 +25,39 @@ internal data class Announcement(
     val message: String,
     val imageUrl: String?,
     val createdAt: String,
-    val readAt: String?
+    val readAt: String?,
+    val translations: JSONObject? = null
 ) {
     val isRead: Boolean get() = readAt != null
+
+    fun localizedSubject(languageIdentifier: String): String {
+        val localeKey = backendLocaleKey(languageIdentifier)
+        val trans = translations?.optJSONObject(localeKey)
+        return trans?.optString("subject")?.takeIf(String::isNotBlank) ?: subject
+    }
+
+    fun localizedMessage(languageIdentifier: String): String {
+        val localeKey = backendLocaleKey(languageIdentifier)
+        val trans = translations?.optJSONObject(localeKey)
+        return trans?.optString("message")?.takeIf(String::isNotBlank) ?: message
+    }
 }
+
+internal fun backendLocaleKey(languageIdentifier: String): String =
+    when (languageIdentifier) {
+        "Tamil" -> "ta"
+        "Hindi" -> "hi"
+        "Kannada" -> "kn"
+        "Telugu" -> "te"
+        "Malayalam" -> "ml"
+        "Thai" -> "th"
+        "Chinese (Simplified)" -> "zh-CN"
+        "Vietnamese" -> "vi"
+        "Malay" -> "ms"
+        "Japanese" -> "ja"
+        "Korean" -> "ko"
+        else -> "en"
+    }
 
 @OptIn(kotlin.time.ExperimentalTime::class)
 internal fun filterVisibleAnnouncements(
@@ -123,7 +152,8 @@ internal class AnnouncementRepository(
                             imageUrl = row.optString("image_url")
                                 .takeIf(String::isNotBlank),
                             createdAt = createdAt,
-                            readAt = row.optString("read_at").takeIf(String::isNotBlank)
+                            readAt = row.optString("read_at").takeIf(String::isNotBlank),
+                            translations = row.optJSONObject("translations")
                         )
                     )
                 }
@@ -158,7 +188,7 @@ internal class AnnouncementRepository(
                     val accessToken = auth.accessTokenFor(account.id)
                     val announcementResponse = request(
                         method = "GET",
-                        path = "/rest/v1/announcements?select=id,subject,message,image_url,created_at" +
+                        path = "/rest/v1/announcements?select=id,subject,message,image_url,created_at,translations" +
                             "&order=created_at.desc",
                         accessToken = accessToken
                     )
@@ -290,7 +320,8 @@ internal class AnnouncementRepository(
                         message = row.optString("message"),
                         imageUrl = row.optString("image_url").takeIf(String::isNotBlank),
                         createdAt = createdAt,
-                        readAt = null
+                        readAt = null,
+                        translations = row.optJSONObject("translations")
                     )
                 )
             }
@@ -327,6 +358,7 @@ internal class AnnouncementRepository(
                         .put("image_url", announcement.imageUrl)
                         .put("created_at", announcement.createdAt)
                         .put("read_at", announcement.readAt)
+                        .put("translations", announcement.translations)
                 )
             }
         }

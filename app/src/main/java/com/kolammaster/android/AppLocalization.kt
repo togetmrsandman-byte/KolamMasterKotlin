@@ -2,6 +2,7 @@ package com.kolammaster.android
 
 import android.content.res.Configuration
 import android.content.Context
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
@@ -71,12 +72,23 @@ internal fun LocalizedAppResources(
     configuration.setLocale(locale)
     configuration.setLayoutDirection(locale)
     val baseContext = LocalContext.current
+    val activityResultRegistryOwner = LocalActivityResultRegistryOwner.current
     val localizedContext = remember(baseContext, languageIdentifier, baseConfiguration) {
         baseContext.withAppLanguage(languageIdentifier)
     }
-    CompositionLocalProvider(
-        LocalConfiguration provides configuration,
-        LocalContext provides localizedContext,
-        content = content
-    )
+    val localizedContent: @Composable () -> Unit = {
+        CompositionLocalProvider(
+            LocalConfiguration provides configuration,
+            LocalContext provides localizedContext,
+            content = content
+        )
+    }
+    if (activityResultRegistryOwner == null) {
+        localizedContent()
+    } else {
+        CompositionLocalProvider(
+            LocalActivityResultRegistryOwner provides activityResultRegistryOwner,
+            content = localizedContent
+        )
+    }
 }

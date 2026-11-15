@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">మేము మీ ఖాతాను తొలగిస్తున్నప్పుడు దయచేసి వేచి ఉండండి.</string>
     <string name="account_deletion_success">మీ ఖాతా విజయవంతంగా తొలగించబడింది. మీరు ఇప్పుడు అతిథి వినియోగదారు.</string>
     <string name="account_deletion_failed">ఖాతా తొలగింపు పూర్తి కాలేదు. దయచేసి మళ్లీ ప్రయత్నించండి.</string>
+    <string name="new_announcement_title">కొత్త ప్రకటన</string>
+    <string name="new_announcement_message">మీకు ఒక కొత్త ప్రకటన ఉంది.</string>
     <string name="load_folders">ఫోల్డర్‌లు లోడ్ అవుతున్నాయి…</string>
     <string name="create_folder">ఫోల్డర్‌ను సృష్టించండి</string>
     <string name="confirm_delete_folder">తొలగించాలనుకుంటున్నారా?</string>

@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">ನಾವು ನಿಮ್ಮ ಖಾತೆಯನ್ನು ತೆಗೆದುಹಾಕುವವರೆಗೆ ದಯವಿಟ್ಟು ಕಾಯಿರಿ.</string>
     <string name="account_deletion_success">ನಿಮ್ಮ ಖಾತೆಯನ್ನು ಯಶಸ್ವಿಯಾಗಿ ಅಳಿಸಲಾಗಿದೆ. ನೀವು ಈಗ ಅತಿಥಿ ಬಳಕೆದಾರರಾಗಿದ್ದೀರಿ.</string>
     <string name="account_deletion_failed">ಖಾತೆ ಅಳಿಸುವಿಕೆಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.</string>
+    <string name="new_announcement_title">ಹೊಸ ಘೋಷಣೆ</string>
+    <string name="new_announcement_message">ನಿಮಗೆ ಹೊಸ ಘೋಷಣೆ ಇದೆ.</string>
     <string name="load_folders">ಫೋಲ್ಡರ್‌ಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ…</string>
     <string name="create_folder">ಫೋಲ್ಡರ್ ರಚಿಸಿ</string>
     <string name="confirm_delete_folder">ಅಳಿಸಲು ಖಚಿತವೇ?</string>

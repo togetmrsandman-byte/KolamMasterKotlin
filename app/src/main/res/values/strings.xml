@@ -61,6 +61,8 @@
     <string name="account_deletion_progress">Please wait while we\'re removing your account.</string>
     <string name="account_deletion_success">Your account has been deleted successfully. You are now a guest user.</string>
     <string name="account_deletion_failed">Account deletion could not be completed. Please try again.</string>
+    <string name="new_announcement_title">New announcement</string>
+    <string name="new_announcement_message">You have a new announcement.</string>
     <string name="load_folders">Loading folders…</string>
     <string name="create_folder">Create Folder</string>
     <string name="confirm_delete_folder">Are you sure you want to delete?</string>

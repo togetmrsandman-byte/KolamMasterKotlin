@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">โปรดรอสักครู่ในขณะที่เราลบบัญชีของคุณ</string>
     <string name="account_deletion_success">ลบบัญชีของคุณสำเร็จแล้ว ตอนนี้คุณเป็นผู้ใช้ทั่วไป</string>
     <string name="account_deletion_failed">ไม่สามารถลบบัญชีได้ กรุณาลองใหม่อีกครั้ง</string>
+    <string name="new_announcement_title">ประกาศใหม่</string>
+    <string name="new_announcement_message">คุณมีประกาศใหม่</string>
     <string name="load_folders">กำลังโหลดโฟลเดอร์…</string>
     <string name="create_folder">สร้างโฟลเดอร์</string>
     <string name="confirm_delete_folder">ต้องการลบใช่ไหม</string>

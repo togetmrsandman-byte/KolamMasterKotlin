@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">Sila tunggu sementara kami mengalih keluar akaun anda.</string>
     <string name="account_deletion_success">Akaun anda telah berjaya dipadamkan. Anda kini pengguna tetamu.</string>
     <string name="account_deletion_failed">Pemadaman akaun tidak dapat diselesaikan. Sila cuba lagi.</string>
+    <string name="new_announcement_title">Pengumuman baru</string>
+    <string name="new_announcement_message">Anda mempunyai pengumuman baru.</string>
     <string name="load_folders">Memuatkan folder…</string>
     <string name="create_folder">Cipta Folder</string>
     <string name="confirm_delete_folder">Adakah anda pasti mahu memadam?</string>

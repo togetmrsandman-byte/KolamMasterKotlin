@@ -403,7 +403,9 @@ private fun SettingsNotifications() {
                             context.startActivity(
                                 Intent(
                                     Settings.ACTION_APP_NOTIFICATION_SETTINGS
-                                ).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                )
+                                    .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                             )
                         } else {
                             permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -412,6 +414,7 @@ private fun SettingsNotifications() {
                         context.startActivity(
                             Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
                                 .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                         )
                     }
                 },

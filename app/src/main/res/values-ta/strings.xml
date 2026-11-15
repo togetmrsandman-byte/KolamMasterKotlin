@@ -60,6 +60,8 @@
     <string name="account_deletion_progress">உங்கள் கணக்கு அகற்றப்படும் வரை காத்திருக்கவும்.</string>
     <string name="account_deletion_success">உங்கள் கணக்கு வெற்றிகரமாக நீக்கப்பட்டது. நீங்கள் இப்போது விருந்தினர் பயனர்.</string>
     <string name="account_deletion_failed">கணக்கு நீக்கத்தை முடிக்க முடியவில்லை. மீண்டும் முயற்சிக்கவும்.</string>
+    <string name="new_announcement_title">புதிய அறிவிப்பு</string>
+    <string name="new_announcement_message">உங்களுக்கு ஒரு புதிய அறிவிப்பு உள்ளது.</string>
     <string name="load_folders">கோப்புறைகள் ஏற்றப்படுகின்றன…</string>
     <string name="create_folder">கோப்புறையை உருவாக்கு</string>
     <string name="confirm_delete_folder">நிச்சயமாக நீக்க வேண்டுமா?</string>
