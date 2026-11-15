@@ -43,6 +43,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.foundation.text.ClickableText
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.unit.TextUnit
+import android.content.Intent
+import android.net.Uri
+import java.util.Locale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -276,7 +287,7 @@ private fun AnnouncementsList(
                             modifier = Modifier.padding(top = 5.dp)
                         )
                     }
-                    Text(
+                    ClickableAnnouncementText(
                         text = announcement.message,
                         color = KolamContainerSecondary,
                         fontSize = 14.sp,
@@ -333,14 +344,14 @@ private fun AnnouncementDetail(
                         modifier = Modifier.padding(top = 6.dp)
                     )
                 }
-                Text(
+                ClickableAnnouncementText(
                     text = announcement.message,
                     color = KolamText,
                     fontSize = 16.sp,
                     lineHeight = 24.sp,
                     modifier = Modifier.padding(top = 18.dp)
                 )
-                announcement.imageUrl?.let { url ->
+                announcement.imageUrl?.takeIf(String::isNotBlank)?.let { url ->
                     Spacer(Modifier.height(18.dp))
                     AnnouncementImage(
                         url = url,
@@ -402,4 +413,74 @@ private fun AnnouncementImage(
             )
         }
     }
+}
+
+@Composable
+private fun ClickableAnnouncementText(
+    text: String,
+    color: Color,
+    fontSize: TextUnit,
+    lineHeight: TextUnit,
+    modifier: Modifier = Modifier,
+    maxLines: Int = Int.MAX_VALUE,
+    overflow: TextOverflow = TextOverflow.Clip
+) {
+    val context = LocalContext.current
+    val annotatedString = remember(text) {
+        buildAnnotatedString {
+            val urlRegex = Regex("""\b(?:https?://|www\.)\S+\b""", RegexOption.IGNORE_CASE)
+            var lastIndex = 0
+            for (match in urlRegex.findAll(text)) {
+                val range = match.range
+                if (range.first > lastIndex) {
+                    append(text.substring(lastIndex, range.first))
+                }
+                val rawUrl = match.value
+                val fullUrl = if (rawUrl.startsWith("www.", ignoreCase = true)) "https://$rawUrl" else rawUrl
+
+                pushStringAnnotation(tag = "URL", annotation = fullUrl)
+                withStyle(
+                    style = SpanStyle(
+                        color = KolamGold,
+                        textDecoration = TextDecoration.Underline
+                    )
+                ) {
+                    append(rawUrl)
+                }
+                pop()
+                lastIndex = range.last + 1
+            }
+            if (lastIndex < text.length) {
+                append(text.substring(lastIndex))
+            }
+        }
+    }
+
+    ClickableText(
+        text = annotatedString,
+        modifier = modifier,
+        style = TextStyle(
+            color = color,
+            fontSize = fontSize,
+            lineHeight = lineHeight
+        ),
+        maxLines = maxLines,
+        overflow = overflow,
+        onClick = { offset ->
+            annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                .firstOrNull()?.let { annotation ->
+                    val urlStr = annotation.item
+                    try {
+                        val uri = Uri.parse(urlStr)
+                        val scheme = uri.scheme?.lowercase(Locale.ROOT)
+                        if (scheme == "http" || scheme == "https") {
+                            val intent = Intent(Intent.ACTION_VIEW, uri).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(intent)
+                        }
+                    } catch (_: Exception) {}
+                }
+        }
+    )
 }
