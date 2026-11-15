@@ -62,6 +62,12 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
+private sealed interface AnnouncementImageState {
+    data object Loading : AnnouncementImageState
+    data class Loaded(val bitmap: ImageBitmap) : AnnouncementImageState
+    data object Failed : AnnouncementImageState
+}
+
 @Composable
 internal fun AnnouncementsDestination(
     announcements: List<Announcement>,
@@ -377,45 +383,56 @@ private fun AnnouncementImage(
     onImageOpen: () -> Unit,
     onImageClose: () -> Unit
 ) {
-    val bitmap = produceState<ImageBitmap?>(initialValue = null, url) {
+    val imageState = produceState<AnnouncementImageState>(
+        initialValue = AnnouncementImageState.Loading,
+        url
+    ) {
         value = withContext(Dispatchers.IO) { loadThumbnail(url) }
+            ?.let(AnnouncementImageState::Loaded)
+            ?: AnnouncementImageState.Failed
     }.value
-    if (bitmap == null) {
-        Text(
+    when (val state = imageState) {
+        AnnouncementImageState.Loading -> Text(
+            text = stringResource(R.string.loading_image),
+            color = KolamContainerSecondary,
+            fontSize = 13.sp
+        )
+        AnnouncementImageState.Failed -> Text(
             text = stringResource(R.string.image_load_failed),
             color = KolamContainerSecondary,
             fontSize = 13.sp
         )
-    } else {
-        Image(
-            bitmap = bitmap,
-            contentDescription = stringResource(R.string.announcement_image),
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(bitmap.width.toFloat() / bitmap.height.toFloat())
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(onClick = onImageOpen),
-            contentScale = ContentScale.Fit
-        )
-        if (showImageDialog) {
-            AlertDialog(
-                onDismissRequest = onImageClose,
-                confirmButton = {
-                    TextButton(
-                        onClick = onImageClose,
-                        colors = kolamStandardButtonColors()
-                    ) { Text(stringResource(R.string.close)) }
-                },
-                text = {
-                    Image(
-                        bitmap = bitmap,
-                        contentDescription = stringResource(R.string.announcement_image),
-                        modifier = Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.Fit
-                    )
-                },
-                containerColor = KolamCoolSilver
+        is AnnouncementImageState.Loaded -> {
+            Image(
+                bitmap = state.bitmap,
+                contentDescription = stringResource(R.string.announcement_image),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .aspectRatio(state.bitmap.width.toFloat() / state.bitmap.height.toFloat())
+                    .clip(RoundedCornerShape(8.dp))
+                    .clickable(onClick = onImageOpen),
+                contentScale = ContentScale.Fit
             )
+            if (showImageDialog) {
+                AlertDialog(
+                    onDismissRequest = onImageClose,
+                    confirmButton = {
+                        TextButton(
+                            onClick = onImageClose,
+                            colors = kolamStandardButtonColors()
+                        ) { Text(stringResource(R.string.close)) }
+                    },
+                    text = {
+                        Image(
+                            bitmap = state.bitmap,
+                            contentDescription = stringResource(R.string.announcement_image),
+                            modifier = Modifier.fillMaxWidth(),
+                            contentScale = ContentScale.Fit
+                        )
+                    },
+                    containerColor = KolamCoolSilver
+                )
+            }
         }
     }
 }

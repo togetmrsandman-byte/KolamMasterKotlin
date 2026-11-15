@@ -43,6 +43,11 @@ internal data class Announcement(
     }
 }
 
+internal fun normalizeAnnouncementImageUrl(value: Any?): String? =
+    (value as? String)
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
 internal fun backendLocaleKey(languageIdentifier: String): String =
     when (languageIdentifier) {
         "Tamil" -> "ta"
@@ -149,8 +154,7 @@ internal class AnnouncementRepository(
                             id = id,
                             subject = row.optString("subject"),
                             message = row.optString("message"),
-                            imageUrl = row.optString("image_url")
-                                .takeIf(String::isNotBlank),
+                            imageUrl = normalizeAnnouncementImageUrl(row.opt("image_url")),
                             createdAt = createdAt,
                             readAt = row.optString("read_at").takeIf(String::isNotBlank),
                             translations = row.optJSONObject("translations")
@@ -318,7 +322,7 @@ internal class AnnouncementRepository(
                         id = id,
                         subject = row.optString("subject"),
                         message = row.optString("message"),
-                        imageUrl = row.optString("image_url").takeIf(String::isNotBlank),
+                        imageUrl = normalizeAnnouncementImageUrl(row.opt("image_url")),
                         createdAt = createdAt,
                         readAt = null,
                         translations = row.optJSONObject("translations")
@@ -355,7 +359,11 @@ internal class AnnouncementRepository(
                         .put("id", announcement.id)
                         .put("subject", announcement.subject)
                         .put("message", announcement.message)
-                        .put("image_url", announcement.imageUrl)
+                        .put(
+                            "image_url",
+                            normalizeAnnouncementImageUrl(announcement.imageUrl)
+                                ?: JSONObject.NULL
+                        )
                         .put("created_at", announcement.createdAt)
                         .put("read_at", announcement.readAt)
                         .put("translations", announcement.translations)
