@@ -4,7 +4,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.CommonStatusCodes
 import io.github.jan.supabase.exceptions.HttpRequestException as SupabaseHttpRequestException
@@ -45,10 +44,10 @@ internal suspend fun <T> runBoundedNetworkOperation(
 }
 
 internal object NetworkErrors {
-    const val TITLE = "No internet"
+    const val TITLE = "network_error_title"
     const val GOOGLE_SIGN_IN_TITLE = TITLE
-    const val MESSAGE = "Please check your internet connection and try again."
-    const val DISPLAY_TEXT = "$TITLE\n$MESSAGE"
+    const val MESSAGE = "network_error_message"
+    const val DISPLAY_TEXT = "\u0000network.display"
 
     fun googleSignInNetworkMessage(exception: Throwable): String? =
         MESSAGE.takeIf { isNetworkFailure(exception) }
@@ -80,7 +79,7 @@ internal object NetworkErrors {
 
     fun messageFor(exception: Throwable, fallback: String): String =
         if (isNetworkFailure(exception)) DISPLAY_TEXT
-        else exception.message?.takeIf(String::isNotBlank) ?: fallback
+        else fallback
 
     private const val MAX_CAUSE_DEPTH = 16
 
@@ -126,19 +125,19 @@ internal fun NetworkRetryDialog(
 ) {
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(stringResource(R.string.network_error_title)) },
-        text = { Text(stringResource(R.string.network_error_message)) },
+        title = { Text(currentAppString("network_error_title")) },
+        text = { Text(currentAppString("network_error_message")) },
         confirmButton = {
             TextButton(
                 onClick = onRetry,
                 colors = kolamStandardButtonColors()
-            ) { Text(stringResource(R.string.retry)) }
+            ) { Text(currentAppString("retry")) }
         },
         dismissButton = {
             TextButton(
                 onClick = onClose,
                 colors = kolamStandardButtonColors()
-            ) { Text(stringResource(R.string.close)) }
+            ) { Text(currentAppString("close")) }
         },
         containerColor = KolamCoolSilver
     )

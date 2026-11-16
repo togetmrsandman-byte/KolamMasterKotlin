@@ -6,8 +6,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
-import com.kolammaster.android.R
+import com.kolammaster.android.appStringForLanguage
+import com.kolammaster.android.currentAppString
 import com.kolammaster.android.kolamStandardButtonColors
 import com.kolammaster.android.withAppLanguage
 
@@ -64,8 +64,8 @@ internal fun AnnouncementForegroundAlertDialog(
     onLater: () -> Unit
 ) {
     ForegroundAlertDialog(
-        title = stringResource(R.string.announcement_alert_title),
-        message = stringResource(R.string.announcement_alert_message),
+        title = currentAppString("announcement_alert_title"),
+        message = currentAppString("announcement_alert_message"),
         languageIdentifier = languageIdentifier,
         onOpen = { onOpen(announcementId) },
         onLater = onLater
@@ -81,8 +81,8 @@ internal fun ForegroundAlertDialog(
     onLater: () -> Unit
 ) {
     val localizedContext = LocalContext.current.withAppLanguage(languageIdentifier)
-    val openLabel = localizedContext.getString(R.string.open)
-    val laterLabel = localizedContext.getString(R.string.later)
+    val openLabel = localizedContext.appStringForLanguage(languageIdentifier, "open")
+    val laterLabel = localizedContext.appStringForLanguage(languageIdentifier, "later")
 
     AlertDialog(
         onDismissRequest = onLater,

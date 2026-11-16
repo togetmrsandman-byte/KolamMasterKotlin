@@ -43,8 +43,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -80,9 +78,9 @@ internal fun MyFoldersDestination(
     var refreshKey by remember(accountId) { mutableIntStateOf(0) }
     val latestAccountId by rememberUpdatedState(accountId)
     val scope = rememberCoroutineScope()
-    val folderLoadFailed = stringResource(R.string.folder_load_failed)
-    val folderUpdateFailed = stringResource(R.string.folder_update_failed)
-    val folderUnavailable = stringResource(R.string.folder_no_longer_available)
+    val folderLoadFailed = currentAppString("folder_load_failed")
+    val folderUpdateFailed = currentAppString("folder_update_failed")
+    val folderUnavailable = currentAppString("folder_no_longer_available")
 
     LaunchedEffect(accountId, refreshKey) {
         if (accountId == null) {
@@ -144,7 +142,7 @@ internal fun MyFoldersDestination(
         Spacer(Modifier.height(18.dp))
         if (accountId == null) {
             Text(
-                stringResource(R.string.my_folders),
+                currentAppString("my_folders"),
                 color = KolamGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -157,7 +155,7 @@ internal fun MyFoldersDestination(
             ) {
                 FolderTitleDecoration()
                 Text(
-                    stringResource(R.string.my_folders),
+                    currentAppString("my_folders"),
                     color = KolamGold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold
@@ -195,7 +193,7 @@ internal fun MyFoldersDestination(
                             CircularProgressIndicator(color = KolamBronze)
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                stringResource(R.string.load_folders),
+                                currentAppString("load_folders"),
                                 color = KolamContainerSecondary
                             )
                         }
@@ -214,7 +212,7 @@ internal fun MyFoldersDestination(
                             ) {
                                 Text(
                                     if (message == NetworkErrors.DISPLAY_TEXT) {
-                                        stringResource(R.string.network_error_message)
+                                        currentAppString("network_error_message")
                                     } else {
                                         message
                                     },
@@ -224,7 +222,7 @@ internal fun MyFoldersDestination(
                                 TextButton(
                                     onClick = { refreshKey++ },
                                     colors = kolamStandardButtonColors()
-                                ) { Text(stringResource(R.string.retry)) }
+                                ) { Text(currentAppString("retry")) }
                             }
                         }
                     }
@@ -237,7 +235,7 @@ internal fun MyFoldersDestination(
                         ) {
                             Text(
                                 text = if (message == NetworkErrors.DISPLAY_TEXT) {
-                                    stringResource(R.string.network_error_message)
+                                    currentAppString("network_error_message")
                                 } else {
                                     message
                                 },
@@ -254,7 +252,7 @@ internal fun MyFoldersDestination(
                                 onClick = { folderDialog = FolderDialog.Create },
                                 enabled = !isProcessing,
                                 colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                            ) { Text(stringResource(R.string.create_folder)) }
+                            ) { Text(currentAppString("create_folder")) }
                             Spacer(Modifier.height(8.dp))
                             if (folders.isEmpty()) {
                                 EmptyFoldersMessage(Modifier.weight(1f))
@@ -366,10 +364,10 @@ internal fun MyFoldersDestination(
     deleteFolder?.let { folder ->
         AlertDialog(
             onDismissRequest = { if (!isProcessing) deleteFolder = null },
-            title = { Text(stringResource(R.string.confirm_delete_folder)) },
+            title = { Text(currentAppString("confirm_delete_folder")) },
             text = {
                 Text(
-                    stringResource(R.string.delete_folder_message, folder.name)
+                    currentAppString("delete_folder_message", folder.name)
                 )
             },
             confirmButton = {
@@ -388,14 +386,14 @@ internal fun MyFoldersDestination(
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                ) { Text(stringResource(R.string.delete)) }
+                ) { Text(currentAppString("delete")) }
             },
             dismissButton = {
                 TextButton(
                     enabled = !isProcessing,
                     onClick = { deleteFolder = null },
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.cancel)) }
+                ) { Text(currentAppString("cancel")) }
             },
             containerColor = FolderSurface
         )
@@ -434,9 +432,9 @@ private fun EmptyFoldersMessage(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(stringResource(R.string.no_folders), color = KolamText, fontSize = 18.sp)
+            Text(currentAppString("no_folders"), color = KolamText, fontSize = 18.sp)
             Text(
-                stringResource(R.string.create_folder_to_organize),
+                currentAppString("create_folder_to_organize"),
                 color = KolamContainerSecondary,
                 fontSize = 14.sp
             )
@@ -457,7 +455,7 @@ private fun EmptyFolderLessonsMessage(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            Text(stringResource(R.string.folder_empty), color = KolamText, fontSize = 17.sp)
+            Text(currentAppString("folder_empty"), color = KolamText, fontSize = 17.sp)
         }
     }
 }
@@ -492,8 +490,8 @@ private fun FolderListItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    pluralStringResource(
-                        R.plurals.folder_lesson_count,
+                    currentAppPlural(
+                        "folder_lesson_count",
                         folder.lessons.size,
                         folder.lessons.size
                     ),
@@ -503,7 +501,7 @@ private fun FolderListItem(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 CompactFolderActionButton(
-                    label = stringResource(R.string.view_folder),
+                    label = currentAppString("view_folder"),
                     enabled = enabled,
                     onClick = onOpen
                 )
@@ -516,7 +514,7 @@ private fun FolderListItem(
                         vertical = 0.dp
                     ),
                     colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                ) { Text(stringResource(R.string.rename), fontSize = 12.sp) }
+                ) { Text(currentAppString("rename"), fontSize = 12.sp) }
                 Button(
                     enabled = enabled,
                     onClick = onDelete,
@@ -526,7 +524,7 @@ private fun FolderListItem(
                         vertical = 0.dp
                     ),
                     colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                ) { Text(stringResource(R.string.delete), fontSize = 12.sp) }
+                ) { Text(currentAppString("delete"), fontSize = 12.sp) }
             }
         }
     }
@@ -572,7 +570,7 @@ private fun UnavailableFolderLessonCard(
                 modifier = Modifier.size(112.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Text(stringResource(R.string.app_name), color = KolamContainerSecondary)
+                Text(currentAppString("app_name"), color = KolamContainerSecondary)
             }
             Column(
                 modifier = Modifier
@@ -581,7 +579,7 @@ private fun UnavailableFolderLessonCard(
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.unavailable_lesson),
+                    text = currentAppString("unavailable_lesson"),
                     color = KolamText,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 12.sp
@@ -677,7 +675,7 @@ private fun ViewLessonButton(enabled: Boolean, onClick: () -> Unit) {
         ),
         colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
     ) {
-        Text(stringResource(R.string.view_folder))
+        Text(currentAppString("view_folder"))
     }
 }
 
@@ -693,7 +691,7 @@ private fun RemoveLessonButton(enabled: Boolean, onClick: () -> Unit) {
         ),
         colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
     ) {
-        Text(stringResource(R.string.remove))
+        Text(currentAppString("remove"))
     }
 }
 
@@ -716,8 +714,8 @@ private fun FolderNameDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                stringResource(
-                    if (dialog is FolderDialog.Create) R.string.create_folder else R.string.rename
+                currentAppString(
+                    if (dialog is FolderDialog.Create) "create_folder" else "rename"
                 )
             )
         },
@@ -725,7 +723,7 @@ private fun FolderNameDialog(
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
-                label = { Text(stringResource(R.string.folder_name)) },
+                label = { Text(currentAppString("folder_name")) },
                 singleLine = true,
                 enabled = enabled
             )
@@ -736,7 +734,7 @@ private fun FolderNameDialog(
                 onClick = { onConfirm(name) },
                 colors = kolamStandardButtonColors()
             ) {
-                Text(stringResource(if (dialog is FolderDialog.Create) R.string.create_folder else R.string.save))
+                Text(currentAppString(if (dialog is FolderDialog.Create) "create_folder" else "save"))
             }
         },
         dismissButton = {
@@ -744,7 +742,7 @@ private fun FolderNameDialog(
                 enabled = enabled,
                 onClick = onDismiss,
                 colors = kolamStandardButtonColors()
-            ) { Text(stringResource(R.string.cancel)) }
+            ) { Text(currentAppString("cancel")) }
         },
         containerColor = FolderSurface
     )
@@ -766,11 +764,11 @@ internal fun SaveToMyFoldersDialog(
     var folderName by remember(accountId) { mutableStateOf("") }
     val latestAccountId by rememberUpdatedState(accountId)
     val scope = rememberCoroutineScope()
-    val folderLoadFailed = stringResource(R.string.folder_load_failed)
-    val folderSaveFailed = stringResource(R.string.folder_save_lesson_failed)
+    val folderLoadFailed = currentAppString("folder_load_failed")
+    val folderSaveFailed = currentAppString("folder_save_lesson_failed")
     val folderCreatedNotAddedPattern =
-        stringResource(R.string.folder_created_lesson_not_added)
-    val retryText = stringResource(R.string.try_again)
+        currentAppString("folder_created_lesson_not_added")
+    val retryText = currentAppString("try_again")
 
     LaunchedEffect(accountId) {
         if (accountId == null) {
@@ -823,7 +821,7 @@ internal fun SaveToMyFoldersDialog(
                         String.format(
                             java.util.Locale.getDefault(),
                             folderCreatedNotAddedPattern,
-                            exception.message ?: retryText
+                            retryText
                         )
                     } else {
                         NetworkErrors.messageFor(
@@ -841,7 +839,7 @@ internal fun SaveToMyFoldersDialog(
     AlertDialog(
         onDismissRequest = { if (!isProcessing) onDismiss() },
         title = {
-            Text(stringResource(if (creatingFolder) R.string.create_new_folder else R.string.my_folders))
+            Text(currentAppString(if (creatingFolder) "create_new_folder" else "my_folders"))
         },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -852,7 +850,7 @@ internal fun SaveToMyFoldersDialog(
                 error?.let {
                     Text(
                         if (it == NetworkErrors.DISPLAY_TEXT) {
-                            stringResource(R.string.network_error_message)
+                            currentAppString("network_error_message")
                         } else {
                             it
                         },
@@ -860,16 +858,16 @@ internal fun SaveToMyFoldersDialog(
                     )
                 }
                 when {
-                    accountId == null -> Text(stringResource(R.string.sign_in_to_save_lessons))
+                    accountId == null -> Text(currentAppString("sign_in_to_save_lessons"))
                     creatingFolder -> OutlinedTextField(
                         value = folderName,
                         onValueChange = { folderName = it },
-                        label = { Text(stringResource(R.string.folder_name)) },
+                        label = { Text(currentAppString("folder_name")) },
                         singleLine = true,
                         enabled = !isProcessing
                     )
                     isLoading -> CircularProgressIndicator()
-                    folders.isEmpty() -> Text(stringResource(R.string.no_folders_create_to_save))
+                    folders.isEmpty() -> Text(currentAppString("no_folders_create_to_save"))
                     else -> LazyColumn(
                         modifier = Modifier.heightIn(max = 280.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -884,9 +882,9 @@ internal fun SaveToMyFoldersDialog(
                                 Column(modifier = Modifier.fillMaxWidth()) {
                                     Text(folder.name, color = KolamButtonText)
                                     Text(
-                                        if (lesson.id in folder.lessons) stringResource(R.string.saved) else
-                                            pluralStringResource(
-                                                R.plurals.folder_lesson_count,
+                                        if (lesson.id in folder.lessons) currentAppString("saved") else
+                                            currentAppPlural(
+                                                "folder_lesson_count",
                                                 folder.lessons.size,
                                                 folder.lessons.size
                                             ),
@@ -906,7 +904,7 @@ internal fun SaveToMyFoldersDialog(
                     enabled = !isProcessing && folderName.isNotBlank(),
                     onClick = { saveToFolder("") },
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(if (isProcessing) R.string.please_wait else R.string.create_new_folder)) }
+                ) { Text(currentAppString(if (isProcessing) "please_wait" else "create_new_folder")) }
             } else {
                 TextButton(
                     enabled = !isLoading && !isProcessing,
@@ -915,7 +913,7 @@ internal fun SaveToMyFoldersDialog(
                         creatingFolder = true
                         error = null
                     }
-                ) { Text(stringResource(R.string.create_new_folder)) }
+                ) { Text(currentAppString("create_new_folder")) }
             }
         },
         dismissButton = {
@@ -931,7 +929,7 @@ internal fun SaveToMyFoldersDialog(
                         onDismiss()
                     }
                 }
-            ) { Text(stringResource(if (creatingFolder) R.string.back else R.string.cancel)) }
+            ) { Text(currentAppString(if (creatingFolder) "back" else "cancel")) }
         }
     )
 }

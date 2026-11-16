@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
@@ -163,14 +162,14 @@ internal fun SikkuLessonScreen(
         val inDotsStage = started && !complete && stepIndex < 0
         LessonStatusRow(
             text = when {
-                complete -> stringResource(R.string.kolam_completed)
-                !started -> stringResource(R.string.preview)
+                complete -> currentAppString("kolam_completed")
+                !started -> currentAppString("preview")
                 inDotsStage -> dotsOrderStatusText(
                     lesson.dotInformation,
-                    stringResource(R.string.dots_order_heading)
+                    currentAppString("dots_order_heading")
                 )
-                else -> stringResource(
-                    R.string.step_progress,
+                else -> currentAppString(
+                    "step_progress",
                     lesson.steps[stepIndex].number,
                     lesson.steps.size
                 )
@@ -256,18 +255,18 @@ internal fun SikkuLessonScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.start))
+                Text(currentAppString("start"))
             }
             else -> PlaybackControlRow(
                 labels = listOf(
-                    stringResource(R.string.previous),
-                    stringResource(R.string.replay),
+                    currentAppString("previous"),
+                    currentAppString("replay"),
                     *playbackSpeeds.map {
-                        stringResource(R.string.speed_label, playbackSpeedLabel(it))
+                        currentAppString("speed_label", playbackSpeedLabel(it))
                     }.toTypedArray(),
-                    stringResource(R.string.next),
-                    stringResource(R.string.finish),
-                    stringResource(R.string.publish)
+                    currentAppString("next"),
+                    currentAppString("finish"),
+                    currentAppString("publish")
                 )
             ) {
                 Button(
@@ -299,7 +298,7 @@ internal fun SikkuLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    PlaybackControlLabel(stringResource(R.string.previous))
+                    PlaybackControlLabel(currentAppString("previous"))
                 }
                 Button(
                     onClick = {
@@ -331,7 +330,7 @@ internal fun SikkuLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    PlaybackControlLabel(stringResource(R.string.replay))
+                    PlaybackControlLabel(currentAppString("replay"))
                 }
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
@@ -342,9 +341,9 @@ internal fun SikkuLessonScreen(
                 )
                 LessonActionButton(
                     text = when {
-                        complete -> stringResource(R.string.publish)
-                        stepIndex == lesson.steps.lastIndex -> stringResource(R.string.finish)
-                        else -> stringResource(R.string.next)
+                        complete -> currentAppString("publish")
+                        stepIndex == lesson.steps.lastIndex -> currentAppString("finish")
+                        else -> currentAppString("next")
                     },
                     onClick = {
                         if (complete) {

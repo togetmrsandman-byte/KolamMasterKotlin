@@ -1,10 +1,16 @@
 package com.kolammaster.android
 
+import java.util.Locale
+
 internal data class ContactCountryCallingCode(
     val countryName: String,
     val countryCode: String,
     val callingCode: String
 )
+
+internal fun ContactCountryCallingCode.localizedName(locale: Locale): String =
+    Locale.Builder().setRegion(countryCode).build().getDisplayCountry(locale)
+        .ifBlank { countryName }
 
 internal fun ContactCountryCallingCode.flagEmoji(): String =
     countryCode

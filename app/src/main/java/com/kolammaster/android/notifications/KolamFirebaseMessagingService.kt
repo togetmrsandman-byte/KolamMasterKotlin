@@ -15,6 +15,7 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import com.kolammaster.android.MainActivity
 import com.kolammaster.android.R
+import com.kolammaster.android.appString
 import com.kolammaster.android.withSelectedAppLanguage
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
@@ -245,15 +246,15 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         val notificationIdValue: Int
         when (payload) {
             is PushNotificationPayload.Support -> {
-                title = SUPPORT_TITLE
-                body = localizedContext.getString(R.string.support_notification_body)
+                title = localizedContext.appString("app_name")
+                body = localizedContext.appString("support_notification_body")
                 type = SUPPORT_TYPE
                 notificationTag = LauncherBadgeHelper.SUPPORT_TAG
                 notificationIdValue = LauncherBadgeHelper.SUPPORT_ID
             }
             is PushNotificationPayload.Announcement -> {
-                title = localizedContext.getString(R.string.new_announcement_title)
-                body = localizedContext.getString(R.string.new_announcement_message)
+                title = localizedContext.appString("new_announcement_title")
+                body = localizedContext.appString("new_announcement_message")
                 type = ANNOUNCEMENT_TYPE
                 notificationTag = LauncherBadgeHelper.ANNOUNCEMENT_TAG
                 notificationIdValue = LauncherBadgeHelper.ANNOUNCEMENT_ID
@@ -455,7 +456,6 @@ class KolamFirebaseMessagingService : FirebaseMessagingService() {
         const val TAG = "PushNotifications"
         const val SUPPORT_TYPE = "support_message"
         const val ANNOUNCEMENT_TYPE = "announcement"
-        const val SUPPORT_TITLE = "Kolam Master"
         const val ANNOUNCEMENT_BADGE_REFRESH_WORK = "announcement_badge_refresh"
         const val DIAGNOSTIC_TAG = "ANNOUNCEMENT_BADGE_DEBUG"
         const val FCM_DIAGNOSTIC_TAG = "KolamFCM"

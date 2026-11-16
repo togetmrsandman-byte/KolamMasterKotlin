@@ -32,12 +32,16 @@ internal fun GalleryPublishPickerSheet(
     onProceed: () -> Unit
 ) {
     val localizedContext = LocalContext.current.withAppLanguage(languageIdentifier)
-    val congratulations = localizedContext.getString(R.string.congratulations)
-    val kolamComplete = localizedContext.getString(R.string.your_kolam_is_complete)
-    val shareKolam = localizedContext.getString(R.string.share_kolam_community)
-    val continueFinishedKolam = localizedContext.getString(R.string.continue_finished_kolam)
-    val proceed = localizedContext.getString(R.string.proceed)
-    val cancel = localizedContext.getString(R.string.cancel)
+    val congratulations =
+        localizedContext.appStringForLanguage(languageIdentifier, "congratulations")
+    val kolamComplete =
+        localizedContext.appStringForLanguage(languageIdentifier, "your_kolam_is_complete")
+    val shareKolam =
+        localizedContext.appStringForLanguage(languageIdentifier, "share_kolam_community")
+    val continueFinishedKolam =
+        localizedContext.appStringForLanguage(languageIdentifier, "continue_finished_kolam")
+    val proceed = localizedContext.appStringForLanguage(languageIdentifier, "proceed")
+    val cancel = localizedContext.appStringForLanguage(languageIdentifier, "cancel")
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,

@@ -1,6 +1,7 @@
 package com.kolammaster.android.notifications
 
 import com.kolammaster.android.R
+import com.kolammaster.android.appString
 import com.kolammaster.android.withSelectedAppLanguage
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -18,10 +19,10 @@ internal object SupportNotificationChannel {
         val manager = context.getSystemService(NotificationManager::class.java)
         val channel = NotificationChannel(
             CHANNEL_ID,
-            localizedContext.getString(R.string.notifications_channel),
+            localizedContext.appString("notifications_channel"),
             NotificationManager.IMPORTANCE_HIGH
         ).apply {
-            description = localizedContext.getString(R.string.notifications_channel_description)
+            description = localizedContext.appString("notifications_channel_description")
             setShowBadge(true)
             enableVibration(true)
             setSound(

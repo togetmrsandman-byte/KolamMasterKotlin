@@ -5,9 +5,8 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.kolammaster.android.ContactComposeTestActivity
-import com.kolammaster.android.R
+import com.kolammaster.android.formatAppString
 import com.kolammaster.android.supportedLanguageIdentifiers
-import com.kolammaster.android.withAppLanguage
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -66,13 +65,11 @@ class SupportForegroundAlertInstrumentedTest {
 
     @Test
     fun sharedDialogButtonsUseTheCurrentlySelectedLanguage() {
-        val baseContext = composeRule.activity
         val alert = SupportUnreadStore.ForegroundAlert("conversation-3", "message-3")
 
         supportedLanguageIdentifiers.forEach { language ->
-            val localizedContext = baseContext.withAppLanguage(language)
-            val expectedOpen = localizedContext.getString(R.string.open)
-            val expectedLater = localizedContext.getString(R.string.later)
+            val expectedOpen = formatAppString(language, "open", emptyArray())
+            val expectedLater = formatAppString(language, "later", emptyArray())
 
             composeRule.setContent {
                 SupportForegroundAlertDialog(

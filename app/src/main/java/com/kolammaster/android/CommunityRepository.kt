@@ -143,10 +143,16 @@ internal fun parseApprovedCommunitySubmissions(rows: JSONArray): List<CommunityS
             val limitedImages = images.take(COMMUNITY_IMAGE_LIMIT - imageCount)
             imageCount += limitedImages.size
             val id = row.optString("id").takeIf(String::isNotBlank) ?: continue
+            val creatorName = row.nullableString("creator_name").orEmpty()
             add(
                 CommunitySubmission(
                     id = id,
-                    creatorName = row.nullableString("creator_name") ?: "Community member",
+                    creatorName = creatorName.takeUnless {
+                        it == TranslationDictionary.getStringOrEnglish(
+                            DEFAULT_LANGUAGE_IDENTIFIER,
+                            "community_member"
+                        )
+                    }.orEmpty(),
                     country = row.nullableString("country"),
                     lessonId = row.nullableString("lesson_id"),
                     lessonName = row.nullableString("lesson_name"),

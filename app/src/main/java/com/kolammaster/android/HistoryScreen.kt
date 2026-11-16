@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -70,7 +69,7 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
         Spacer(Modifier.height(20.dp))
 
         Text(
-            text = stringResource(R.string.history_intro),
+            text = currentAppString("history_intro"),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 5.dp),
@@ -79,39 +78,39 @@ internal fun HistoryScreen(modifier: Modifier = Modifier) {
             lineHeight = 23.sp
         )
 
-        HistorySectionTitle(stringResource(R.string.history_sikku_pulli_title))
-        HistoryParagraph(stringResource(R.string.history_sikku_origin_location))
-        HistoryParagraph(stringResource(R.string.history_sikku_origin_story))
+        HistorySectionTitle(currentAppString("history_sikku_pulli_title"))
+        HistoryParagraph(currentAppString("history_sikku_origin_location"))
+        HistoryParagraph(currentAppString("history_sikku_origin_story"))
         HistoryImage("ancient-village-kolam-and-harvest life.webp")
-        HistoryParagraph(stringResource(R.string.history_ancient_dot_grids))
+        HistoryParagraph(currentAppString("history_ancient_dot_grids"))
         HistoryImage("sparrows-and-ants-on-kolam.webp")
-        HistoryParagraph(stringResource(R.string.history_loop_belief))
+        HistoryParagraph(currentAppString("history_loop_belief"))
         HistoryImage("evil-trapped.webp")
-        HistoryParagraph(stringResource(R.string.history_sikku_description))
+        HistoryParagraph(currentAppString("history_sikku_description"))
         HistoryImage("sikku-kolam-bubble-picture.png")
-        HistoryParagraph(stringResource(R.string.history_pulli_description))
+        HistoryParagraph(currentAppString("history_pulli_description"))
         HistoryImage("pulli-kolam-bubble-picture.png")
 
-        HistorySectionTitle(stringResource(R.string.history_rangoli_title))
-        HistoryBullet(stringResource(R.string.history_rangoli_origin_location))
-        HistoryBullet(stringResource(R.string.history_rangoli_origin_story))
+        HistorySectionTitle(currentAppString("history_rangoli_title"))
+        HistoryBullet(currentAppString("history_rangoli_origin_location"))
+        HistoryBullet(currentAppString("history_rangoli_origin_story"))
 
-        HistorySectionTitle(stringResource(R.string.history_sangam_title))
-        HistoryParagraph(stringResource(R.string.history_sangam_description))
+        HistorySectionTitle(currentAppString("history_sangam_title"))
+        HistoryParagraph(currentAppString("history_sangam_description"))
 
-        HistorySectionTitle(stringResource(R.string.history_festival_title))
-        HistoryParagraph(stringResource(R.string.history_festival_description))
+        HistorySectionTitle(currentAppString("history_festival_title"))
+        HistoryParagraph(currentAppString("history_festival_description"))
 
-        HistorySectionTitle(stringResource(R.string.history_modern_science_title))
-        HistoryParagraph(stringResource(R.string.history_modern_science_discovery))
-        HistoryBullet(stringResource(R.string.history_modern_science_languages))
-        HistoryBullet(stringResource(R.string.history_modern_science_research))
+        HistorySectionTitle(currentAppString("history_modern_science_title"))
+        HistoryParagraph(currentAppString("history_modern_science_discovery"))
+        HistoryBullet(currentAppString("history_modern_science_languages"))
+        HistoryBullet(currentAppString("history_modern_science_research"))
 
-        HistorySectionTitle(stringResource(R.string.history_brahma_timing_title))
-        HistoryParagraph(stringResource(R.string.history_brahma_timing_description))
-        HistoryBullet(stringResource(R.string.history_brahma_cultural_belief))
-        HistoryBullet(stringResource(R.string.history_brahma_social_signal))
-        HistoryParagraph(stringResource(R.string.history_photo_collection))
+        HistorySectionTitle(currentAppString("history_brahma_timing_title"))
+        HistoryParagraph(currentAppString("history_brahma_timing_description"))
+        HistoryBullet(currentAppString("history_brahma_cultural_belief"))
+        HistoryBullet(currentAppString("history_brahma_social_signal"))
+        HistoryParagraph(currentAppString("history_photo_collection"))
 
         listOf(
             "tamil-village-1.webp",
@@ -135,7 +134,7 @@ private fun HistoryHeading() {
     ) {
         HistoryTitleBorder(border, mirrored = true)
         Text(
-            text = stringResource(R.string.history_title),
+            text = currentAppString("history_title"),
             modifier = Modifier.padding(horizontal = 10.dp),
             color = historyGold,
             fontSize = 26.sp,

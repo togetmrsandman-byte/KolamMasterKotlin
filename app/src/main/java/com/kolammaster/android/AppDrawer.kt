@@ -73,7 +73,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -136,12 +135,15 @@ private val FolderSignedOutGoogleToBackSpacing = 8.dp
 @Composable
 internal fun SupportUnreadIndicator(
     modifier: Modifier = Modifier,
-    description: String = "Unread Support messages"
+    description: String? = null
 ) {
+    val resolvedDescription = description ?: currentAppString(
+        "unread_support_messages"
+    )
     Box(
         modifier
             .size(8.dp)
-            .semantics { contentDescription = description }
+            .semantics { contentDescription = resolvedDescription }
             .background(unreadColor, androidx.compose.foundation.shape.CircleShape)
     )
 }
@@ -201,7 +203,7 @@ internal fun DrawerOverlay(
                     .padding(top = 42.dp, start = 22.dp, end = 22.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.back),
+                    text = currentAppString("back"),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(44.dp)
@@ -213,19 +215,19 @@ internal fun DrawerOverlay(
                 )
                 Spacer(Modifier.height(24.dp))
 
-                DrawerMenuRow(stringResource(R.string.home)) { onSelect(DrawerAction.Home) }
-                DrawerMenuRow(stringResource(R.string.profile)) { onSelect(DrawerAction.Profile) }
-                DrawerMenuRow(stringResource(R.string.my_folders)) { onSelect(DrawerAction.MyFolders) }
-                DrawerMenuRow(stringResource(R.string.language_settings_label)) {
+                DrawerMenuRow(currentAppString("home")) { onSelect(DrawerAction.Home) }
+                DrawerMenuRow(currentAppString("profile")) { onSelect(DrawerAction.Profile) }
+                DrawerMenuRow(currentAppString("my_folders")) { onSelect(DrawerAction.MyFolders) }
+                DrawerMenuRow(currentAppString("language_settings_label")) {
                     onSelect(DrawerAction.Language)
                 }
-                DrawerMenuRow(stringResource(R.string.contact_us), unread = unreadContactUs) {
+                DrawerMenuRow(currentAppString("contact_us"), unread = unreadContactUs) {
                     onSelect(DrawerAction.ContactUs)
                 }
                 DrawerMenuRow(
-                    stringResource(R.string.announcements),
+                    currentAppString("announcements"),
                     unread = unreadAnnouncements,
-                    unreadDescription = "Unread announcements"
+                    unreadDescription = currentAppString("unread_announcements")
                 ) {
                     onSelect(DrawerAction.Announcements)
                 }
@@ -238,10 +240,10 @@ internal fun DrawerOverlay(
                         SettingsDeleteAccountAction(onDeleteAccountClick)
                     }
                 }
-                DrawerMenuRow(stringResource(R.string.update_app)) {
+                DrawerMenuRow(currentAppString("update_app")) {
                     onSelect(DrawerAction.UpdateApp)
                 }
-                DrawerMenuRow(stringResource(R.string.rate_app)) {
+                DrawerMenuRow(currentAppString("rate_app")) {
                     onSelect(DrawerAction.RateApp)
                 }
             }
@@ -253,10 +255,12 @@ internal fun DrawerOverlay(
 private fun DrawerMenuRow(
     label: String,
     unread: Boolean = false,
-    unreadDescription: String = "Unread Support messages",
+    unreadDescription: String? = null,
     textColor: Color = KolamText,
     onClick: () -> Unit
 ) {
+    val resolvedUnreadDescription =
+        unreadDescription ?: currentAppString("unread_support_messages")
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -281,7 +285,7 @@ private fun DrawerMenuRow(
             fontWeight = FontWeight.SemiBold
         )
         if (unread) {
-            SupportUnreadIndicator(description = unreadDescription)
+            SupportUnreadIndicator(description = resolvedUnreadDescription)
         }
     }
 }
@@ -305,7 +309,7 @@ private fun DrawerSettingsRow(expanded: Boolean, onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = stringResource(R.string.settings),
+            text = currentAppString("settings"),
             modifier = Modifier.weight(1f),
             color = KolamText,
             fontSize = 20.sp,
@@ -363,7 +367,7 @@ private fun SettingsNotifications() {
     }
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
-            text = stringResource(R.string.notifications),
+            text = currentAppString("notifications"),
             modifier = Modifier.padding(top = 14.dp, bottom = 8.dp),
             color = drawerMuted,
             fontSize = 16.sp,
@@ -376,15 +380,15 @@ private fun SettingsNotifications() {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.contact_notifications),
+                text = currentAppString("contact_notifications"),
                 modifier = Modifier.weight(1f),
                 color = KolamText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = stringResource(
-                    if (permissionGranted) R.string.on else R.string.off
+                text = currentAppString(
+                    if (permissionGranted) "on" else "off"
                 ),
                 modifier = Modifier.padding(end = 6.dp),
                 color = KolamText,
@@ -448,7 +452,7 @@ internal fun LanguageSettingsScreen(
     ) {
         Spacer(Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.choose_your_language),
+            text = currentAppString("choose_your_language"),
             modifier = Modifier.offset(y = LanguageMenuSectionVerticalOffset),
             color = KolamText,
             fontSize = 21.sp,
@@ -487,7 +491,7 @@ internal fun LanguageSettingsScreen(
         }
         Spacer(Modifier.height(6.dp))
         Text(
-            text = stringResource(R.string.language_changes_apply),
+            text = currentAppString("language_changes_apply"),
             modifier = Modifier.offset(y = LanguageMenuImmediateTextVerticalOffset),
             color = KolamMutedText,
             fontSize = 13.sp,
@@ -539,7 +543,7 @@ internal fun ProfileDestination(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                stringResource(R.string.profile),
+                currentAppString("profile"),
                 color = KolamGold,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
@@ -547,7 +551,7 @@ internal fun ProfileDestination(
             Spacer(Modifier.height(if (account == null) 25.dp else 18.dp))
             if (account == null) {
                 GuestSignInPrompt(
-                    message = stringResource(R.string.guest_account_message),
+                    message = currentAppString("guest_account_message"),
                     onSignIn = onSignIn,
                     enabled = true
                 )
@@ -555,12 +559,12 @@ internal fun ProfileDestination(
                 Button(
                     onClick = onBack,
                     colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                ) { Text(stringResource(R.string.back)) }
+                ) { Text(currentAppString("back")) }
             } else {
                 profilePhoto?.let { image ->
                     Image(
                         bitmap = image,
-                        contentDescription = stringResource(R.string.profile_photo_description),
+                        contentDescription = currentAppString("profile_photo_description"),
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(88.dp)
@@ -578,16 +582,16 @@ internal fun ProfileDestination(
                     Button(
                         onClick = onBack,
                         colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                    ) { Text(stringResource(R.string.back)) }
+                    ) { Text(currentAppString("back")) }
                     Button(
                         onClick = onSignOut,
                         colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-                    ) { Text(stringResource(R.string.sign_out)) }
+                    ) { Text(currentAppString("sign_out")) }
                 }
             }
             Image(
                 bitmap = rememberAssetImage("kolam-logo.png"),
-                contentDescription = stringResource(R.string.kolam_logo_description),
+                contentDescription = currentAppString("kolam_logo_description"),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier
                     .padding(top = ProfileLogoTopPadding)
@@ -643,9 +647,9 @@ internal fun ContactUsDestination(
 ) {
     val context = LocalContext.current
     val density = LocalDensity.current
-    val contactUsTitle = stringResource(R.string.contact_us)
+    val contactUsTitle = currentAppString("contact_us")
     val newConversationDescription =
-        stringResource(R.string.new_conversation_description)
+        currentAppString("new_conversation_description")
     var contactTitleFontSize by remember(contactUsTitle) {
         mutableFloatStateOf(24f)
     }
@@ -717,7 +721,7 @@ internal fun ContactUsDestination(
         Spacer(Modifier.height(20.dp))
         if (!signedIn) {
             GuestSignInPrompt(
-                message = stringResource(R.string.sign_in_new_conversation),
+                message = currentAppString("sign_in_new_conversation"),
                 onSignIn = onSignIn,
                 enabled = true
             )
@@ -751,14 +755,14 @@ internal fun ContactUsDestination(
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
                                     Text(
-                                        stringResource(R.string.refresh_conversations_cached),
+                                        currentAppString("refresh_conversations_cached"),
                                         color = KolamContainerSecondary,
                                         textAlign = TextAlign.Center
                                     )
                                     TextButton(
                                         onClick = onRetry,
                                         colors = kolamStandardButtonColors()
-                                    ) { Text(stringResource(R.string.retry)) }
+                                    ) { Text(currentAppString("retry")) }
                                 }
                             }
                         }
@@ -780,7 +784,7 @@ internal fun ContactUsDestination(
                                     CircularProgressIndicator(color = KolamBronze)
                                     Spacer(Modifier.height(12.dp))
                                     Text(
-                                        stringResource(R.string.loading_conversations),
+                                        currentAppString("loading_conversations"),
                                         color = KolamContainerSecondary
                                     )
                                 }
@@ -801,7 +805,7 @@ internal fun ContactUsDestination(
                                 ) {
                                     Text(
                                         if (errorMessage == NetworkErrors.DISPLAY_TEXT) {
-                                            stringResource(R.string.network_error_message)
+                                            currentAppString("network_error_message")
                                         } else {
                                             errorMessage
                                         },
@@ -812,7 +816,7 @@ internal fun ContactUsDestination(
                                     TextButton(
                                         onClick = onRetry,
                                         colors = kolamStandardButtonColors()
-                                    ) { Text(stringResource(R.string.retry)) }
+                                    ) { Text(currentAppString("retry")) }
                                 }
                             }
                         }
@@ -826,7 +830,7 @@ internal fun ContactUsDestination(
                                 border = BorderStroke(1.dp, KolamSilverBorder)
                             ) {
                                 Text(
-                                    stringResource(R.string.no_conversations),
+                                    currentAppString("no_conversations"),
                                     modifier = Modifier.fillMaxWidth().padding(16.dp),
                                     color = KolamContainerSecondary,
                                     fontSize = 16.sp,
@@ -875,8 +879,8 @@ internal fun ContactUsDestination(
                                                 ?.takeIf(String::isNotBlank)
                                         ) {
                                             ContactJson.IMAGE_ATTACHMENT_PREVIEW ->
-                                                stringResource(R.string.image_attachment)
-                                            null -> stringResource(R.string.no_messages_yet)
+                                                currentAppString("image_attachment")
+                                            null -> currentAppString("no_messages_yet")
                                             else -> preview
                                         },
                                         color = KolamContainerSecondary,
@@ -888,8 +892,8 @@ internal fun ContactUsDestination(
                                     )
                                 }
                                 if (SupportUnreadStore.hasUnread(context, conversation.id)) {
-                                    val unreadDescription = stringResource(
-                                        R.string.unread_support_messages_for,
+                                    val unreadDescription = currentAppString(
+                                        "unread_support_messages_for",
                                         conversation.subject
                                     )
                                     Box(
@@ -971,14 +975,14 @@ internal fun ColumnScope.MyFoldersGuestContent(
                     verticalArrangement = Arrangement.spacedBy(FolderBenefitSpacing)
                 ) {
                     Text(
-                        stringResource(R.string.sign_in_to_create_folders),
+                        currentAppString("sign_in_to_create_folders"),
                         color = KolamText,
                         fontSize = 16.sp,
                         fontWeight = FontWeight.SemiBold
                     )
-                    FolderBenefit(stringResource(R.string.bookmark_favorite_kolams))
-                    FolderBenefit(stringResource(R.string.organize_saved_kolams))
-                    FolderBenefit(stringResource(R.string.keep_lessons_easy_to_find))
+                    FolderBenefit(currentAppString("bookmark_favorite_kolams"))
+                    FolderBenefit(currentAppString("organize_saved_kolams"))
+                    FolderBenefit(currentAppString("keep_lessons_easy_to_find"))
                 }
             }
             Spacer(Modifier.height(FolderSignedOutBenefitsToGoogleSpacing))
@@ -987,13 +991,13 @@ internal fun ColumnScope.MyFoldersGuestContent(
                 enabled = !isSignInProcessing,
                 modifier = Modifier.offset(y = FolderSignedOutGoogleButtonVerticalOffset),
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text(stringResource(R.string.sign_in_with_google)) }
+            ) { Text(currentAppString("sign_in_with_google")) }
             Spacer(Modifier.height(FolderSignedOutGoogleToBackSpacing))
             Button(
                 onClick = onBack,
                 modifier = Modifier.offset(y = FolderSignedOutBackButtonVerticalOffset),
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text(stringResource(R.string.back)) }
+            ) { Text(currentAppString("back")) }
         }
         Spacer(Modifier.weight(1f))
     }
@@ -1032,7 +1036,7 @@ private fun GuestSignInPrompt(
     )
     Spacer(Modifier.height(18.dp))
     Button(onClick = onSignIn, enabled = enabled) {
-        Text(stringResource(R.string.sign_in_with_google))
+        Text(currentAppString("sign_in_with_google"))
     }
 }
 
@@ -1059,10 +1063,10 @@ private fun DestinationScaffold(
             Button(
                 onClick = onBack,
                 colors = ButtonDefaults.buttonColors(containerColor = KolamButtonYellow)
-            ) { Text(stringResource(R.string.back)) }
+            ) { Text(currentAppString("back")) }
         } else {
             TextButton(onClick = onBack, colors = kolamStandardButtonColors()) {
-                Text(stringResource(R.string.back))
+                Text(currentAppString("back"))
             }
         }
     }
@@ -1081,7 +1085,7 @@ internal fun StoreActionDialog(
             text = { Text(message) },
             confirmButton = {
                 TextButton(onClick = onDismiss, colors = kolamStandardButtonColors()) {
-                    Text(stringResource(R.string.ok))
+                    Text(currentAppString("ok"))
                 }
             }
         )
@@ -1125,7 +1129,7 @@ private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
     val localizedContext = LocalContext.current.withSelectedAppLanguage()
     var showConfirmDialog by remember { mutableStateOf(false) }
     DrawerMenuRow(
-        stringResource(R.string.delete_my_account),
+        currentAppString("delete_my_account"),
         textColor = Color(0xFFFF4D4D)
     ) {
         showConfirmDialog = true
@@ -1133,14 +1137,14 @@ private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
     if (showConfirmDialog) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text(localizedContext.getString(R.string.delete_account_title)) },
-            text = { Text(localizedContext.getString(R.string.delete_account_message)) },
+            title = { Text(localizedContext.appString("delete_account_title")) },
+            text = { Text(localizedContext.appString("delete_account_message")) },
             dismissButton = {
                 TextButton(
                     onClick = { showConfirmDialog = false },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(localizedContext.getString(R.string.cancel))
+                    Text(localizedContext.appString("cancel"))
                 }
             },
             confirmButton = {
@@ -1151,7 +1155,7 @@ private fun SettingsDeleteAccountAction(onDeleteAccount: () -> Unit) {
                     },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(localizedContext.getString(R.string.delete))
+                    Text(localizedContext.appString("delete"))
                 }
             }
         )

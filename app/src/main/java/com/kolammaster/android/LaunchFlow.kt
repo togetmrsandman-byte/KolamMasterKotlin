@@ -58,8 +58,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -115,11 +113,11 @@ private val HeaderTitleStyle = TextStyle(
     )
 )
 
-internal enum class LandingDestination(val titleResource: Int) {
-    Browse(R.string.learn),
-    MyKolams(R.string.my_folders),
-    Community(R.string.community),
-    History(R.string.history_title)
+internal enum class LandingDestination(val titleKey: String) {
+    Browse("learn"),
+    MyKolams("my_folders"),
+    Community("community"),
+    History("history_title")
 }
 
 internal val supportedLanguages = listOf(
@@ -150,7 +148,7 @@ internal fun LanguageSelectionScreen(
         verticalArrangement = Arrangement.Top
     ) {
         Text(
-            text = stringResource(R.string.choose_language),
+            text = currentAppString("choose_language"),
             color = KolamGold,
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
@@ -158,7 +156,7 @@ internal fun LanguageSelectionScreen(
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            text = stringResource(R.string.language_change_later),
+            text = currentAppString("language_change_later"),
             color = KolamMutedText,
             fontSize = 12.sp,
             maxLines = 1,
@@ -204,7 +202,7 @@ internal fun SignInInvitationScreen(
     ) {
         Image(
             bitmap = rememberAssetImage("kolam-logo.png"),
-            contentDescription = "Kolam logo",
+            contentDescription = currentAppString("kolam_logo_description"),
             contentScale = ContentScale.Fit,
             modifier = Modifier
                 .size(SignInLogoSize)
@@ -216,7 +214,7 @@ internal fun SignInInvitationScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = stringResource(R.string.sign_in_with_google),
+                text = currentAppString("sign_in_with_google"),
                 color = KolamGold,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
@@ -237,13 +235,13 @@ internal fun SignInInvitationScreen(
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     listOf(
-                        R.string.benefit_save_kolams,
-                        R.string.benefit_organize_kolams,
-                        R.string.benefit_join_community,
-                        R.string.benefit_publish_kolams
+                        "benefit_save_kolams",
+                        "benefit_organize_kolams",
+                        "benefit_join_community",
+                        "benefit_publish_kolams"
                     ).forEach { benefit ->
                         Text(
-                            text = "•  ${stringResource(benefit)}",
+                            text = "•  ${currentAppString(benefit)}",
                             modifier = Modifier.fillMaxWidth(),
                             color = KolamText,
                             fontSize = 15.sp,
@@ -263,7 +261,7 @@ internal fun SignInInvitationScreen(
                 )
             ) {
                 Text(
-                stringResource(R.string.continue_with_google),
+                currentAppString("continue_with_google"),
                     color = KolamButtonText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -280,7 +278,7 @@ internal fun SignInInvitationScreen(
                 )
             ) {
                 Text(
-                    stringResource(R.string.skip_for_now),
+                    currentAppString("skip_for_now"),
                     color = KolamButtonText,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.Bold
@@ -294,7 +292,7 @@ internal fun SignInInvitationScreen(
 internal fun InitialAssetSetupScreen(
     progress: AssetSetupProgress,
     isRunning: Boolean,
-    errorMessage: Int?,
+    errorMessage: String?,
     onRetry: () -> Unit
 ) {
     Column(
@@ -306,7 +304,7 @@ internal fun InitialAssetSetupScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = stringResource(R.string.preparing_app),
+            text = currentAppString("preparing_app"),
             color = KolamGold,
             fontSize = 26.sp,
             fontWeight = FontWeight.Bold,
@@ -314,7 +312,7 @@ internal fun InitialAssetSetupScreen(
         )
         Spacer(Modifier.height(12.dp))
         Text(
-            text = stringResource(R.string.onboarding_download_message),
+            text = currentAppString("onboarding_download_message"),
             color = KolamMutedText,
             fontSize = 16.sp,
             lineHeight = 23.sp,
@@ -326,8 +324,8 @@ internal fun InitialAssetSetupScreen(
             Spacer(Modifier.height(16.dp))
             if (progress.total > 0) {
                 Text(
-                    text = pluralStringResource(
-                        R.plurals.image_count,
+                    text = currentAppPlural(
+                        "image_count",
                         progress.completed,
                         progress.completed,
                         progress.total
@@ -339,16 +337,16 @@ internal fun InitialAssetSetupScreen(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                text = stringResource(
+                text = currentAppString(
                     when (progress.message) {
-                        AssetSetupMessage.PreparingImages -> R.string.preparing_images
+                        AssetSetupMessage.PreparingImages -> "preparing_images"
                         AssetSetupMessage.PreparingLearnThumbnails ->
-                            R.string.preparing_learn_thumbnails
+                            "preparing_learn_thumbnails"
                         AssetSetupMessage.DownloadingLearnThumbnails ->
-                            R.string.downloading_learn_thumbnails
-                        AssetSetupMessage.Complete -> R.string.setup_complete
+                            "downloading_learn_thumbnails"
+                        AssetSetupMessage.Complete -> "setup_complete"
                         AssetSetupMessage.CompleteWithMissingImages ->
-                            R.string.setup_complete_missing_images
+                            "setup_complete_missing_images"
                     }
                 ),
                 color = KolamMutedText,
@@ -357,7 +355,7 @@ internal fun InitialAssetSetupScreen(
             )
         } else if (errorMessage != null) {
             Text(
-                text = stringResource(errorMessage),
+                text = currentAppString(errorMessage),
                 color = KolamText,
                 fontSize = 15.sp,
                 textAlign = TextAlign.Center
@@ -368,7 +366,7 @@ internal fun InitialAssetSetupScreen(
                 colors = ButtonDefaults.buttonColors(containerColor = Gold)
             ) {
                 Text(
-                    stringResource(R.string.retry),
+                    currentAppString("retry"),
                     color = KolamButtonText,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -386,9 +384,9 @@ private val SignInBenefitsToGoogleSpacing = 16.dp
 private val SignInGoogleToSkipSpacing = 8.dp
 
 @Composable
-internal fun AuthLoadingOverlay(message: Int?) {
+internal fun AuthLoadingOverlay(message: String?) {
     if (message == null) return
-    val localizedMessage = stringResource(message)
+    val localizedMessage = currentAppString(message)
 
     Dialog(
         onDismissRequest = {},
@@ -467,7 +465,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
         verticalArrangement = Arrangement.SpaceBetween
     ) {
         Text(
-            text = "Kolam Master",
+            text = currentAppString("app_name"),
             modifier = Modifier
                 .fillMaxWidth()
                 .graphicsLayer { alpha = titleAlpha.value },
@@ -488,7 +486,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
             ) {
                 Image(
                     bitmap = logo,
-                    contentDescription = "Kolam Master logo",
+                    contentDescription = currentAppString("kolam_logo_description"),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .size(OpeningScreenLogoSize)
@@ -504,7 +502,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
         }
 
         Text(
-            text = stringResource(R.string.onboarding_kolam_history),
+            text = currentAppString("onboarding_kolam_history"),
             modifier = Modifier
                 .fillMaxWidth(0.88f)
                 .graphicsLayer { alpha = historyAlpha.value },
@@ -532,7 +530,7 @@ internal fun OpeningScreen(onBegin: () -> Unit) {
             )
         ) {
             Text(
-                text = stringResource(R.string.onboarding_begin),
+                text = currentAppString("onboarding_begin"),
                 color = KolamText,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold
@@ -622,7 +620,7 @@ internal fun LandingPageFrame(
                 ) {
                     Image(
                         bitmap = rememberAssetImage("landing-page-image.png"),
-                        contentDescription = "Kolam Master",
+                        contentDescription = currentAppString("kolam_logo_description"),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .padding(top = 6.dp)
@@ -689,7 +687,7 @@ internal fun LandingArtworkFrame(
             if (showBrandArtwork) {
                 Image(
                     bitmap = rememberAssetImage("landing-page-image.png"),
-                    contentDescription = "Kolam Master",
+                    contentDescription = currentAppString("kolam_logo_description"),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .padding(top = 6.dp)
@@ -712,7 +710,7 @@ internal fun AppNavigationHeader(
     unreadSupport: Boolean = false,
     unreadAnnouncements: Boolean = false
 ) {
-    val navigationMenuDescription = stringResource(R.string.open_navigation_menu)
+    val navigationMenuDescription = currentAppString("open_navigation_menu")
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -734,7 +732,7 @@ internal fun AppNavigationHeader(
             )
         }
         Text(
-            text = "Kolam Master",
+            text = currentAppString("app_name"),
             modifier = Modifier
                 .align(Alignment.Center)
                 .clickable(onClick = onHome),
@@ -791,7 +789,7 @@ internal fun AppNavigationHeader(
 
 @Composable
 private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
-    val navigationMenuDescription = stringResource(R.string.open_navigation_menu)
+    val navigationMenuDescription = currentAppString("open_navigation_menu")
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -799,7 +797,7 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
             .background(KolamMasterHeaderColor)
     ) {
         Text(
-            text = "Kolam Master",
+            text = currentAppString("app_name"),
             modifier = Modifier.align(Alignment.Center),
             color = KolamText,
             fontSize = 22.sp,
@@ -918,7 +916,7 @@ private fun LandingBubbles(
     ) {
         LandingDestination.entries.forEachIndexed { index, destination ->
             LandingBubble(
-                title = stringResource(destination.titleResource),
+                title = currentAppString(destination.titleKey),
                 index = index,
                 modifier = Modifier
                     .padding(horizontal = 8.dp),
@@ -1012,17 +1010,17 @@ internal fun LessonBrowserScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "Learn Kolam",
+            text = currentAppString("lesson_browser_title"),
             color = KolamText,
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold
         )
         Spacer(Modifier.height(24.dp))
-        GoldActionButton("Sikku", onClick = { onSelectLesson(false) })
+        GoldActionButton(currentAppString("sikku_label"), onClick = { onSelectLesson(false) })
         Spacer(Modifier.height(12.dp))
-        GoldActionButton("Rangoli", onClick = { onSelectLesson(true) })
+        GoldActionButton(currentAppString("rangoli_label"), onClick = { onSelectLesson(true) })
         Spacer(Modifier.height(24.dp))
-        GoldActionButton("Back", onClick = onBack)
+        GoldActionButton(currentAppString("back"), onClick = onBack)
     }
 }
 
@@ -1038,7 +1036,7 @@ internal fun PlaceholderDestination(title: String, onBack: () -> Unit) {
     ) {
         Text(title, color = KolamText, fontSize = 28.sp, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(24.dp))
-        GoldActionButton("Back to Kolam Master", onClick = onBack)
+        GoldActionButton(currentAppString("back"), onClick = onBack)
     }
 }
 

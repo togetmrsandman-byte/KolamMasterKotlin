@@ -14,18 +14,15 @@ class GalleryPublishPickerSheetInstrumentedTest {
 
     @Test
     fun completionPopupUsesResourcesForEverySelectedLanguage() {
-        val baseContext = composeRule.activity
-
         supportedLanguageIdentifiers.forEach { language ->
-            val localizedContext = baseContext.withAppLanguage(language)
             val expectedTexts = listOf(
-                R.string.congratulations,
-                R.string.your_kolam_is_complete,
-                R.string.share_kolam_community,
-                R.string.continue_finished_kolam,
-                R.string.proceed,
-                R.string.cancel
-            ).map(localizedContext::getString)
+                "congratulations",
+                "your_kolam_is_complete",
+                "share_kolam_community",
+                "continue_finished_kolam",
+                "proceed",
+                "cancel"
+            ).map { key -> formatAppString(language, key, emptyArray()) }
 
             composeRule.setContent {
                 GalleryPublishPickerSheet(

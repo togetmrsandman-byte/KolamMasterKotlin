@@ -36,7 +36,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -84,16 +83,17 @@ internal fun CommunityScreen(
     onDismissLessonOpenError: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val communityCatalogueWaiting = stringResource(R.string.community_catalogue_waiting)
-    val communityLessonMissing = stringResource(R.string.community_lesson_missing)
+    val communityCatalogueWaiting = currentAppString("community_catalogue_waiting")
+    val communityLessonMissing = currentAppString("community_lesson_missing")
+    val missingCreatorName = currentAppString("community_member")
     val context = LocalContext.current.applicationContext
     var selectedImage by remember { mutableStateOf<SelectedCommunityImage?>(null) }
     var selectedLessonError by remember { mutableStateOf<String?>(null) }
-    val galleryItems = remember(submissions) {
+    val galleryItems = remember(submissions, missingCreatorName) {
         submissions.flatMap { submission ->
             submission.images.map { image ->
                 CommunityGalleryItem(
-                    submission.creatorName,
+                    submission.creatorName.ifBlank { missingCreatorName },
                     submission.country,
                     submission.lessonId,
                     image
@@ -119,7 +119,7 @@ internal fun CommunityScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                stringResource(R.string.community),
+                currentAppString("community"),
                 color = KolamGold,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.SemiBold
@@ -135,7 +135,7 @@ internal fun CommunityScreen(
                 )
             }
             Button(onClick = onRefresh) {
-                Text(stringResource(R.string.refresh))
+                Text(currentAppString("refresh"))
             }
         }
         Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
@@ -153,7 +153,7 @@ internal fun CommunityScreen(
                 ) {
                     Text(
                         if (errorMessage == NetworkErrors.DISPLAY_TEXT) {
-                            stringResource(R.string.network_error_message)
+                            currentAppString("network_error_message")
                         } else {
                             errorMessage
                         },
@@ -161,7 +161,7 @@ internal fun CommunityScreen(
                         fontSize = 16.sp
                     )
                     Button(onClick = onRefresh, modifier = Modifier.padding(top = 16.dp)) {
-                        Text(stringResource(R.string.retry))
+                        Text(currentAppString("retry"))
                     }
                 }
                 submissions.isEmpty() -> Column(
@@ -172,7 +172,7 @@ internal fun CommunityScreen(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        stringResource(R.string.no_approved_kolams),
+                        currentAppString("no_approved_kolams"),
                         color = KolamMutedText,
                         fontSize = 16.sp
                     )
@@ -192,10 +192,10 @@ internal fun CommunityScreen(
                     if (errorMessage != null) {
                         item {
                             Text(
-                                text = stringResource(
-                                    R.string.community_showing_last_loaded,
+                                text = currentAppString(
+                                    "community_showing_last_loaded",
                                     if (errorMessage == NetworkErrors.DISPLAY_TEXT) {
-                                        stringResource(R.string.network_error_message)
+                                        currentAppString("network_error_message")
                                     } else {
                                         errorMessage
                                     }
@@ -247,14 +247,14 @@ internal fun CommunityScreen(
                 ) {
                     Image(
                         bitmap = selection.bitmap,
-                        contentDescription = stringResource(R.string.selected_community_kolam),
+                        contentDescription = currentAppString("selected_community_kolam"),
                         contentScale = ContentScale.Fit,
                         modifier = Modifier.fillMaxSize()
                     )
                 }
                 Text(
-                    text = stringResource(
-                        R.string.community_submitted_by,
+                    text = currentAppString(
+                        "community_submitted_by",
                         selection.item.creatorName
                     ),
                     color = KolamText,
@@ -267,7 +267,7 @@ internal fun CommunityScreen(
                 )
                 selection.item.lessonId?.let { id ->
                     Text(
-                        text = stringResource(R.string.community_lesson_id, id),
+                        text = currentAppString("community_lesson_id", id),
                         color = KolamMutedText,
                         fontSize = 12.sp,
                         textAlign = TextAlign.Center,
@@ -312,7 +312,7 @@ internal fun CommunityScreen(
                         },
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(stringResource(R.string.open_lesson))
+                        Text(currentAppString("open_lesson"))
                     }
                     OutlinedButton(
                         onClick = {
@@ -324,7 +324,7 @@ internal fun CommunityScreen(
                         shape = RoundedCornerShape(12.dp),
                         colors = kolamStandardButtonColors()
                     ) {
-                        Text(stringResource(R.string.cancel), color = KolamButtonText)
+                        Text(currentAppString("cancel"), color = KolamButtonText)
                     }
                 }
             }
@@ -335,11 +335,11 @@ internal fun CommunityScreen(
         lessonOpenError?.let { message ->
             androidx.compose.material3.AlertDialog(
                 onDismissRequest = onDismissLessonOpenError,
-                title = { Text(stringResource(R.string.lesson_unavailable)) },
+                title = { Text(currentAppString("lesson_unavailable")) },
                 text = { Text(message) },
                 confirmButton = {
                     Button(onClick = onDismissLessonOpenError) {
-                        Text(stringResource(R.string.ok))
+                        Text(currentAppString("ok"))
                     }
                 }
             )
@@ -391,7 +391,7 @@ private fun CommunityImageCard(
                         verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Text(
-                            stringResource(R.string.image_load_failed),
+                            currentAppString("image_load_failed"),
                             color = KolamMutedText,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,
@@ -400,12 +400,12 @@ private fun CommunityImageCard(
                         androidx.compose.material3.TextButton(
                             onClick = { retryAttempt++ },
                             colors = kolamStandardButtonColors()
-                        ) { Text(stringResource(R.string.retry)) }
+                        ) { Text(currentAppString("retry")) }
                     }
                     is CommunityImageState.Loaded -> Image(
                         bitmap = state.bitmap,
-                        contentDescription = stringResource(
-                            R.string.community_shared_by,
+                        contentDescription = currentAppString(
+                            "community_shared_by",
                             creatorName
                         ),
                         contentScale = ContentScale.Crop,
@@ -417,7 +417,7 @@ private fun CommunityImageCard(
             }
             Spacer(Modifier.height(8.dp))
             Text(
-                text = stringResource(R.string.community_submitted_by, creatorName),
+                text = currentAppString("community_submitted_by", creatorName),
                 modifier = Modifier.fillMaxWidth(),
                 color = KolamText,
                 fontSize = 12.sp,
@@ -428,7 +428,7 @@ private fun CommunityImageCard(
             )
             lessonId?.let { id ->
                 Text(
-                    text = stringResource(R.string.community_lesson_id, id),
+                    text = currentAppString("community_lesson_id", id),
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(top = 3.dp),

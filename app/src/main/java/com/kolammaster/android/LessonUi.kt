@@ -44,7 +44,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -390,7 +389,7 @@ internal fun PlaybackSpeedControl(
                 bottom = 10.dp
             )
         ) {
-            PlaybackControlLabel("${stringResource(R.string.speed_control)} ▾")
+            PlaybackControlLabel("${currentAppString("speed_control")} ▾")
         }
         DropdownMenu(
             expanded = expanded,

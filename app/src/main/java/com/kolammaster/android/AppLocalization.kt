@@ -2,6 +2,7 @@ package com.kolammaster.android
 
 import android.content.res.Configuration
 import android.content.Context
+import android.view.ContextThemeWrapper
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,8 +12,8 @@ import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 
 internal const val DEFAULT_LANGUAGE_IDENTIFIER = "English"
-private const val APP_PREFERENCES_NAME = "kolam_master_preferences"
-private const val APP_LANGUAGE_KEY = "language"
+internal const val APP_PREFERENCES_NAME = "kolam_master_preferences"
+internal const val APP_LANGUAGE_KEY = "language"
 
 internal val supportedLanguageIdentifiers = listOf(
     "English",
@@ -37,7 +38,7 @@ internal fun localeTagForLanguage(languageIdentifier: String): String =
         "Telugu" -> "te"
         "Malayalam" -> "ml"
         "Thai" -> "th"
-        "Chinese (Simplified)" -> "zh-rCN"
+        "Chinese (Simplified)" -> "zh-CN"
         "Vietnamese" -> "vi"
         "Malay" -> "ms"
         "Japanese" -> "ja"
@@ -58,7 +59,9 @@ internal fun Context.withAppLanguage(languageIdentifier: String): Context {
     val locale = Locale.forLanguageTag(localeTagForLanguage(languageIdentifier))
     configuration.setLocale(locale)
     configuration.setLayoutDirection(locale)
-    return createConfigurationContext(configuration)
+    return ContextThemeWrapper(this, 0).apply {
+        applyOverrideConfiguration(configuration)
+    }
 }
 
 @Composable
@@ -78,6 +81,7 @@ internal fun LocalizedAppResources(
     }
     val localizedContent: @Composable () -> Unit = {
         CompositionLocalProvider(
+            LocalAppLanguage provides languageIdentifier,
             LocalConfiguration provides configuration,
             LocalContext provides localizedContext,
             content = content

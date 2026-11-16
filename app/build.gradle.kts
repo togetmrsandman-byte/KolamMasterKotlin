@@ -69,8 +69,8 @@ android {
         applicationId = "com.kolammaster.android"
         minSdk = 24
         targetSdk = 37
-        versionCode = 4
-        versionName = "1.0.3"
+        versionCode = 9
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -165,6 +165,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.shortcut.badger)
+    implementation(libs.androidx.appcompat)
     testImplementation(libs.junit)
     testImplementation("org.json:json:20250517")
     androidTestImplementation(platform(libs.androidx.compose.bom))

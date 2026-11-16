@@ -67,7 +67,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -127,26 +126,26 @@ internal fun ContactConversationDetailDestination(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val contactMessageFailed = stringResource(R.string.contact_message_not_sent)
-    val contactImageFailed = stringResource(R.string.contact_image_not_sent)
-    val contactConversationClosed = stringResource(R.string.conversation_closed)
-    val contactConversationClosedMessage = stringResource(R.string.conversation_closed_message)
-    val contactUsTitle = stringResource(R.string.contact_us)
-    val contactConversationRefreshFallback = stringResource(R.string.contact_refresh_saved_messages)
-    val contactConversationLoadFailed = stringResource(R.string.conversation_load_failed)
-    val contactLoadRetryFailed = stringResource(R.string.contact_load_retry_failed)
-    val contactImageReadFailed = stringResource(R.string.contact_image_read_failed)
-    val contactImageSizeLimit = stringResource(R.string.contact_image_size_limit)
-    val contactImageBatchFailed = stringResource(R.string.contact_image_batch_failed)
+    val contactMessageFailed = currentAppString("contact_message_not_sent")
+    val contactImageFailed = currentAppString("contact_image_not_sent")
+    val contactConversationClosed = currentAppString("conversation_closed")
+    val contactConversationClosedMessage = currentAppString("conversation_closed_message")
+    val contactUsTitle = currentAppString("contact_us")
+    val contactConversationRefreshFallback = currentAppString("contact_refresh_saved_messages")
+    val contactConversationLoadFailed = currentAppString("conversation_load_failed")
+    val contactLoadRetryFailed = currentAppString("contact_load_retry_failed")
+    val contactImageReadFailed = currentAppString("contact_image_read_failed")
+    val contactImageSizeLimit = currentAppString("contact_image_size_limit")
+    val contactImageBatchFailed = currentAppString("contact_image_batch_failed")
     val contactCameraPermissionMessage =
-        stringResource(R.string.contact_camera_permission_message)
+        currentAppString("contact_camera_permission_message")
     val contactCameraPermissionTitle =
-        stringResource(R.string.contact_camera_permission_title)
-    val cameraOpenFailed = stringResource(R.string.camera_open_failed)
-    val conversationLabel = stringResource(R.string.conversation_label)
-    val contactPrepareImagePattern = stringResource(R.string.contact_prepare_image)
-    val contactUploadImagePattern = stringResource(R.string.contact_upload_image)
-    val contactSaveImagePattern = stringResource(R.string.contact_save_image)
+        currentAppString("contact_camera_permission_title")
+    val cameraOpenFailed = currentAppString("camera_open_failed")
+    val conversationLabel = currentAppString("conversation_label")
+    val contactPrepareImagePattern = currentAppString("contact_prepare_image")
+    val contactUploadImagePattern = currentAppString("contact_upload_image")
+    val contactSaveImagePattern = currentAppString("contact_save_image")
     val cachedConversation = remember(accountId, conversationId, localCache) {
         accountId?.let { localCache?.loadConversation(it, conversationId) }
     }
@@ -270,7 +269,7 @@ internal fun ContactConversationDetailDestination(
                     NetworkErrors.isNetworkFailure(exception)
                 showContactLoadError(
                     exception = exception,
-                    contactTitle = context.getString(R.string.contact_us),
+                    contactTitle = context.appString("contact_us"),
                     fallback = contactLoadRetryFailed
                 ) { title, body ->
                     errorTitle = title
@@ -654,7 +653,7 @@ internal fun ContactConversationDetailDestination(
                 Text(
                     text = when (message) {
                         NetworkErrors.DISPLAY_TEXT ->
-                            stringResource(R.string.contact_no_internet_saved)
+                            currentAppString("contact_no_internet_saved")
                         else -> message
                     },
                     color = KolamContainerSecondary,
@@ -664,7 +663,7 @@ internal fun ContactConversationDetailDestination(
                     onClick = { retryKey++ },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(stringResource(R.string.retry))
+                    Text(currentAppString("retry"))
                 }
             }
         }
@@ -706,7 +705,7 @@ internal fun ContactConversationDetailDestination(
                                 if (errorTitle == NetworkErrors.TITLE ||
                                     (errorTitle == null && initialLoadWasNetworkFailure)
                                 ) {
-                                    stringResource(R.string.network_error_message)
+                                    currentAppString("network_error_message")
                                 } else {
                                     contactConversationLoadFailed
                                 },
@@ -715,7 +714,7 @@ internal fun ContactConversationDetailDestination(
                             TextButton(
                                 onClick = { retryKey++ },
                                 colors = kolamStandardButtonColors()
-                            ) { Text(stringResource(R.string.retry)) }
+                            ) { Text(currentAppString("retry")) }
                         }
                     }
                 }
@@ -729,7 +728,7 @@ internal fun ContactConversationDetailDestination(
                         border = BorderStroke(1.dp, KolamSilverBorder)
                     ) {
                         Text(
-                            stringResource(R.string.no_messages_in_conversation),
+                            currentAppString("no_messages_in_conversation"),
                             modifier = Modifier.padding(16.dp),
                             color = KolamContainerSecondary
                         )
@@ -797,7 +796,7 @@ internal fun ContactConversationDetailDestination(
                     ) {
                         if (messageText.isEmpty()) {
                             Text(
-                                stringResource(R.string.type_message),
+                                currentAppString("type_message"),
                                 color = KolamContainerSecondary
                             )
                         }
@@ -808,7 +807,7 @@ internal fun ContactConversationDetailDestination(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .semantics {
-                                    contentDescription = context.getString(R.string.message_input)
+                                    contentDescription = context.appString("message_input")
                                 },
                             textStyle = androidx.compose.ui.text.TextStyle(
                                 color = KolamText,
@@ -828,7 +827,7 @@ internal fun ContactConversationDetailDestination(
                         modifier = Modifier
                             .size(44.dp)
                             .semantics {
-                                contentDescription = context.getString(R.string.send_message)
+                                contentDescription = context.appString("send_message")
                             },
                         colors = kolamStandardButtonColors()
                     ) {
@@ -888,13 +887,21 @@ internal fun ContactConversationDetailDestination(
             title = {
                 Text(
                     if (errorTitle == NetworkErrors.TITLE) {
-                        stringResource(R.string.network_error_title)
+                        currentAppString("network_error_title")
                     } else {
                         errorTitle.orEmpty()
                     }
                 )
             },
-            text = { Text(errorMessage.orEmpty()) },
+            text = {
+                Text(
+                    if (errorMessage == NetworkErrors.MESSAGE) {
+                        currentAppString("network_error_message")
+                    } else {
+                        errorMessage.orEmpty()
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -902,7 +909,7 @@ internal fun ContactConversationDetailDestination(
                         errorMessage = null
                     },
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.ok)) }
+                ) { Text(currentAppString("ok")) }
             },
             containerColor = KolamCoolSilver
         )
@@ -938,9 +945,9 @@ private fun ContactMessageBubble(
             ) {
                 Text(
                     text = if (isUserMessage) {
-                        stringResource(R.string.you)
+                        currentAppString("you")
                     } else {
-                        stringResource(R.string.support_sender_label)
+                        currentAppString("support_sender_label")
                     },
                     color = KolamText,
                     fontWeight = FontWeight.Bold,
@@ -970,9 +977,9 @@ private fun ContactMessageBubble(
                         Spacer(Modifier.width(6.dp))
                         Text(
                             when (item.delivery) {
-                                ContactMessageDelivery.Sending -> stringResource(R.string.message_sending)
-                                ContactMessageDelivery.Failed -> stringResource(R.string.message_not_sent)
-                                ContactMessageDelivery.Sent -> stringResource(R.string.message_sent)
+                                ContactMessageDelivery.Sending -> currentAppString("message_sending")
+                                ContactMessageDelivery.Failed -> currentAppString("message_not_sent")
+                                ContactMessageDelivery.Sent -> currentAppString("message_sent")
                             },
                             color = if (item.delivery == ContactMessageDelivery.Failed) {
                                 KolamError
@@ -1035,23 +1042,23 @@ internal fun ContactMessageImage(
     ) {
         when (val state = imageState) {
             ContactMessageImageState.Loading ->
-                Text(stringResource(R.string.loading_image), color = Color.White.copy(alpha = 0.75f))
+                Text(currentAppString("loading_image"), color = Color.White.copy(alpha = 0.75f))
             is ContactMessageImageState.Loaded ->
                 Image(
                     bitmap = state.bitmap,
-                    contentDescription = stringResource(R.string.contact_conversation_image),
+                    contentDescription = currentAppString("contact_conversation_image"),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize()
                 )
             ContactMessageImageState.Unavailable -> Column(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(stringResource(R.string.image_unavailable), color = Color.White.copy(alpha = 0.75f))
+                Text(currentAppString("image_unavailable"), color = Color.White.copy(alpha = 0.75f))
                 TextButton(
                     onClick = { retryAttempt++ },
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(stringResource(R.string.retry_image))
+                    Text(currentAppString("retry_image"))
                 }
             }
         }
@@ -1080,7 +1087,7 @@ private fun ContactImageViewer(url: String, onClose: () -> Unit) {
             if (loadedImage != null) {
                 Image(
                     bitmap = loadedImage,
-                    contentDescription = stringResource(R.string.full_screen_contact_image),
+                    contentDescription = currentAppString("full_screen_contact_image"),
                     contentScale = ContentScale.Fit,
                     modifier = Modifier
                         .fillMaxSize()
@@ -1106,7 +1113,7 @@ private fun ContactImageViewer(url: String, onClose: () -> Unit) {
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .padding(20.dp)
-            ) { Text(stringResource(R.string.close)) }
+            ) { Text(currentAppString("close")) }
         }
     }
 }
@@ -1150,25 +1157,25 @@ internal fun ContactImageAttachmentOptionsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(stringResource(R.string.add_attachment)) },
+        title = { Text(currentAppString("add_attachment")) },
         text = {
             Column {
-                Text(stringResource(R.string.choose_image_source))
+                Text(currentAppString("choose_image_source"))
                 TextButton(
                     onClick = onCamera,
                     modifier = Modifier.fillMaxWidth(),
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.camera)) }
+                ) { Text(currentAppString("camera")) }
                 TextButton(
                     onClick = onGallery,
                     modifier = Modifier.fillMaxWidth(),
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.photo_gallery)) }
+                ) { Text(currentAppString("photo_gallery")) }
             }
         },
         confirmButton = {
             TextButton(onClick = onDismiss, colors = kolamStandardButtonColors()) {
-                Text(stringResource(R.string.cancel))
+                Text(currentAppString("cancel"))
             }
         },
         dismissButton = null,

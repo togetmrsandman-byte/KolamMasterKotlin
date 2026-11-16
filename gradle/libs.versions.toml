@@ -1,5 +1,5 @@
 [versions]
-agp = "9.4.1"
+agp = "9.5.1"
 coreKtx = "1.10.1"
 exifInterface = "1.4.2"
 junit = "4.13.2"
@@ -17,6 +17,7 @@ playServicesAds = "25.5.0"
 googleServices = "4.5.0"
 firebaseBom = "34.19.0"
 shortcutBadger = "1.1.22"
+appcompat = "1.6.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -42,6 +43,7 @@ play-services-ads = { group = "com.google.android.gms", name = "play-services-ad
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 shortcut-badger = { group = "me.leolin", name = "ShortcutBadger", version.ref = "shortcutBadger" }
+androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

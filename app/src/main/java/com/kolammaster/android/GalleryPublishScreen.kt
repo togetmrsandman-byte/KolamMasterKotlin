@@ -55,7 +55,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -112,31 +111,31 @@ internal fun GalleryPublishScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val maxImagesMessage = stringResource(R.string.publish_max_images, MAX_PUBLISH_IMAGES)
-    val imageConversionFailedMessage = stringResource(R.string.image_conversion_failed)
-    val capturedPhotoMissingMessage = stringResource(R.string.captured_photo_missing)
-    val cameraCaptureCancelledMessage = stringResource(R.string.camera_capture_cancelled)
-    val cameraPermissionAccessMessage = stringResource(R.string.camera_permission_access)
+    val maxImagesMessage = currentAppString("publish_max_images", MAX_PUBLISH_IMAGES)
+    val imageConversionFailedMessage = currentAppString("image_conversion_failed")
+    val capturedPhotoMissingMessage = currentAppString("captured_photo_missing")
+    val cameraCaptureCancelledMessage = currentAppString("camera_capture_cancelled")
+    val cameraPermissionAccessMessage = currentAppString("camera_permission_access")
     val cameraPermissionRequestFailedMessage =
-        stringResource(R.string.camera_permission_request_failed)
-    val galleryOpenFailedMessage = stringResource(R.string.gallery_open_failed)
-    val cameraOpenFailedMessage = stringResource(R.string.camera_open_failed)
-    val unableShowRewardedAdMessage = stringResource(R.string.unable_show_rewarded_ad)
-    val publishSubmitFailedMessage = stringResource(R.string.kolam_submit_failed)
-    val noRewardMessage = stringResource(R.string.no_reward_not_submitted)
-    val rewardedAdFailedPattern = stringResource(R.string.rewarded_ad_failed)
-    val preparePublishFailedMessage = stringResource(R.string.prepare_publish_failed)
-    val loadAdMessage = stringResource(R.string.loading_rewarded_ad)
-    val publishSignInMessage = stringResource(R.string.publish_signin_required)
-    val waitConversionMessage = stringResource(R.string.publish_wait_conversion)
-    val creatorNameRequiredMessage = stringResource(R.string.publish_enter_creator_name)
-    val photoRequiredMessage = stringResource(R.string.publish_add_photo)
-    val missingLessonDetailsMessage = stringResource(R.string.publish_missing_lesson_details)
-    val publishSuccessMessage = stringResource(R.string.publish_success_message)
-    val uploadingSubmissionMessage = stringResource(R.string.uploading_submission)
-    val uploadTimeoutMessage = stringResource(R.string.publish_upload_timeout)
-    val serverErrorMessage = stringResource(R.string.publish_server_error)
-    val imageUploadFailedMessage = stringResource(R.string.publish_image_upload_failed)
+        currentAppString("camera_permission_request_failed")
+    val galleryOpenFailedMessage = currentAppString("gallery_open_failed")
+    val cameraOpenFailedMessage = currentAppString("camera_open_failed")
+    val unableShowRewardedAdMessage = currentAppString("unable_show_rewarded_ad")
+    val publishSubmitFailedMessage = currentAppString("kolam_submit_failed")
+    val noRewardMessage = currentAppString("no_reward_not_submitted")
+    val rewardedAdFailedPattern = currentAppString("rewarded_ad_failed")
+    val preparePublishFailedMessage = currentAppString("prepare_publish_failed")
+    val loadAdMessage = currentAppString("loading_rewarded_ad")
+    val publishSignInMessage = currentAppString("publish_signin_required")
+    val waitConversionMessage = currentAppString("publish_wait_conversion")
+    val creatorNameRequiredMessage = currentAppString("publish_enter_creator_name")
+    val photoRequiredMessage = currentAppString("publish_add_photo")
+    val missingLessonDetailsMessage = currentAppString("publish_missing_lesson_details")
+    val publishSuccessMessage = currentAppString("publish_success_message")
+    val uploadingSubmissionMessage = currentAppString("uploading_submission")
+    val uploadTimeoutMessage = currentAppString("publish_upload_timeout")
+    val serverErrorMessage = currentAppString("publish_server_error")
+    val imageUploadFailedMessage = currentAppString("publish_image_upload_failed")
     val photos = remember { mutableStateListOf<GalleryPublishPhoto>() }
     val convertingPhotos = remember { mutableStateListOf<Uri>() }
     val processingUris = remember { mutableSetOf<String>() }
@@ -198,8 +197,7 @@ internal fun GalleryPublishScreen(
                     throw exception
                 } catch (exception: Exception) {
                     Log.e("GalleryPublishImage", "Image conversion failed.", exception)
-                    message = exception.message?.takeIf(String::isNotBlank)
-                        ?: imageConversionFailedMessage
+                    message = imageConversionFailedMessage
                 } finally {
                     processingUris.remove(key)
                     convertingPhotos.remove(uri)
@@ -266,10 +264,10 @@ internal fun GalleryPublishScreen(
                 )
                 temporaryCameraUri = uri
                 cameraLauncher.launch(uri)
-            } catch (exception: Exception) {
+            } catch (_: Exception) {
                 temporaryCameraUri?.let { context.contentResolver.delete(it, null, null) }
                 temporaryCameraUri = null
-                message = exception.message ?: cameraOpenFailedMessage
+                message = cameraOpenFailedMessage
             }
         } else {
             photoPickerError = cameraPermissionAccessMessage
@@ -288,13 +286,13 @@ internal fun GalleryPublishScreen(
     photoPickerError?.let { error ->
         AlertDialog(
             onDismissRequest = { photoPickerError = null },
-            title = { Text(stringResource(R.string.publish_photo_unavailable)) },
+            title = { Text(currentAppString("publish_photo_unavailable")) },
             text = { Text(error) },
             confirmButton = {
                 TextButton(
                     onClick = { photoPickerError = null },
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.ok)) }
+                ) { Text(currentAppString("ok")) }
             }
         )
     }
@@ -332,7 +330,7 @@ internal fun GalleryPublishScreen(
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             Text(
-                                stringResource(R.string.submitted_for_review),
+                                currentAppString("submitted_for_review"),
                                 color = KolamGold,
                                 fontSize = 24.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -349,7 +347,7 @@ internal fun GalleryPublishScreen(
                         }
                     }
                     Button(onClick = onBack, modifier = Modifier.padding(top = 16.dp)) {
-                        Text(stringResource(R.string.done))
+                        Text(currentAppString("done"))
                     }
                 }
             }
@@ -362,7 +360,7 @@ internal fun GalleryPublishScreen(
         ) {
             item {
                 Text(
-                    stringResource(R.string.share_your_kolam),
+                    currentAppString("share_your_kolam"),
                     color = KolamGold,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.SemiBold
@@ -381,8 +379,8 @@ internal fun GalleryPublishScreen(
                         message = null
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.creator_name)) },
-                    placeholder = { Text(stringResource(R.string.enter_your_name)) },
+                    label = { Text(currentAppString("creator_name")) },
+                    placeholder = { Text(currentAppString("enter_your_name")) },
                     singleLine = true,
                     colors = publishTextFieldColors()
                 )
@@ -392,14 +390,14 @@ internal fun GalleryPublishScreen(
                     value = creatorEmail,
                     onValueChange = {},
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.email)) },
-                    placeholder = { Text(stringResource(R.string.email_unavailable)) },
+                    label = { Text(currentAppString("email")) },
+                    placeholder = { Text(currentAppString("email_unavailable")) },
                     readOnly = true,
                     minLines = 1,
                     maxLines = 3,
                     textStyle = TextStyle(color = KolamMutedText),
                     supportingText = if (creatorEmail.isBlank()) {
-                        { Text(stringResource(R.string.email_unavailable_account)) }
+                        { Text(currentAppString("email_unavailable_account")) }
                     } else {
                         null
                     },
@@ -412,35 +410,33 @@ internal fun GalleryPublishScreen(
                         onClick = {
                             try {
                                 cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-                            } catch (exception: Exception) {
-                                photoPickerError = exception.message
-                                    ?: cameraPermissionRequestFailedMessage
+                            } catch (_: Exception) {
+                                photoPickerError = cameraPermissionRequestFailedMessage
                             }
                         },
                         enabled = !isBusy && !isPreparingInitialImages &&
                             photos.size + convertingPhotos.size < MAX_PUBLISH_IMAGES,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(stringResource(R.string.take_photo))
+                        Text(currentAppString("take_photo"))
                     }
                     Button(
                         onClick = {
                             try {
                                 galleryLauncher.launch("image/*")
-                            } catch (exception: Exception) {
-                                photoPickerError = exception.message
-                                    ?: galleryOpenFailedMessage
+                            } catch (_: Exception) {
+                                photoPickerError = galleryOpenFailedMessage
                             }
                         },
                         enabled = !isBusy && !isPreparingInitialImages &&
                             photos.size + convertingPhotos.size < MAX_PUBLISH_IMAGES,
                         modifier = Modifier.weight(1f)
                     ) {
-                        Text(stringResource(R.string.choose_photo))
+                        Text(currentAppString("choose_photo"))
                     }
                 }
                 Text(
-                    stringResource(R.string.publish_image_limits),
+                    currentAppString("publish_image_limits"),
                     color = KolamMutedText,
                     fontSize = 12.sp,
                     modifier = Modifier.padding(top = 6.dp)
@@ -471,7 +467,7 @@ internal fun GalleryPublishScreen(
             }
             item {
                 Text(
-                    stringResource(R.string.publish_rewarded_ad_required),
+                    currentAppString("publish_rewarded_ad_required"),
                     color = KolamMutedText,
                     fontSize = 13.sp
                 )
@@ -541,7 +537,7 @@ internal fun GalleryPublishScreen(
                                         NetworkErrors.isHttpFailure(exception) || (exception is HttpStatusFailureException && exception.statusCode >= 500) ->
                                             serverErrorMessage
                                         else ->
-                                            exception.message?.takeIf(String::isNotBlank) ?: publishSubmitFailedMessage
+                                            publishSubmitFailedMessage
                                     }
                                     isBusy = false
                                 }
@@ -598,9 +594,9 @@ internal fun GalleryPublishScreen(
                 ) {
                     Text(
                         text = when {
-                            isPreparingInitialImages -> stringResource(R.string.preparing_photos)
-                            hasEarnedPublishReward -> "Submit"
-                            else -> stringResource(R.string.watch_ad_submit)
+                            isPreparingInitialImages -> currentAppString("preparing_photos")
+                            hasEarnedPublishReward -> currentAppString("submit")
+                            else -> currentAppString("watch_ad_submit")
                         }
                     )
                 }
@@ -613,7 +609,7 @@ internal fun GalleryPublishScreen(
                     border = BorderStroke(1.dp, KolamButtonYellow),
                     colors = kolamStandardButtonColors()
                 ) {
-                    Text(stringResource(R.string.cancel))
+                    Text(currentAppString("cancel"))
                 }
             }
         }
@@ -653,7 +649,7 @@ internal fun GalleryPublishScreen(
                         strokeWidth = 3.dp
                     )
                     Text(
-                        text = message ?: stringResource(R.string.publishing),
+                        text = message ?: currentAppString("publishing"),
                         modifier = Modifier.weight(1f),
                         color = KolamText,
                         fontSize = 16.sp,
@@ -785,7 +781,7 @@ private fun PublishPhotoPreview(
     ) {
         Image(
             bitmap = photo.preview,
-            contentDescription = stringResource(R.string.selected_kolam_photo, index + 1),
+            contentDescription = currentAppString("selected_kolam_photo", index + 1),
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
@@ -804,7 +800,7 @@ private fun PublishPhotoPreview(
                 contentColor = KolamButtonText
             )
         ) {
-            Text(stringResource(R.string.remove))
+            Text(currentAppString("remove"))
         }
     }
 }
@@ -826,7 +822,7 @@ private fun ConvertingPhotoPreview() {
             strokeWidth = 3.dp
         )
         Text(
-            text = stringResource(R.string.converting_image),
+            text = currentAppString("converting_image"),
             color = KolamText,
             fontSize = 11.sp,
             modifier = Modifier.padding(top = 8.dp)

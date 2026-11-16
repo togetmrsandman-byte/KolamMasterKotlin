@@ -92,4 +92,38 @@ class CommunityRepositoryTest {
             assertNull(submission.country)
         }
     }
+
+    @Test
+    fun missingCreatorNameIsLeftForLocalizedPresentation() {
+        val submissions = parseApprovedCommunitySubmissions(
+            JSONArray(
+                """[
+                    {
+                        "id":"submission-id",
+                        "status":"APPROVED",
+                        "gallery_submission_images":[{
+                            "id":"image-id",
+                            "image_url":"https://images.example/kolam.webp",
+                            "display_order":0,
+                            "status":"APPROVED"
+                        }]
+                    },
+                    {
+                        "id":"legacy-cached-submission",
+                        "creator_name":"Community member",
+                        "status":"APPROVED",
+                        "gallery_submission_images":[{
+                            "id":"legacy-image-id",
+                            "image_url":"https://images.example/legacy.webp",
+                            "display_order":0,
+                            "status":"APPROVED"
+                        }]
+                    }
+                ]"""
+            )
+        )
+
+        assertEquals(2, submissions.size)
+        submissions.forEach { assertEquals("", it.creatorName) }
+    }
 }

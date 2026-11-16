@@ -1,8 +1,7 @@
 package com.kolammaster.android.notifications
 
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.res.stringResource
-import com.kolammaster.android.R
+import com.kolammaster.android.currentAppString
 
 @Composable
 internal fun SupportForegroundAlertDialog(
@@ -12,8 +11,8 @@ internal fun SupportForegroundAlertDialog(
     onLater: () -> Unit
 ) {
     ForegroundAlertDialog(
-        title = stringResource(R.string.support_alert_title),
-        message = stringResource(R.string.announcement_alert_message),
+        title = currentAppString("support_alert_title"),
+        message = currentAppString("announcement_alert_message"),
         languageIdentifier = languageIdentifier,
         onOpen = onOpen,
         onLater = onLater

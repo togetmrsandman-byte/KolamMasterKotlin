@@ -12,7 +12,6 @@
         android:id="@+id/notification_logo"
         android:layout_width="72dp"
         android:layout_height="72dp"
-        android:contentDescription="@string/app_name"
         android:scaleType="fitCenter" />
 
     <LinearLayout

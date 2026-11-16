@@ -40,7 +40,6 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import kotlin.math.min
 
@@ -148,10 +147,10 @@ internal fun RangoliLessonScreen(
     ) {
         LessonStatusRow(
             text = when {
-                complete -> stringResource(R.string.kolam_completed)
-                !started -> stringResource(R.string.preview)
-                else -> stringResource(
-                    R.string.step_progress,
+                complete -> currentAppString("kolam_completed")
+                !started -> currentAppString("preview")
+                else -> currentAppString(
+                    "step_progress",
                     currentStep?.number ?: 0,
                     lesson.steps.size
                 )
@@ -233,18 +232,18 @@ internal fun RangoliLessonScreen(
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(stringResource(R.string.start))
+                Text(currentAppString("start"))
             }
             else -> PlaybackControlRow(
                 labels = listOf(
-                    stringResource(R.string.previous),
-                    stringResource(R.string.replay),
+                    currentAppString("previous"),
+                    currentAppString("replay"),
                     *playbackSpeeds.map {
-                        stringResource(R.string.speed_label, playbackSpeedLabel(it))
+                        currentAppString("speed_label", playbackSpeedLabel(it))
                     }.toTypedArray(),
-                    stringResource(R.string.next),
-                    stringResource(R.string.finish),
-                    stringResource(R.string.publish)
+                    currentAppString("next"),
+                    currentAppString("finish"),
+                    currentAppString("publish")
                 )
             ) {
                 Button(
@@ -276,7 +275,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    PlaybackControlLabel(stringResource(R.string.previous))
+                    PlaybackControlLabel(currentAppString("previous"))
                 }
                 Button(
                     onClick = {
@@ -308,7 +307,7 @@ internal fun RangoliLessonScreen(
                         vertical = 10.dp
                     )
                 ) {
-                    PlaybackControlLabel(stringResource(R.string.replay))
+                    PlaybackControlLabel(currentAppString("replay"))
                 }
                 PlaybackSpeedControl(
                     speed = playbackSpeed,
@@ -319,9 +318,9 @@ internal fun RangoliLessonScreen(
                 )
                 LessonActionButton(
                     text = when {
-                        complete -> stringResource(R.string.publish)
-                        stepIndex == lesson.steps.lastIndex -> stringResource(R.string.finish)
-                        else -> stringResource(R.string.next)
+                        complete -> currentAppString("publish")
+                        stepIndex == lesson.steps.lastIndex -> currentAppString("finish")
+                        else -> currentAppString("next")
                     },
                     onClick = {
                         if (complete) {

@@ -89,7 +89,7 @@ class NetworkErrorsTest {
                 )
             )
         )
-        assertEquals("No internet", NetworkErrors.GOOGLE_SIGN_IN_TITLE)
+        assertEquals("network_error_title", NetworkErrors.GOOGLE_SIGN_IN_TITLE)
         assertTrue(
             NetworkErrors.isNetworkFailure(
                 SupabaseHttpRequestException(
@@ -192,21 +192,21 @@ class NetworkErrorsTest {
     }
 
     @Test
-    fun onlyNetworkErrorsUseTheSharedUserFacingText() {
+    fun networkErrorsUseSharedTextAndOtherErrorsUseLocalizedFallbacks() {
         assertEquals(
             NetworkErrors.DISPLAY_TEXT,
             NetworkErrors.messageFor(SocketTimeoutException("technical detail"), "fallback")
         )
         assertEquals(
-            "No internet",
+            "network_error_title",
             NetworkErrors.TITLE
         )
         assertEquals(
-            "Please check your internet connection and try again.",
+            "network_error_message",
             NetworkErrors.MESSAGE
         )
         assertEquals(
-            "HTTP 401",
+            "fallback",
             NetworkErrors.messageFor(HttpStatusFailureException(401, "HTTP 401"), "fallback")
         )
     }
@@ -218,14 +218,14 @@ class NetworkErrorsTest {
             NetworkErrors.messageFor(SocketTimeoutException("read timeout"), "download failed")
         )
         assertEquals(
-            "HTTP 404",
+            "download failed",
             NetworkErrors.messageFor(
                 HttpStatusFailureException(404, "HTTP 404"),
                 "download failed"
             )
         )
         assertEquals(
-            "Missing local file",
+            "download failed",
             NetworkErrors.messageFor(FileNotFoundException("Missing local file"), "download failed")
         )
     }

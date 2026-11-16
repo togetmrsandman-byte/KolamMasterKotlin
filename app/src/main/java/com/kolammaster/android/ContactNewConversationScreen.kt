@@ -57,8 +57,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -79,16 +79,16 @@ internal fun ContactNewConversationDestination(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val contactUsTitle = stringResource(R.string.contact_us)
-    val cameraPermissionTitle = stringResource(R.string.contact_camera_permission_title)
-    val cameraPermissionMessage = stringResource(R.string.contact_camera_permission_message)
-    val selectedImageReadFailed = stringResource(R.string.contact_image_read_failed)
-    val cameraOpenFailed = stringResource(R.string.camera_open_failed)
-    val subjectRequired = stringResource(R.string.subject_required)
-    val messageRequired = stringResource(R.string.message_required)
-    val phoneRequired = stringResource(R.string.valid_phone_required)
-    val imageSizeLimit = stringResource(R.string.contact_image_size_limit)
-    val sendFailed = stringResource(R.string.contact_send_failed)
+    val contactUsTitle = currentAppString("contact_us")
+    val cameraPermissionTitle = currentAppString("contact_camera_permission_title")
+    val cameraPermissionMessage = currentAppString("contact_camera_permission_message")
+    val selectedImageReadFailed = currentAppString("contact_image_read_failed")
+    val cameraOpenFailed = currentAppString("camera_open_failed")
+    val subjectRequired = currentAppString("subject_required")
+    val messageRequired = currentAppString("message_required")
+    val phoneRequired = currentAppString("valid_phone_required")
+    val imageSizeLimit = currentAppString("contact_image_size_limit")
+    val sendFailed = currentAppString("contact_send_failed")
     var phone by remember { mutableStateOf("") }
     var selectedCountry by remember { mutableStateOf(defaultContactCountryCallingCode) }
     var isCountryPickerOpen by remember { mutableStateOf(false) }
@@ -112,10 +112,9 @@ internal fun ContactNewConversationDestination(
                 errorMessage = null
             } catch (exception: CancellationException) {
                 throw exception
-            } catch (exception: Exception) {
+            } catch (_: Exception) {
                 errorTitle = contactUsTitle
-                errorMessage = exception.message
-                    ?: selectedImageReadFailed
+                errorMessage = selectedImageReadFailed
             } finally {
                 if (deleteAfterRead) {
                     context.contentResolver.delete(uri, null, null)
@@ -158,11 +157,11 @@ internal fun ContactNewConversationDestination(
                 )
                 cameraUri = uri
                 cameraLauncher.launch(uri)
-            } catch (exception: Exception) {
+            } catch (_: Exception) {
                 cameraUri?.let { context.contentResolver.delete(it, null, null) }
                 cameraUri = null
                 errorTitle = contactUsTitle
-                errorMessage = exception.message ?: cameraOpenFailed
+                errorMessage = cameraOpenFailed
             }
         } else {
             errorTitle = cameraPermissionTitle
@@ -177,7 +176,7 @@ internal fun ContactNewConversationDestination(
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(stringResource(R.string.new_conversation), color = KolamGold, fontSize = 28.sp)
+        Text(currentAppString("new_conversation"), color = KolamGold, fontSize = 28.sp)
         Spacer(Modifier.height(24.dp))
         Column(
             modifier = Modifier
@@ -195,8 +194,11 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text(stringResource(R.string.phone_number), color = KolamContainerSecondary) },
+                label = { Text(currentAppString("phone_number"), color = KolamContainerSecondary) },
                 leadingIcon = {
+                    val countryName = selectedCountry.localizedName(
+                        LocalConfiguration.current.locales[0]
+                    )
                     Row(
                         modifier = Modifier
                             .clickable(enabled = !isSubmitting) {
@@ -204,7 +206,7 @@ internal fun ContactNewConversationDestination(
                             }
                             .semantics {
                                 contentDescription =
-                                    "Country: ${selectedCountry.countryName}, ${selectedCountry.callingCode}"
+                                    "$countryName, ${selectedCountry.callingCode}"
                             },
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -238,7 +240,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text(stringResource(R.string.subject), color = KolamContainerSecondary) },
+                label = { Text(currentAppString("subject"), color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -251,7 +253,7 @@ internal fun ContactNewConversationDestination(
                 },
                 readOnly = isSubmitting,
                 enabled = true,
-                label = { Text(stringResource(R.string.message), color = KolamContainerSecondary) },
+                label = { Text(currentAppString("message"), color = KolamContainerSecondary) },
                 minLines = 4,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -338,14 +340,14 @@ internal fun ContactNewConversationDestination(
                             )
                             Spacer(Modifier.width(6.dp))
                             AutoFitSingleLineText(
-                                text = stringResource(R.string.sending),
+                                text = currentAppString("sending"),
                                 maxFontSize = 14f,
                                 minFontSize = 10f,
                                 color = KolamButtonText
                             )
                         } else {
                             AutoFitSingleLineText(
-                                text = stringResource(R.string.send),
+                                text = currentAppString("send"),
                                 maxFontSize = 14f,
                                 minFontSize = 10f,
                                 color = KolamButtonText
@@ -388,8 +390,24 @@ internal fun ContactNewConversationDestination(
                 errorTitle = null
                 errorMessage = null
             },
-            title = { Text(errorTitle.orEmpty()) },
-            text = { Text(errorMessage.orEmpty()) },
+            title = {
+                Text(
+                    if (errorTitle == NetworkErrors.TITLE) {
+                        currentAppString("network_error_title")
+                    } else {
+                        errorTitle.orEmpty()
+                    }
+                )
+            },
+            text = {
+                Text(
+                    if (errorMessage == NetworkErrors.MESSAGE) {
+                        currentAppString("network_error_message")
+                    } else {
+                        errorMessage.orEmpty()
+                    }
+                )
+            },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -397,7 +415,7 @@ internal fun ContactNewConversationDestination(
                         errorMessage = null
                     },
                     colors = kolamStandardButtonColors()
-                ) { Text(stringResource(R.string.ok)) }
+                ) { Text(currentAppString("ok")) }
             },
             containerColor = KolamCoolSilver
         )
@@ -411,11 +429,13 @@ internal fun CountryCallingCodeDialog(
     onDismiss: () -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
-    val filteredCountries = remember(searchQuery) {
-        contactCountryCallingCodes.filter {
-            it.countryName.contains(searchQuery.trim(), ignoreCase = true) ||
-                it.callingCode.contains(searchQuery.trim())
-        }
+    val locale = LocalConfiguration.current.locales[0]
+    val filteredCountries = remember(searchQuery, locale) {
+        contactCountryCallingCodes.map { country -> country to country.localizedName(locale) }
+            .filter { (country, name) ->
+                name.contains(searchQuery.trim(), ignoreCase = true) ||
+                    country.callingCode.contains(searchQuery.trim())
+            }
     }
 
     Dialog(onDismissRequest = onDismiss) {
@@ -429,11 +449,11 @@ internal fun CountryCallingCodeDialog(
                 )
                 .padding(16.dp)
         ) {
-            Text(stringResource(R.string.select_country), color = KolamText, fontSize = 20.sp)
+            Text(currentAppString("select_country"), color = KolamText, fontSize = 20.sp)
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
-                label = { Text(stringResource(R.string.search_countries), color = KolamContainerSecondary) },
+                label = { Text(currentAppString("search_countries"), color = KolamContainerSecondary) },
                 singleLine = true,
                 colors = contactTextFieldColors(),
                 modifier = Modifier.fillMaxWidth()
@@ -443,7 +463,7 @@ internal fun CountryCallingCodeDialog(
                     .fillMaxWidth()
                     .height(360.dp)
             ) {
-                items(filteredCountries, key = { it.countryCode }) { country ->
+                items(filteredCountries, key = { it.first.countryCode }) { (country, name) ->
                     TextButton(
                         onClick = { onCountrySelected(country) },
                         modifier = Modifier.fillMaxWidth(),
@@ -458,7 +478,7 @@ internal fun CountryCallingCodeDialog(
                                 modifier = Modifier.padding(end = 12.dp)
                             )
                             Text(
-                                text = country.countryName,
+                                text = name,
                                 color = KolamButtonText,
                                 modifier = Modifier.weight(1f)
                             )
@@ -479,7 +499,7 @@ internal fun CountryCallingCodeDialog(
                 modifier = Modifier.align(Alignment.End),
                 colors = kolamStandardButtonColors()
             ) {
-                Text(stringResource(R.string.cancel))
+                Text(currentAppString("cancel"))
             }
         }
     }
@@ -522,7 +542,7 @@ internal fun ContactNewConversationAttachment(
                 )
             ) {
                 AutoFitSingleLineText(
-                    text = stringResource(R.string.attach_image),
+                    text = currentAppString("attach_image"),
                     maxFontSize = 14f,
                     minFontSize = 10f,
                     color = KolamButtonText
@@ -538,12 +558,12 @@ internal fun ContactNewConversationAttachment(
             ) {
                 Image(
                     bitmap = it.preview,
-                    contentDescription = stringResource(R.string.selected_image_preview),
+                    contentDescription = currentAppString("selected_image_preview"),
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.size(64.dp)
                 )
                 Text(
-                    text = stringResource(R.string.image_attached, it.sizeBytes / 1024),
+                    text = currentAppString("image_attached", it.sizeBytes / 1024),
                     color = KolamText,
                     modifier = Modifier.weight(1f)
                 )
@@ -558,7 +578,7 @@ internal fun ContactNewConversationAttachment(
                         disabledContentColor = KolamButtonText
                     )
                 ) {
-                    Text(stringResource(R.string.remove))
+                    Text(currentAppString("remove"))
                 }
             }
         }
@@ -578,7 +598,7 @@ internal suspend fun Context.readContactNewConversationImage(
 ): ContactNewConversationImage {
     val mimeType = contentResolver.getType(uri)
         ?.takeIf(::isSupportedContactImageMimeType)
-        ?: throw IOException(getString(R.string.contact_supported_image_required))
+        ?: throw IOException(appString("contact_supported_image_required"))
     val bytes = contentResolver.openInputStream(uri)?.use { input ->
         val output = ByteArrayOutputStream()
         val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
@@ -588,14 +608,14 @@ internal suspend fun Context.readContactNewConversationImage(
             if (count < 0) break
             totalBytes += count
             require(totalBytes <= MAX_NEW_CONVERSATION_IMAGE_BYTES) {
-                getString(R.string.contact_image_size_limit)
+                appString("contact_image_size_limit")
             }
             output.write(buffer, 0, count)
         }
         output.toByteArray()
-    } ?: throw IOException(getString(R.string.contact_image_read_failed))
+    } ?: throw IOException(appString("contact_image_read_failed"))
     val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-        ?: throw IOException(getString(R.string.contact_supported_image_required))
+        ?: throw IOException(appString("contact_supported_image_required"))
     return ContactNewConversationImage(
         uri = uri,
         mimeType = mimeType,
