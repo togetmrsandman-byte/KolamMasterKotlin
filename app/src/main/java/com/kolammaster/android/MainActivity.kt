@@ -357,7 +357,8 @@ class MainActivity : ComponentActivity() {
         }
 
         setContent {
-            KolamMasterKotlinTheme {
+            ResponsiveScaleProvider {
+                KolamMasterKotlinTheme {
                 LocalizedAppResources(activeLanguage) {
                     KolamMasterApp(
                     screen = screenState,
@@ -437,6 +438,7 @@ class MainActivity : ComponentActivity() {
                             AnnouncementNotification(announcementId)
                     }
                 )
+                }
                 }
             }
         }
@@ -2093,6 +2095,7 @@ private fun KolamMasterApp(
         }
     }
     BackHandler(enabled = drawerOpen) { drawerOpen = false }
+    val responsiveContentSize = LocalResponsiveContentSize.current
     Scaffold(
         modifier = Modifier.fillMaxSize(),
         containerColor = when (screen) {
@@ -2115,12 +2118,21 @@ private fun KolamMasterApp(
             else -> MaterialTheme.colorScheme.surface
         }
     ) { insets ->
-        Box(Modifier.fillMaxSize().padding(insets)) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer { alpha = rootAlpha.value }
+        Box(
+            modifier = Modifier.fillMaxSize().padding(insets),
+            contentAlignment = androidx.compose.ui.Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier.size(
+                    width = responsiveContentSize.width,
+                    height = responsiveContentSize.height
+                )
             ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer { alpha = rootAlpha.value }
+                ) {
                 if (screen != AppScreen.Landing &&
                     screen != AppScreen.Opening &&
                     screen != AppScreen.DownloadingAssets
@@ -2283,27 +2295,28 @@ private fun KolamMasterApp(
                     )
                 }
             }
-            if (screen != AppScreen.Landing &&
-                screen != AppScreen.Opening &&
-                screen != AppScreen.DownloadingAssets
-            ) {
-                DrawerOverlay(
-                    visible = drawerOpen,
-                    settingsExpanded = settingsExpanded,
-                    onSettingsExpandedChange = { settingsExpanded = it },
-                    onBack = { drawerOpen = false },
-                    onSelect = { action ->
-                        scope.launch {
-                            drawerOpen = false
-                            kotlinx.coroutines.delay(260)
-                            onMenuAction(action)
-                        }
-                    },
-                    unreadContactUs = hasUnreadSupportNotifications,
-                    unreadAnnouncements = announcementUnread,
-                    showDeleteAccountOption = account?.takeUnless { it.isGuest } != null,
-                    onDeleteAccountClick = onDeleteAccount
-                )
+                if (screen != AppScreen.Landing &&
+                    screen != AppScreen.Opening &&
+                    screen != AppScreen.DownloadingAssets
+                ) {
+                    DrawerOverlay(
+                        visible = drawerOpen,
+                        settingsExpanded = settingsExpanded,
+                        onSettingsExpandedChange = { settingsExpanded = it },
+                        onBack = { drawerOpen = false },
+                        onSelect = { action ->
+                            scope.launch {
+                                drawerOpen = false
+                                kotlinx.coroutines.delay(260)
+                                onMenuAction(action)
+                            }
+                        },
+                        unreadContactUs = hasUnreadSupportNotifications,
+                        unreadAnnouncements = announcementUnread,
+                        showDeleteAccountOption = account?.takeUnless { it.isGuest } != null,
+                        onDeleteAccountClick = onDeleteAccount
+                    )
+                }
             }
         }
     }

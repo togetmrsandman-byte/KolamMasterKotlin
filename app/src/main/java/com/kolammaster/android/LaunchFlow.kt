@@ -105,13 +105,19 @@ internal val KolamContainerSecondary = ThemeKolamContainerSecondary
 internal val KolamSilverBorder = ThemeKolamSilverBorder
 private val Gold = KolamButtonYellow
 private val KolamMasterHeaderColor = KolamAccent
-private val HeaderTitleStyle = TextStyle(
-    shadow = Shadow(
-        color = KolamBackground.copy(alpha = 0.8f),
-        offset = Offset(0f, 1.dp.value),
-        blurRadius = 1.5f
-    )
-)
+@Composable
+private fun rememberHeaderTitleStyle(): TextStyle {
+    val scale = LocalResponsiveScale.current
+    return remember(scale) {
+        TextStyle(
+            shadow = Shadow(
+                color = KolamBackground.copy(alpha = 0.8f),
+                offset = Offset(0f, scale),
+                blurRadius = 1.5f * scale
+            )
+        )
+    }
+}
 
 internal enum class LandingDestination(val titleKey: String) {
     Browse("learn"),
@@ -711,6 +717,7 @@ internal fun AppNavigationHeader(
     unreadAnnouncements: Boolean = false
 ) {
     val navigationMenuDescription = currentAppString("open_navigation_menu")
+    val headerTitleStyle = rememberHeaderTitleStyle()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -728,7 +735,7 @@ internal fun AppNavigationHeader(
                 color = KolamText,
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                style = HeaderTitleStyle
+                style = headerTitleStyle
             )
         }
         Text(
@@ -739,7 +746,7 @@ internal fun AppNavigationHeader(
             color = KolamText,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            style = HeaderTitleStyle
+            style = headerTitleStyle
         )
         if (showNavigationControls) {
             Box(
@@ -790,6 +797,7 @@ internal fun AppNavigationHeader(
 @Composable
 private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
     val navigationMenuDescription = currentAppString("open_navigation_menu")
+    val headerTitleStyle = rememberHeaderTitleStyle()
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -802,7 +810,7 @@ private fun LandingHeader(unreadSupport: Boolean, onOpenDrawer: () -> Unit) {
             color = KolamText,
             fontSize = 22.sp,
             fontWeight = FontWeight.Bold,
-            style = HeaderTitleStyle
+            style = headerTitleStyle
         )
         Box(
             modifier = Modifier

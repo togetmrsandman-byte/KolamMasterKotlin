@@ -712,16 +712,18 @@ internal fun PublishConfetti(modifier: Modifier = Modifier) {
         label = "confetti fall progress"
     )
 
+    val scale = LocalResponsiveScale.current
     Canvas(modifier = modifier) {
         pieces.forEach { piece ->
-            drawPublishConfettiPiece(piece, progress)
+            drawPublishConfettiPiece(piece, progress, scale)
         }
     }
 }
 
 private fun DrawScope.drawPublishConfettiPiece(
     piece: PublishConfettiPiece,
-    progress: Float
+    progress: Float,
+    scale: Float
 ) {
     val width = piece.widthDp.dp.toPx()
     val height = piece.heightDp.dp.toPx()
@@ -752,7 +754,10 @@ private fun DrawScope.drawPublishConfettiPiece(
             drawPath(
                 path = path,
                 color = piece.color,
-                style = Stroke(width = maxOf(1.5f, height * 0.55f), cap = StrokeCap.Round)
+                style = Stroke(
+                    width = maxOf(1.5f * scale, height * 0.55f),
+                    cap = StrokeCap.Round
+                )
             )
         } else {
             drawRoundRect(
