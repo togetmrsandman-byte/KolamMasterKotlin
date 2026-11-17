@@ -917,15 +917,27 @@ private fun LandingBubbles(
     modifier: Modifier,
     onDestination: (LandingDestination) -> Unit
 ) {
+    val isEnglish = LocalAppLanguage.current == DEFAULT_LANGUAGE_IDENTIFIER
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.CenterVertically)
     ) {
         LandingDestination.entries.forEachIndexed { index, destination ->
+            val title = currentAppString(destination.titleKey)
+            val displayTitle =
+                if (isEnglish &&
+                    (destination == LandingDestination.MyKolams ||
+                        destination == LandingDestination.History)
+                ) {
+                    title.replace(" ", "\n")
+                } else {
+                    title
+                }
             LandingBubble(
-                title = currentAppString(destination.titleKey),
+                title = displayTitle,
                 index = index,
+                isEnglish = isEnglish,
                 modifier = Modifier
                     .padding(horizontal = 8.dp),
                 onClick = { onDestination(destination) }
@@ -938,6 +950,7 @@ private fun LandingBubbles(
 private fun LandingBubble(
     title: String,
     index: Int,
+    isEnglish: Boolean,
     modifier: Modifier,
     onClick: () -> Unit
 ) {
@@ -997,7 +1010,7 @@ private fun LandingBubble(
         Text(
             text = title,
             color = KolamText,
-            fontSize = 20.sp,
+            fontSize = if (isEnglish) 18.sp else 20.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
