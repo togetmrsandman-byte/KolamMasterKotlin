@@ -6,6 +6,30 @@ import org.junit.Test
 
 class BrowseCatalogueSectionsTest {
     @Test
+    fun catalogueAccessUsesPositionAndUnlockIdsAcrossLessonTypes() {
+        val lessons = parseCatalogueJson(
+            """[
+                {"id":"beginner-sikku","lessonName":"Beginner","category":"Beginner","kolamType":"Sikku"},
+                {"id":"intermediate-rangoli","lessonName":"Intermediate","category":"Intermediate","kolamType":"Rangoli"},
+                {"id":"expert-pulli","lessonName":"Expert","category":"Expert","kolamType":"Pulli"}
+            ]"""
+        )
+
+        assertEquals(
+            CatalogueAccess.FREE,
+            lessonWithCatalogueAccess(lessons[0], 29, emptySet()).access
+        )
+        assertEquals(
+            CatalogueAccess.LOCKED,
+            lessonWithCatalogueAccess(lessons[1], 30, emptySet()).access
+        )
+        assertEquals(
+            CatalogueAccess.FREE,
+            lessonWithCatalogueAccess(lessons[2], 90, setOf("expert-pulli")).access
+        )
+    }
+
+    @Test
     fun individuallyUnlockedLessonsMoveAboveBannerWithoutChangingCataloguePositions() {
         val entries = catalogueEntries(100)
         val individuallyUnlockedIds = setOf("lesson-35", "lesson-70")

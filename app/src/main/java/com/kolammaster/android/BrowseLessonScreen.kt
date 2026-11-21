@@ -144,6 +144,11 @@ internal data class PendingRewardedLessonOpen(
     val fromCommunity: Boolean
 )
 
+internal data class PendingLessonRequest(
+    val lessonId: String,
+    val fromCommunity: Boolean
+)
+
 internal enum class GuestUnlockWarningAction {
     SIGN_IN,
     CANCEL
@@ -188,6 +193,20 @@ internal fun handleGuestUnlockWarningAction(
     }
 }
 
+internal fun lessonWithCatalogueAccess(
+    lesson: LessonCatalogueEntry,
+    catalogueIndex: Int,
+    unlockedLessonIds: Set<String>
+): LessonCatalogueEntry = lesson.copy(
+    access = if (catalogueIndex < FREE_CATALOGUE_ENTRY_COUNT ||
+        lesson.id in unlockedLessonIds
+    ) {
+        CatalogueAccess.FREE
+    } else {
+        CatalogueAccess.LOCKED
+    }
+)
+
 internal fun browseCatalogueSections(
     entries: List<LessonCatalogueEntry>,
     visibleCount: Int,
@@ -195,15 +214,7 @@ internal fun browseCatalogueSections(
 ): BrowseCatalogueSections {
     fun item(index: Int, lesson: LessonCatalogueEntry) = BrowseCatalogueItem(
         catalogueIndex = index,
-        lesson = lesson.copy(
-            access = if (index < FREE_CATALOGUE_ENTRY_COUNT ||
-                lesson.id in unlockedLessonIds
-            ) {
-                CatalogueAccess.FREE
-            } else {
-                CatalogueAccess.LOCKED
-            }
-        )
+        lesson = lessonWithCatalogueAccess(lesson, index, unlockedLessonIds)
     )
 
     val individuallyUnlockedIds = entries
@@ -242,8 +253,8 @@ internal fun BrowseLessonScreen(
     onLessonUnlocked: (String) -> Unit = {},
     onGoogleSignIn: () -> Unit,
     onLessonSelected: (LessonCatalogueEntry) -> Unit,
-    communityLessonId: String?,
-    onCommunityLessonRequestHandled: () -> Unit,
+    lessonRequest: PendingLessonRequest?,
+    onLessonRequestHandled: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
     onCommunityLessonSelected: (LessonCatalogueEntry) -> Unit,
     onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
@@ -375,15 +386,7 @@ internal fun BrowseLessonScreen(
         unlockedLessonIds
     ) {
         catalogue.entries.mapIndexed { originalIndex, lesson ->
-            lesson.copy(
-                access = if (originalIndex < FREE_CATALOGUE_ENTRY_COUNT ||
-                    lesson.id in unlockedLessonIds
-                ) {
-                    CatalogueAccess.FREE
-                } else {
-                    CatalogueAccess.LOCKED
-                }
-            )
+            lessonWithCatalogueAccess(lesson, originalIndex, unlockedLessonIds)
         }.filter { lesson ->
             val matchesSearch = browseState.query.isBlank() || lesson.searchableText()
                 .contains(browseState.query.trim(), ignoreCase = true)
@@ -418,25 +421,17 @@ internal fun BrowseLessonScreen(
         }
     }
 
-    LaunchedEffect(communityLessonId, catalogue.entries, unlockedLessonIds) {
-        val requestedId = communityLessonId ?: return@LaunchedEffect
-        val index = catalogue.entries.indexOfFirst { it.id == requestedId }
+    LaunchedEffect(lessonRequest, catalogue.entries, unlockedLessonIds) {
+        val request = lessonRequest ?: return@LaunchedEffect
+        val index = catalogue.entries.indexOfFirst { it.id == request.lessonId }
         val lesson = catalogue.entries.getOrNull(index)
+        onLessonRequestHandled()
         if (lesson == null) {
-            onCommunityLessonMissing()
+            if (request.fromCommunity) onCommunityLessonMissing()
         } else {
-            onCommunityLessonRequestHandled()
             openLesson(
-                lesson.copy(
-                    access = if (index < FREE_CATALOGUE_ENTRY_COUNT ||
-                        lesson.id in unlockedLessonIds
-                    ) {
-                        CatalogueAccess.FREE
-                    } else {
-                        CatalogueAccess.LOCKED
-                    }
-                ),
-                true
+                lessonWithCatalogueAccess(lesson, index, unlockedLessonIds),
+                request.fromCommunity
             )
         }
     }

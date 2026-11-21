@@ -102,6 +102,7 @@ class MyFoldersScreenInstrumentedTest {
         val repository = FakeFolderDataSource(
             listOf(Folder("folder-id", "Practice", listOf("gods-lesson")))
         )
+        var requestedLessonId: String? = null
         composeRule.setContent {
             MyFoldersDestination(
                 accountId = "google-user-a",
@@ -109,6 +110,7 @@ class MyFoldersScreenInstrumentedTest {
                 onSignIn = {},
                 onCancel = {},
                 isSignInProcessing = false,
+                onRequestLesson = { requestedLessonId = it },
                 folderRepository = repository
             )
         }
@@ -119,6 +121,8 @@ class MyFoldersScreenInstrumentedTest {
         assertTextExists("GODS")
         assertTextExists("Sikku · Easy · 4 steps")
         assertTextExists("Remove")
+        composeRule.onNodeWithText("View").performClick()
+        assertEquals("gods-lesson", requestedLessonId)
     }
 
     @Test
@@ -277,8 +281,8 @@ class MyFoldersScreenInstrumentedTest {
                 onVisibleLessonCountChanged = {},
                 onGoogleSignIn = { signInRequested = true },
                 onLessonSelected = {},
-                communityLessonId = null,
-                onCommunityLessonRequestHandled = {},
+                lessonRequest = null,
+                onLessonRequestHandled = {},
                 onCommunityLessonMissing = {},
                 onCommunityLessonSelected = {},
                 onCheckMoreThumbnails = { lessons },

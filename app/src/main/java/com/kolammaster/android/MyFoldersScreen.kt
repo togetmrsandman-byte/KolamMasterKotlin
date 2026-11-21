@@ -61,7 +61,7 @@ internal fun MyFoldersDestination(
     onSignIn: () -> Unit,
     onCancel: () -> Unit,
     isSignInProcessing: Boolean,
-    onLoadLesson: (LessonCatalogueEntry) -> Unit = {},
+    onRequestLesson: (String) -> Unit = {},
     selectedFolderIdState: MutableState<String?> = remember(accountId) {
         mutableStateOf(null)
     },
@@ -320,7 +320,7 @@ internal fun MyFoldersDestination(
                                             FolderLessonCard(
                                                 lesson = lesson,
                                                 enabled = !isProcessing,
-                                                onView = { onLoadLesson(lesson) },
+                                                onView = { onRequestLesson(lesson.id) },
                                                 onRemove = onRemove
                                             )
                                         }

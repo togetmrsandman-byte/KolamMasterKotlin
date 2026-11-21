@@ -1576,7 +1576,7 @@ private fun KolamMasterApp(
     var communityLoading by remember { mutableStateOf(false) }
     var communityError by remember { mutableStateOf<String?>(null) }
     var communityRefreshKey by remember { mutableIntStateOf(0) }
-    var communityLessonRequestId by remember { mutableStateOf<String?>(null) }
+    var pendingLessonRequest by remember { mutableStateOf<PendingLessonRequest?>(null) }
     var announcementRefreshSignal by remember {
         mutableStateOf(AnnouncementRepository.refreshSignal(context))
     }
@@ -2184,17 +2184,14 @@ private fun KolamMasterApp(
                         onCheckMoreThumbnails = onCheckMoreThumbnails,
                         communityLessonOpenError = communityLessonOpenError,
                         onDismissCommunityLessonOpenError = onDismissCommunityLessonOpenError,
-                        onCommunityLessonMissing = {
-                            communityLessonRequestId = null
-                            onCommunityLessonMissing()
-                        },
-                        communityLessonRequestId = communityLessonRequestId,
-                        onCommunityLessonRequest = { id ->
-                            communityLessonRequestId = id
+                        onCommunityLessonMissing = onCommunityLessonMissing,
+                        lessonRequest = pendingLessonRequest,
+                        onLessonRequest = { request ->
+                            pendingLessonRequest = request
                             onNavigate(AppScreen.Browse)
                         },
-                        onCommunityLessonRequestHandled = {
-                            communityLessonRequestId = null
+                        onLessonRequestHandled = {
+                            pendingLessonRequest = null
                         },
                         onPublishLesson = onPublishLesson,
                         onPublishSuccess = { publishSuccessActive = true },
@@ -2515,9 +2512,9 @@ private fun AppScreenContent(
     onCommunityLessonMissing: () -> Unit,
     onPublishLesson: (PublishLessonDetails) -> Unit,
     onPublishSuccess: () -> Unit,
-    communityLessonRequestId: String?,
-    onCommunityLessonRequest: (String) -> Unit,
-    onCommunityLessonRequestHandled: () -> Unit,
+    lessonRequest: PendingLessonRequest?,
+    onLessonRequest: (PendingLessonRequest) -> Unit,
+    onLessonRequestHandled: () -> Unit,
     contactAccountId: String?,
     contactLocalCache: ContactLocalCache,
     contactDetailRefreshKey: Int,
@@ -2601,12 +2598,9 @@ private fun AppScreenContent(
             onVisibleLessonCountChanged = onVisibleLessonCountChanged,
             onLessonUnlocked = onLessonUnlocked,
             onGoogleSignIn = onGoogleSignIn,
-            communityLessonId = communityLessonRequestId,
-            onCommunityLessonRequestHandled = onCommunityLessonRequestHandled,
-            onCommunityLessonMissing = {
-                onCommunityLessonRequestHandled()
-                onCommunityLessonMissing()
-            },
+            lessonRequest = lessonRequest,
+            onLessonRequestHandled = onLessonRequestHandled,
+            onCommunityLessonMissing = onCommunityLessonMissing,
             onCommunityLessonSelected = { lesson ->
                 onLoadCommunityLesson(lesson)
             },
@@ -2619,7 +2613,14 @@ private fun AppScreenContent(
             onSignIn = onGoogleSignIn,
             onCancel = onGoBack,
             isSignInProcessing = isAuthProcessing,
-            onLoadLesson = onLoadLesson,
+            onRequestLesson = { lessonId ->
+                onLessonRequest(
+                    PendingLessonRequest(
+                        lessonId = lessonId,
+                        fromCommunity = false
+                    )
+                )
+            },
             selectedFolderIdState = selectedMyFolderId
         )
         AppScreen.Profile -> ProfileDestination(
@@ -2695,7 +2696,14 @@ private fun AppScreenContent(
             catalogueEntries = catalogue.entries,
             isCatalogueLoading = catalogue.isInitialLoading || catalogue.isRefreshing,
             lessonOpenError = communityLessonOpenError,
-            onOpenLesson = onCommunityLessonRequest,
+            onOpenLesson = { lessonId ->
+                onLessonRequest(
+                    PendingLessonRequest(
+                        lessonId = lessonId,
+                        fromCommunity = true
+                    )
+                )
+            },
             onDismissLessonOpenError = onDismissCommunityLessonOpenError
         )
         AppScreen.History -> HistoryScreen(Modifier.fillMaxSize())
