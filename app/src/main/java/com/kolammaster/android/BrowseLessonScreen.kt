@@ -98,13 +98,10 @@ import java.io.IOException
 import java.net.URL
 import javax.net.ssl.HttpsURLConnection
 
-private const val INITIAL_REVEALED_THUMBNAIL_COUNT = 60
-private const val FREE_CATALOGUE_ENTRY_COUNT = 30
-private const val THUMBNAIL_REVEAL_BATCH_SIZE = 20
 private const val REWARDED_AD_TIMEOUT_MILLIS = 120_000L
 private const val ADMOB_NETWORK_ERROR_CODE = 2
 
-private val REWARDED_THUMBNAIL_AD_UNIT_ID: String
+private val REWARDED_LESSON_AD_UNIT_ID: String
     get() = BuildConfig.PUBLISH_REWARDED_AD_UNIT_ID
 
 internal data class LessonCatalogueUiState(
@@ -120,24 +117,15 @@ internal class BrowseCatalogueState {
     var query by mutableStateOf("")
     var difficulties by mutableStateOf<Set<String>>(emptySet())
     var types by mutableStateOf<Set<String>>(emptySet())
+    var accessFilter by mutableStateOf(BrowseLessonAccessFilter.ALL)
 
     fun reset() {
         query = ""
         difficulties = emptySet()
         types = emptySet()
+        accessFilter = BrowseLessonAccessFilter.ALL
     }
 }
-
-internal data class BrowseCatalogueItem(
-    val catalogueIndex: Int,
-    val lesson: LessonCatalogueEntry
-)
-
-internal data class BrowseCatalogueSections(
-    val freeLessons: List<BrowseCatalogueItem>,
-    val individuallyUnlockedLessons: List<BrowseCatalogueItem>,
-    val revealedLessons: List<BrowseCatalogueItem>
-)
 
 internal data class PendingRewardedLessonOpen(
     val lesson: LessonCatalogueEntry,
@@ -194,62 +182,29 @@ internal fun handleGuestUnlockWarningAction(
 }
 
 internal fun lessonWithCatalogueAccess(
-    lesson: LessonCatalogueEntry,
-    catalogueIndex: Int,
-    unlockedLessonIds: Set<String>
+    lesson: LessonCatalogueEntry
 ): LessonCatalogueEntry = lesson.copy(
-    access = if (catalogueIndex < FREE_CATALOGUE_ENTRY_COUNT ||
-        lesson.id in unlockedLessonIds
-    ) {
+    access = if (lesson.isFree) {
         CatalogueAccess.FREE
     } else {
         CatalogueAccess.LOCKED
     }
 )
 
-internal fun browseCatalogueSections(
-    entries: List<LessonCatalogueEntry>,
-    visibleCount: Int,
+internal fun canOpenLesson(
+    lesson: LessonCatalogueEntry,
     unlockedLessonIds: Set<String>
-): BrowseCatalogueSections {
-    fun item(index: Int, lesson: LessonCatalogueEntry) = BrowseCatalogueItem(
-        catalogueIndex = index,
-        lesson = lessonWithCatalogueAccess(lesson, index, unlockedLessonIds)
-    )
-
-    val individuallyUnlockedIds = entries
-        .drop(FREE_CATALOGUE_ENTRY_COUNT)
-        .asSequence()
-        .filter { it.id in unlockedLessonIds }
-        .map { it.id }
-        .toSet()
-
-    return BrowseCatalogueSections(
-        freeLessons = entries.take(FREE_CATALOGUE_ENTRY_COUNT).mapIndexed(::item),
-        individuallyUnlockedLessons = entries
-            .mapIndexed(::item)
-            .drop(FREE_CATALOGUE_ENTRY_COUNT)
-            .filter { it.lesson.id in individuallyUnlockedIds },
-        revealedLessons = entries
-            .drop(FREE_CATALOGUE_ENTRY_COUNT)
-            .take((visibleCount - FREE_CATALOGUE_ENTRY_COUNT).coerceAtLeast(0))
-            .mapIndexed { offset, lesson ->
-                item(offset + FREE_CATALOGUE_ENTRY_COUNT, lesson)
-            }
-            .filterNot { it.lesson.id in individuallyUnlockedIds }
-    )
-}
+): Boolean = lesson.isFree || lesson.id in unlockedLessonIds
 
 @Composable
 internal fun BrowseLessonScreen(
     catalogue: LessonCatalogueUiState,
+    browseEntries: List<LessonCatalogueEntry>,
     browseState: BrowseCatalogueState = remember { BrowseCatalogueState() },
     unlockedLessonIds: Set<String>,
     accountId: String?,
     isGuest: Boolean = false,
     isAuthProcessing: Boolean = false,
-    visibleLessonCount: Int,
-    onVisibleLessonCountChanged: (Int) -> Unit,
     onLessonUnlocked: (String) -> Unit = {},
     onGoogleSignIn: () -> Unit,
     onLessonSelected: (LessonCatalogueEntry) -> Unit,
@@ -257,7 +212,7 @@ internal fun BrowseLessonScreen(
     onLessonRequestHandled: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
     onCommunityLessonSelected: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var filtersOpen by remember { mutableStateOf(false) }
@@ -279,21 +234,12 @@ internal fun BrowseLessonScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     val localizedContext = context.withSelectedAppLanguage()
 
-    var visibleCount by remember(accountId) {
-        mutableIntStateOf(visibleLessonCount.coerceAtLeast(INITIAL_REVEALED_THUMBNAIL_COUNT))
-    }
-    LaunchedEffect(accountId, visibleLessonCount) {
-        visibleCount = maxOf(visibleCount, visibleLessonCount)
-    }
-    var isLoadingRewardedAd by remember { mutableStateOf(false) }
-    var isCheckingForMoreThumbnails by remember { mutableStateOf(false) }
-    var noMoreThumbnailsAvailable by remember { mutableStateOf(false) }
+    var isCheckingForMoreLessons by remember { mutableStateOf(false) }
+    var noMoreLessonsAvailable by remember { mutableStateOf(false) }
     var isIndividualAdProcessing by remember { mutableStateOf(false) }
-    var thumbnailAdAttempt by remember { mutableIntStateOf(0) }
     var individualAdAttempt by remember { mutableIntStateOf(0) }
-    var thumbnailAdTimeoutJob by remember { mutableStateOf<Job?>(null) }
     var individualAdTimeoutJob by remember { mutableStateOf<Job?>(null) }
-    var revealMessage by remember { mutableStateOf<String?>(null) }
+    var catalogueUpdateMessage by remember { mutableStateOf<String?>(null) }
     var lockedLesson by remember { mutableStateOf<LessonCatalogueEntry?>(null) }
     var lockedLessonFromCommunity by remember { mutableStateOf(false) }
     var guestUnlockWarning by remember { mutableStateOf<PendingRewardedLessonOpen?>(null) }
@@ -369,7 +315,7 @@ internal fun BrowseLessonScreen(
     LaunchedEffect(accountId, pendingSignInLessonId) {
         val pendingId = pendingSignInLessonId
         if (accountId != null && pendingId != null) {
-            saveTargetLesson = catalogue.entries.firstOrNull { it.id == pendingId }
+            saveTargetLesson = browseEntries.firstOrNull { it.id == pendingId }
             saveTargetAccountId = accountId
             pendingSignInLessonId = null
         } else if (saveTargetAccountId != null && saveTargetAccountId != accountId) {
@@ -379,39 +325,27 @@ internal fun BrowseLessonScreen(
     }
 
     val filteredEntries = remember(
-        catalogue.entries,
+        browseEntries,
         browseState.query,
         browseState.difficulties,
         browseState.types,
-        unlockedLessonIds
+        browseState.accessFilter
     ) {
-        catalogue.entries.mapIndexed { originalIndex, lesson ->
-            lessonWithCatalogueAccess(lesson, originalIndex, unlockedLessonIds)
-        }.filter { lesson ->
-            val matchesSearch = browseState.query.isBlank() || lesson.searchableText()
-                .contains(browseState.query.trim(), ignoreCase = true)
-            val matchesDifficulty = browseState.difficulties.isEmpty() ||
-                lesson.normalizedDifficulty in browseState.difficulties
-            val matchesType = browseState.types.isEmpty() ||
-                lesson.normalizedType in browseState.types
-            matchesSearch && matchesDifficulty && matchesType
-        }
+        filterBrowseCatalogue(
+            entries = browseEntries.map(::lessonWithCatalogueAccess),
+            query = browseState.query,
+            difficulties = browseState.difficulties,
+            types = browseState.types,
+            accessFilter = browseState.accessFilter
+        )
     }
-    val hasActiveSearchOrFilters =
-        browseState.query.isNotBlank() ||
-            browseState.difficulties.isNotEmpty() ||
-            browseState.types.isNotEmpty()
-    val visibleEntries = if (hasActiveSearchOrFilters) {
-        filteredEntries
-    } else {
-        filteredEntries.take(visibleCount)
-    }
+    val visibleEntries = filteredEntries
     val gridState = browseState.gridState
     val resetGridPosition = {
         scope.launch { gridState.scrollToItem(0) }
     }
     val openLesson: (LessonCatalogueEntry, Boolean) -> Unit = { lesson, fromCommunity ->
-        if (lesson.access == CatalogueAccess.LOCKED) {
+        if (!canOpenLesson(lesson, unlockedLessonIds)) {
             lockedLesson = lesson
             lockedLessonFromCommunity = fromCommunity
             completedIndividualAds = 0
@@ -421,16 +355,15 @@ internal fun BrowseLessonScreen(
         }
     }
 
-    LaunchedEffect(lessonRequest, catalogue.entries, unlockedLessonIds) {
+    LaunchedEffect(lessonRequest, browseEntries, unlockedLessonIds) {
         val request = lessonRequest ?: return@LaunchedEffect
-        val index = catalogue.entries.indexOfFirst { it.id == request.lessonId }
-        val lesson = catalogue.entries.getOrNull(index)
+        val lesson = browseEntries.firstOrNull { it.id == request.lessonId }
         onLessonRequestHandled()
         if (lesson == null) {
             if (request.fromCommunity) onCommunityLessonMissing()
         } else {
             openLesson(
-                lessonWithCatalogueAccess(lesson, index, unlockedLessonIds),
+                lessonWithCatalogueAccess(lesson),
                 request.fromCommunity
             )
         }
@@ -469,7 +402,9 @@ internal fun BrowseLessonScreen(
                 },
                 filtersOpen = filtersOpen,
                 activeFilterCount =
-                    browseState.difficulties.size + browseState.types.size,
+                    browseState.difficulties.size +
+                        browseState.types.size +
+                        if (browseState.accessFilter == BrowseLessonAccessFilter.ALL) 0 else 1,
                 onOpenSearch = {
                     filtersOpen = true
                     shouldFocusSearch = true
@@ -480,7 +415,7 @@ internal fun BrowseLessonScreen(
                 focusRequester = searchFocusRequester
             )
             Spacer(Modifier.height(8.dp))
-            revealMessage?.let {
+            catalogueUpdateMessage?.let {
                 Text(
                     text = it,
                     color = KolamMutedText,
@@ -490,13 +425,13 @@ internal fun BrowseLessonScreen(
             }
 
             when {
-                catalogue.isInitialLoading && catalogue.entries.isEmpty() -> Box(
+                catalogue.isInitialLoading && browseEntries.isEmpty() -> Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.Center
                 ) {
                     CircularProgressIndicator(color = KolamBronze)
                 }
-                catalogue.entries.isEmpty() -> BrowseMessage(
+                browseEntries.isEmpty() -> BrowseMessage(
                     text = if (catalogue.refreshNetworkFailed) {
                         NetworkErrors.DISPLAY_TEXT
                     } else if (catalogue.refreshFailed) {
@@ -515,226 +450,63 @@ internal fun BrowseLessonScreen(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    if (hasActiveSearchOrFilters) {
-                        itemsIndexed(
-                            items = visibleEntries,
-                            key = { index, lesson -> "${lesson.id}-$index" }
-                        ) { _, lesson ->
-                            LessonCatalogueCard(
-                                lesson = lesson,
-                                languageCode = languageCode,
-                                isSaved = savedFolders.any { lesson.id in it.lessons },
-                                onClick = { openLesson(lesson, false) },
-                                onHeartClick = {
-                                    if (accountId == null) {
-                                        pendingSignInLessonId = lesson.id
-                                        onGoogleSignIn()
-                                    } else {
-                                        saveTargetLesson = lesson
-                                        saveTargetAccountId = accountId
-                                    }
-                                }
-                            )
-                        }
-                    } else {
-                        val sections = browseCatalogueSections(
-                            entries = catalogue.entries,
-                            visibleCount = visibleCount,
-                            unlockedLessonIds = unlockedLessonIds
-                        )
-                        itemsIndexed(
-                            items = sections.freeLessons,
-                            key = { _, item -> "${item.lesson.id}-${item.catalogueIndex}" }
-                        ) { _, item ->
-                            val lesson = item.lesson
-                            LessonCatalogueCard(
-                                lesson = lesson,
-                                languageCode = languageCode,
-                                isSaved = savedFolders.any { lesson.id in it.lessons },
-                                onClick = { openLesson(lesson, false) },
-                                onHeartClick = {
-                                    if (accountId == null) {
-                                        pendingSignInLessonId = lesson.id
-                                        onGoogleSignIn()
-                                    } else {
-                                        saveTargetLesson = lesson
-                                        saveTargetAccountId = accountId
-                                    }
-                                }
-                            )
-                        }
-                        itemsIndexed(
-                            items = sections.individuallyUnlockedLessons,
-                            key = { _, item -> "${item.lesson.id}-${item.catalogueIndex}" }
-                        ) { _, item ->
-                            val lesson = item.lesson
-                            LessonCatalogueCard(
-                                lesson = lesson,
-                                languageCode = languageCode,
-                                isSaved = savedFolders.any { lesson.id in it.lessons },
-                                onClick = { openLesson(lesson, false) },
-                                onHeartClick = {
-                                    if (accountId == null) {
-                                        pendingSignInLessonId = lesson.id
-                                        onGoogleSignIn()
-                                    } else {
-                                        saveTargetLesson = lesson
-                                        saveTargetAccountId = accountId
-                                    }
-                                }
-                            )
-                        }
-                        val hasLockedRevealedLessons = sections.revealedLessons.any { it.lesson.access == CatalogueAccess.LOCKED }
-                        if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT && hasLockedRevealedLessons) {
-                            item(span = { GridItemSpan(maxLineSpan) }) {
-                                ThumbnailRevealBanner(
-                                    text = currentAppString("watch_short_ad"),
-                                    enabled = true,
-                                    loadingText = currentAppString("loading_ad")
-                                )
-                            }
-                        }
-                        if (visibleEntries.size > FREE_CATALOGUE_ENTRY_COUNT) {
-                            itemsIndexed(
-                                items = sections.revealedLessons,
-                                key = { _, item ->
-                                    "${item.lesson.id}-${item.catalogueIndex}"
-                                }
-                            ) { _, item ->
-                                val lesson = item.lesson
-                                LessonCatalogueCard(
-                                    lesson = lesson,
-                                    languageCode = languageCode,
-                                    isSaved = savedFolders.any { lesson.id in it.lessons },
-                                    onClick = { openLesson(lesson, false) },
-                                    onHeartClick = {
-                                        if (accountId == null) {
-                                            pendingSignInLessonId = lesson.id
-                                            onGoogleSignIn()
-                                        } else {
-                                            saveTargetLesson = lesson
-                                            saveTargetAccountId = accountId
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                    if (!hasActiveSearchOrFilters && visibleEntries.size < catalogue.entries.size) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            ThumbnailRevealBanner(
-                                text = currentAppString("watch_ad_unlock"),
-                                enabled = !isLoadingRewardedAd,
-                                loadingText = currentAppString("loading_ad"),
-                                onClick = {
-                                    val activity = context.findActivity()
-                                    if (activity == null) {
-                                        revealMessage =
-                                            localizedContext.appString("ad_unavailable")
-                                    } else if (!isLoadingRewardedAd) {
-                                        isLoadingRewardedAd = true
-                                        revealMessage = null
-                                        val attempt = ++thumbnailAdAttempt
-                                        thumbnailAdTimeoutJob?.cancel()
-                                        thumbnailAdTimeoutJob = scope.launch {
-                                            delay(REWARDED_AD_TIMEOUT_MILLIS)
-                                            if (thumbnailAdAttempt == attempt) {
-                                                thumbnailAdAttempt++
-                                                isLoadingRewardedAd = false
-                                                revealMessage =
-                                                    localizedContext.appString("ad_show_failed")
-                                            }
-                                        }
-                                        showThumbnailRewardedAd(
-                                            activity = activity,
-                                            onRewardEarned = {
-                                                if (thumbnailAdAttempt != attempt) return@showThumbnailRewardedAd
-                                                thumbnailAdTimeoutJob?.cancel()
-                                                val newCount = minOf(
-                                                    visibleCount + THUMBNAIL_REVEAL_BATCH_SIZE,
-                                                    catalogue.entries.size
-                                                )
-                                                if (newCount > visibleCount) {
-                                                    visibleCount = newCount
-                                                    onVisibleLessonCountChanged(newCount)
-                                                }
-                                                isLoadingRewardedAd = false
-                                            },
-                                            onDismissedWithoutReward = {
-                                                if (thumbnailAdAttempt != attempt) return@showThumbnailRewardedAd
-                                                thumbnailAdTimeoutJob?.cancel()
-                                                isLoadingRewardedAd = false
-                                                revealMessage = localizedContext.appString(
-                                                    "ad_reward_not_earned"
-                                                )
-                                            },
-                                            onFailed = { errorCode ->
-                                                if (thumbnailAdAttempt != attempt) return@showThumbnailRewardedAd
-                                                thumbnailAdTimeoutJob?.cancel()
-                                                isLoadingRewardedAd = false
-                                                revealMessage = adFailureMessage(
-                                                    errorCode,
-                                                    localizedContext.appString(
-                                                        "ad_show_failed"
-                                                    ),
-                                                    localizedContext.appString(
-                                                        "network_error_title"
-                                                    ),
-                                                    localizedContext.appString(
-                                                        "network_error_message"
-                                                    )
-                                                )
-                                            }
-                                        )
-                                    }
-                                },
-                                loading = isLoadingRewardedAd
-                            )
-                        }
-                    }
-                    if (!hasActiveSearchOrFilters &&
-                        catalogue.entries.isNotEmpty() &&
-                        visibleEntries.size >= catalogue.entries.size
-                    ) {
-                        item(span = { GridItemSpan(maxLineSpan) }) {
-                            ThumbnailRevealBanner(
-                                text = if (noMoreThumbnailsAvailable) {
-                                    currentAppString("more_kolams_coming")
+                    itemsIndexed(
+                        items = visibleEntries,
+                        key = { index, lesson -> "${lesson.id}-$index" }
+                    ) { _, lesson ->
+                        LessonCatalogueCard(
+                            lesson = lesson,
+                            languageCode = languageCode,
+                            isSaved = savedFolders.any { lesson.id in it.lessons },
+                            onClick = { openLesson(lesson, false) },
+                            onHeartClick = {
+                                if (accountId == null) {
+                                    pendingSignInLessonId = lesson.id
+                                    onGoogleSignIn()
                                 } else {
-                                    currentAppString("check_more_thumbnails")
-                                },
-                                enabled = !isCheckingForMoreThumbnails,
-                                loading = isCheckingForMoreThumbnails,
-                                loadingText = currentAppString("checking_for_updates"),
-                                onClick = {
-                                    if (!isCheckingForMoreThumbnails) {
-                                        val previouslyKnownIds =
-                                            catalogue.entries.mapTo(mutableSetOf()) { it.id }
-                                        visibleCount = maxOf(visibleCount, catalogue.entries.size)
-                                        noMoreThumbnailsAvailable = false
-                                        revealMessage = null
-                                        isCheckingForMoreThumbnails = true
-                                        scope.launch {
-                                            try {
-                                                val latestEntries = onCheckMoreThumbnails()
-                                                noMoreThumbnailsAvailable =
-                                                    latestEntries.none {
-                                                        it.id !in previouslyKnownIds
-                                                    }
-                                            } catch (exception: kotlinx.coroutines.CancellationException) {
-                                                throw exception
-                                            } catch (exception: Exception) {
-                                                revealMessage = localizedContext.appString(
-                                                    "check_thumbnails_failed"
-                                                )
-                                            } finally {
-                                                isCheckingForMoreThumbnails = false
-                                            }
+                                    saveTargetLesson = lesson
+                                    saveTargetAccountId = accountId
+                                }
+                            }
+                        )
+                    }
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        CatalogueUpdateButton(
+                            text = if (noMoreLessonsAvailable) {
+                                currentAppString("more_kolams_coming")
+                            } else {
+                                currentAppString("check_more_thumbnails")
+                            },
+                            enabled = !isCheckingForMoreLessons,
+                            loading = isCheckingForMoreLessons,
+                            loadingText = currentAppString("checking_for_updates"),
+                            onClick = {
+                                if (!isCheckingForMoreLessons) {
+                                    val previouslyKnownIds =
+                                        browseEntries.mapTo(mutableSetOf()) { it.id }
+                                    noMoreLessonsAvailable = false
+                                    catalogueUpdateMessage = null
+                                    isCheckingForMoreLessons = true
+                                    scope.launch {
+                                        try {
+                                            val latestEntries = onCheckMoreLessons()
+                                            noMoreLessonsAvailable =
+                                                latestEntries.none {
+                                                    it.id !in previouslyKnownIds
+                                                }
+                                        } catch (exception: kotlinx.coroutines.CancellationException) {
+                                            throw exception
+                                        } catch (exception: Exception) {
+                                            catalogueUpdateMessage = localizedContext.appString(
+                                                "check_thumbnails_failed"
+                                            )
+                                        } finally {
+                                            isCheckingForMoreLessons = false
                                         }
                                     }
                                 }
-                            )
-                        }
+                            }
+                        )
                     }
                 }
             }
@@ -778,14 +550,18 @@ internal fun BrowseLessonScreen(
                 )
                 FilterRow(
                     options = listOf(
+                        BrowseFilterOption("", "all", isAll = true),
                         BrowseFilterOption("Easy", "easy"),
                         BrowseFilterOption("Intermediate", "intermediate"),
                         BrowseFilterOption("Expert", "expert")
                     ),
                     selected = browseState.difficulties,
                     onSelected = { option ->
-                        browseState.difficulties =
+                        browseState.difficulties = if (option.isEmpty()) {
+                            emptySet()
+                        } else {
                             browseState.difficulties.toggle(option)
+                        }
                         resetGridPosition()
                     }
                 )
@@ -797,13 +573,44 @@ internal fun BrowseLessonScreen(
                 )
                 FilterRow(
                     options = listOf(
+                        BrowseFilterOption("", "all", isAll = true),
                         BrowseFilterOption("Sikku", "sikku_label"),
                         BrowseFilterOption("Pulli", "pulli_label"),
                         BrowseFilterOption("Rangoli", "rangoli_label")
                     ),
                     selected = browseState.types,
                     onSelected = { option ->
-                        browseState.types = browseState.types.toggle(option)
+                        browseState.types = if (option.isEmpty()) {
+                            emptySet()
+                        } else {
+                            browseState.types.toggle(option)
+                        }
+                        resetGridPosition()
+                    }
+                )
+                Text(
+                    text = currentAppString("lesson_access"),
+                    color = KolamText,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
+                FilterRow(
+                    options = listOf(
+                        BrowseFilterOption("", "all", isAll = true),
+                        BrowseFilterOption("free", "free"),
+                        BrowseFilterOption("locked", "locked")
+                    ),
+                    selected = when (browseState.accessFilter) {
+                        BrowseLessonAccessFilter.ALL -> emptySet()
+                        BrowseLessonAccessFilter.FREE -> setOf("free")
+                        BrowseLessonAccessFilter.LOCKED -> setOf("locked")
+                    },
+                    onSelected = { option ->
+                        browseState.accessFilter = when (option) {
+                            "free" -> BrowseLessonAccessFilter.FREE
+                            "locked" -> BrowseLessonAccessFilter.LOCKED
+                            else -> BrowseLessonAccessFilter.ALL
+                        }
                         resetGridPosition()
                     }
                 )
@@ -819,6 +626,7 @@ internal fun BrowseLessonScreen(
                             browseState.query = ""
                             browseState.difficulties = emptySet()
                             browseState.types = emptySet()
+                            browseState.accessFilter = BrowseLessonAccessFilter.ALL
                             resetGridPosition()
                             shouldFocusSearch = true
                             keyboardController?.show()
@@ -900,7 +708,7 @@ internal fun BrowseLessonScreen(
                                         isIndividualAdProcessing = false
                                         val fromCommunity = lockedLessonFromCommunity
                                         lockedLessonFromCommunity = false
-                                        val unlockedLesson = lesson.copy(access = CatalogueAccess.FREE)
+                                        val unlockedLesson = lesson
                                         completeVerifiedRewardedLessonUnlock(
                                             isGuest = isGuest,
                                             onUnlockGranted = { onLessonUnlocked(unlockedLesson.id) },
@@ -1381,9 +1189,10 @@ private fun FilterRow(
             } else {
                 currentAppString(option.labelKey)
             }
+            val isSelected = if (option.isAll) selected.isEmpty() else option.value in selected
             FilterChip(
-                selected = option.value in selected,
-                onClick = { onSelected(option.value) },
+                selected = isSelected,
+                onClick = { onSelected(if (option.isAll) "" else option.value) },
                 label = { Text(label, maxLines = 1) },
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = KolamElevated,
@@ -1393,7 +1202,7 @@ private fun FilterRow(
                 ),
                 border = FilterChipDefaults.filterChipBorder(
                     enabled = true,
-                    selected = option.value in selected,
+                    selected = isSelected,
                     borderColor = KolamBorder,
                     selectedBorderColor = KolamBronze
                 )
@@ -1404,7 +1213,8 @@ private fun FilterRow(
 
 private data class BrowseFilterOption(
     val value: String,
-    val labelKey: String? = null
+    val labelKey: String? = null,
+    val isAll: Boolean = false
 )
 
 private fun Set<String>.toggle(value: String): Set<String> =
@@ -1573,7 +1383,7 @@ internal fun LessonFavoriteStar(
 }
 
 @Composable
-private fun ThumbnailRevealBanner(
+private fun CatalogueUpdateButton(
     text: String,
     onClick: () -> Unit = {},
     enabled: Boolean = false,
@@ -1610,43 +1420,6 @@ private fun ThumbnailRevealBanner(
     }
 }
 
-private fun showThumbnailRewardedAd(
-    activity: Activity,
-    onRewardEarned: () -> Unit,
-    onDismissedWithoutReward: () -> Unit,
-    onFailed: (Int) -> Unit
-) {
-    RewardedAd.load(
-        activity,
-        REWARDED_THUMBNAIL_AD_UNIT_ID,
-        AdRequest.Builder().build(),
-        object : RewardedAdLoadCallback() {
-            override fun onAdFailedToLoad(error: LoadAdError) {
-                onFailed(error.code)
-            }
-
-            override fun onAdLoaded(rewardedAd: RewardedAd) {
-                var rewardEarned = false
-                rewardedAd.fullScreenContentCallback = object : FullScreenContentCallback() {
-                    override fun onAdDismissedFullScreenContent() {
-                        if (!rewardEarned) onDismissedWithoutReward()
-                    }
-
-                    override fun onAdFailedToShowFullScreenContent(error: AdError) {
-                        onFailed(error.code)
-                    }
-                }
-                rewardedAd.show(activity) { _: RewardItem ->
-                    if (!rewardEarned) {
-                        rewardEarned = true
-                        onRewardEarned()
-                    }
-                }
-            }
-        }
-    )
-}
-
 private fun showIndividualRewardedAd(
     activity: Activity,
     onRewardEarned: () -> Unit,
@@ -1655,7 +1428,7 @@ private fun showIndividualRewardedAd(
 ) {
     RewardedAd.load(
         activity,
-        REWARDED_THUMBNAIL_AD_UNIT_ID,
+        REWARDED_LESSON_AD_UNIT_ID,
         AdRequest.Builder().build(),
         object : RewardedAdLoadCallback() {
             override fun onAdFailedToLoad(error: LoadAdError) {
@@ -1843,7 +1616,7 @@ private fun BrowseMessage(text: String) {
     }
 }
 
-private fun LessonCatalogueEntry.searchableText(): String = buildString {
+internal fun LessonCatalogueEntry.searchableText(): String = buildString {
     append(lessonName)
     append(' ')
     append(displayNames.values.joinToString(" "))

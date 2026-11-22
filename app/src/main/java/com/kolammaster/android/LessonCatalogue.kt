@@ -44,6 +44,7 @@ internal data class LessonCatalogueEntry(
     val packageFile: String?,
     val packageFilename: String?,
     val filename: String?,
+    val isFree: Boolean = false,
     val access: CatalogueAccess = CatalogueAccess.UNRESOLVED,
     internal val sourceJson: String,
     val displayNames: Map<String, String> = emptyMap(),
@@ -53,8 +54,8 @@ internal data class LessonCatalogueEntry(
         get() = 1
 
     val normalizedDifficulty: String?
-        get() = when (category?.trim()?.lowercase()) {
-            "beginner" -> "Easy"
+        get() = when ((difficulty ?: category)?.trim()?.lowercase(Locale.ROOT)) {
+            "easy", "beginner" -> "Easy"
             "intermediate" -> "Intermediate"
             "expert" -> "Expert"
             else -> null
@@ -149,6 +150,7 @@ internal fun parseCatalogueJson(json: String): List<LessonCatalogueEntry> {
                     packageFile = record.stringValue("packageFile"),
                     packageFilename = record.stringValue("packageFilename"),
                     filename = record.stringValue("filename"),
+                    isFree = record.opt("isFree") == true,
                     sourceJson = source,
                     displayNames = record.stringMap("displayNames"),
                     tagTranslations = record.tagTranslations()

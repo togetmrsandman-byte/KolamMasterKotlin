@@ -366,7 +366,6 @@ class MainActivity : ComponentActivity() {
                     activeLanguage = activeLanguage,
                     catalogue = catalogueState,
                     unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
-                    visibleLessonCount = visibleLessonCount,
                     assetSetupProgress = assetSetupProgress,
                     isAssetSetupRunning = assetSetupRunning,
                     assetSetupError = assetSetupError,
@@ -378,7 +377,6 @@ class MainActivity : ComponentActivity() {
                     authErrorTitle = authErrorTitle,
                     onNavigate = ::navigateTo,
                     onLessonUnlocked = ::recordLessonUnlock,
-                    onVisibleLessonCountChanged = ::recordVisibleLessonCount,
                     onRetryAssetSetup = ::startInitialAssetSetup,
                     onGoBack = ::goBack,
                     onExit = { finish() },
@@ -405,7 +403,7 @@ class MainActivity : ComponentActivity() {
                     onLoadCommunityLesson = { lesson ->
                         loadLesson(lesson, fromCommunity = true)
                     },
-                    onCheckMoreThumbnails = ::checkLessonCatalogueUpdates,
+                    onCheckMoreLessons = ::checkLessonCatalogueUpdates,
                     communityLessonOpenError = communityLessonOpenError,
                     onDismissCommunityLessonOpenError = {
                         communityLessonOpenError = null
@@ -1090,35 +1088,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun recordVisibleLessonCount(newCount: Int) {
-        visibleLessonCount = maxOf(visibleLessonCount, newCount)
-        lifecycleScope.launch {
-            try {
-                val account = accountState ?: SupabaseGuestAuth.currentAccount()
-                    ?: run {
-                        SupabaseGuestAuth.getOrCreateGuestUserId()
-                        SupabaseGuestAuth.currentAccount()
-                    }
-                    ?: error("Could not resolve an account for visible lesson storage.")
-                accountState = account
-                val mergedCount = lessonUnlockRepository.saveLocalVisibleLessonCount(
-                    account.id,
-                    visibleLessonCount
-                )
-                visibleLessonCount = mergedCount
-                syncLessonUnlocks(
-                    account,
-                    lessonUnlockRepository.loadLocal(account.id) + unlockedCatalogueLessonIds
-                )
-            } catch (exception: CancellationException) {
-                throw exception
-            } catch (exception: Exception) {
-                Log.e("LessonUnlocks", "Could not persist the visible lesson count.", exception)
-                if (NetworkErrors.isNetworkFailure(exception)) showNetworkIssue()
-            }
-        }
-    }
-
     private fun syncLessonUnlocks(
         account: SupabaseAccount,
         localUnlocks: Set<String>,
@@ -1481,7 +1450,6 @@ private fun KolamMasterApp(
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
-    visibleLessonCount: Int,
     assetSetupProgress: AssetSetupProgress,
     isAssetSetupRunning: Boolean,
     assetSetupError: String?,
@@ -1496,7 +1464,6 @@ private fun KolamMasterApp(
     authErrorTitle: String,
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
-    onVisibleLessonCountChanged: (Int) -> Unit,
     onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onExit: () -> Unit,
@@ -1512,7 +1479,7 @@ private fun KolamMasterApp(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
@@ -1527,6 +1494,29 @@ private fun KolamMasterApp(
     val context = LocalContext.current
     val localizedContext = context.withSelectedAppLanguage()
     val browseCatalogueState = remember { BrowseCatalogueState() }
+    val browseArrangementRepository = remember(context) {
+        BrowseArrangementRepository(BrowseArrangementPreferencesStorage(context))
+    }
+    var browseCatalogueEntries by remember {
+        mutableStateOf(emptyList<LessonCatalogueEntry>())
+    }
+    var wasBrowseVisible by remember { mutableStateOf(false) }
+    LaunchedEffect(screen, catalogue.entries) {
+        if (screen != AppScreen.Browse) {
+            wasBrowseVisible = false
+            return@LaunchedEffect
+        }
+        if (catalogue.entries.isEmpty()) return@LaunchedEffect
+        val refreshIfDue = !wasBrowseVisible
+        val arrangedEntries = withContext(Dispatchers.IO) {
+            browseArrangementRepository.arrange(
+                entries = catalogue.entries,
+                refreshIfDue = refreshIfDue
+            )
+        }
+        browseCatalogueEntries = arrangedEntries
+        wasBrowseVisible = true
+    }
     val contactAccountId = account?.takeUnless { it.isGuest }?.id
     val contactLocalCache = remember(context) { ContactLocalCache(context) }
     var storeDialog by remember { mutableStateOf<String?>(null) }
@@ -2154,11 +2144,11 @@ private fun KolamMasterApp(
                     AppScreenContent(
                         screen = screen,
                         browseCatalogueState = browseCatalogueState,
+                        browseCatalogueEntries = browseCatalogueEntries,
                         onScreenChange = onScreenChange,
                         activeLanguage = activeLanguage,
                         catalogue = catalogue,
                         unlockedCatalogueLessonIds = unlockedCatalogueLessonIds,
-                        visibleLessonCount = visibleLessonCount,
                         assetSetupProgress = assetSetupProgress,
                         isAssetSetupRunning = isAssetSetupRunning,
                         assetSetupError = assetSetupError,
@@ -2166,7 +2156,6 @@ private fun KolamMasterApp(
                         isAuthProcessing = isAuthProcessing,
                         onNavigate = onNavigate,
                         onLessonUnlocked = onLessonUnlocked,
-                        onVisibleLessonCountChanged = onVisibleLessonCountChanged,
                         onRetryAssetSetup = onRetryAssetSetup,
                         onGoBack = onGoBack,
                         onHome = onHome,
@@ -2181,7 +2170,7 @@ private fun KolamMasterApp(
                         onLanguageBack = onLanguageBack,
                         onLoadLesson = onLoadLesson,
                         onLoadCommunityLesson = onLoadCommunityLesson,
-                        onCheckMoreThumbnails = onCheckMoreThumbnails,
+                        onCheckMoreLessons = onCheckMoreLessons,
                         communityLessonOpenError = communityLessonOpenError,
                         onDismissCommunityLessonOpenError = onDismissCommunityLessonOpenError,
                         onCommunityLessonMissing = onCommunityLessonMissing,
@@ -2479,11 +2468,11 @@ private fun KolamMasterApp(
 private fun AppScreenContent(
     screen: AppScreen,
     browseCatalogueState: BrowseCatalogueState,
+    browseCatalogueEntries: List<LessonCatalogueEntry>,
     onScreenChange: (AppScreen) -> Unit,
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
     unlockedCatalogueLessonIds: Set<String>,
-    visibleLessonCount: Int,
     assetSetupProgress: AssetSetupProgress,
     isAssetSetupRunning: Boolean,
     assetSetupError: String?,
@@ -2491,7 +2480,6 @@ private fun AppScreenContent(
     isAuthProcessing: Boolean,
     onNavigate: (AppScreen) -> Unit,
     onLessonUnlocked: (String) -> Unit,
-    onVisibleLessonCountChanged: (Int) -> Unit,
     onRetryAssetSetup: () -> Unit,
     onGoBack: () -> Unit,
     onHome: () -> Unit,
@@ -2506,7 +2494,7 @@ private fun AppScreenContent(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreThumbnails: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
@@ -2589,13 +2577,12 @@ private fun AppScreenContent(
         )
         AppScreen.Browse -> BrowseLessonScreen(
             catalogue = catalogue,
+            browseEntries = browseCatalogueEntries,
             browseState = browseCatalogueState,
             unlockedLessonIds = unlockedCatalogueLessonIds,
             accountId = account?.takeUnless { it.isGuest }?.id,
             isGuest = account?.isGuest == true,
             isAuthProcessing = isAuthProcessing,
-            visibleLessonCount = visibleLessonCount,
-            onVisibleLessonCountChanged = onVisibleLessonCountChanged,
             onLessonUnlocked = onLessonUnlocked,
             onGoogleSignIn = onGoogleSignIn,
             lessonRequest = lessonRequest,
@@ -2604,7 +2591,7 @@ private fun AppScreenContent(
             onCommunityLessonSelected = { lesson ->
                 onLoadCommunityLesson(lesson)
             },
-            onCheckMoreThumbnails = onCheckMoreThumbnails,
+            onCheckMoreLessons = onCheckMoreLessons,
             onLessonSelected = onLoadLesson
         )
         AppScreen.MyKolams -> MyFoldersDestination(
