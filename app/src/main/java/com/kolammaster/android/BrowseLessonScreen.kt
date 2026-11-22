@@ -109,7 +109,8 @@ internal data class LessonCatalogueUiState(
     val isInitialLoading: Boolean = true,
     val isRefreshing: Boolean = false,
     val refreshFailed: Boolean = false,
-    val refreshNetworkFailed: Boolean = false
+    val refreshNetworkFailed: Boolean = false,
+    val arrangementRefreshGeneration: Int = 0
 )
 
 internal class BrowseCatalogueState(
@@ -197,6 +198,11 @@ internal fun canOpenLesson(
     unlockedLessonIds: Set<String>
 ): Boolean = lesson.isFree || lesson.id in unlockedLessonIds
 
+internal fun shouldShowLessonLockIcon(
+    lesson: LessonCatalogueEntry,
+    unlockedLessonIds: Set<String>
+): Boolean = !lesson.isFree && lesson.id !in unlockedLessonIds
+
 @Composable
 internal fun BrowseLessonScreen(
     catalogue: LessonCatalogueUiState,
@@ -213,7 +219,7 @@ internal fun BrowseLessonScreen(
     onLessonRequestHandled: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
     onCommunityLessonSelected: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend (Set<String>) -> List<LessonCatalogueEntry>,
     folderRepository: FolderDataSource = remember { FolderRepository() }
 ) {
     var filtersOpen by remember { mutableStateOf(false) }
@@ -461,6 +467,7 @@ internal fun BrowseLessonScreen(
                             lesson = lesson,
                             languageCode = languageCode,
                             isSaved = savedFolders.any { lesson.id in it.lessons },
+                            unlockedLessonIds = unlockedLessonIds,
                             onClick = { openLesson(lesson, false) },
                             onHeartClick = {
                                 if (accountId == null) {
@@ -492,7 +499,8 @@ internal fun BrowseLessonScreen(
                                     isCheckingForMoreLessons = true
                                     scope.launch {
                                         try {
-                                            val latestEntries = onCheckMoreLessons()
+                                            val latestEntries =
+                                                onCheckMoreLessons(previouslyKnownIds)
                                             noMoreLessonsAvailable =
                                                 latestEntries.none {
                                                     it.id !in previouslyKnownIds
@@ -1231,6 +1239,7 @@ internal fun LessonCatalogueCard(
     lesson: LessonCatalogueEntry,
     languageCode: String,
     isSaved: Boolean,
+    unlockedLessonIds: Set<String>,
     onClick: (() -> Unit)?,
     onHeartClick: () -> Unit
 ) {
@@ -1240,7 +1249,13 @@ internal fun LessonCatalogueCard(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
-            LessonCatalogueCardContent(lesson, languageCode, isSaved, onHeartClick)
+            LessonCatalogueCardContent(
+                lesson,
+                languageCode,
+                isSaved,
+                shouldShowLessonLockIcon(lesson, unlockedLessonIds),
+                onHeartClick
+            )
         }
     } else {
         Card(
@@ -1249,7 +1264,13 @@ internal fun LessonCatalogueCard(
             shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = KolamSurface)
         ) {
-            LessonCatalogueCardContent(lesson, languageCode, isSaved, onHeartClick)
+            LessonCatalogueCardContent(
+                lesson,
+                languageCode,
+                isSaved,
+                shouldShowLessonLockIcon(lesson, unlockedLessonIds),
+                onHeartClick
+            )
         }
     }
 }
@@ -1259,6 +1280,7 @@ private fun LessonCatalogueCardContent(
     lesson: LessonCatalogueEntry,
     languageCode: String,
     isSaved: Boolean,
+    showLock: Boolean,
     onHeartClick: () -> Unit
 ) {
     Column(modifier = Modifier.padding(10.dp)) {
@@ -1281,7 +1303,7 @@ private fun LessonCatalogueCardContent(
                 modifier = Modifier.size(36.dp),
                 contentAlignment = Alignment.Center
             ) {
-                if (lesson.access == CatalogueAccess.LOCKED) {
+                if (showLock) {
                     Text(text = "🔒", fontSize = 18.sp)
                 }
             }

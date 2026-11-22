@@ -323,6 +323,7 @@ internal fun MyFoldersDestination(
                                         } else {
                                             FolderLessonCard(
                                                 lesson = lesson,
+                                                unlockedLessonIds = unlockedLessonIds,
                                                 enabled = !isProcessing,
                                                 canRemove = canRemoveLesson,
                                                 onView = { onRequestLesson(lesson.id) },
@@ -608,6 +609,7 @@ private fun UnavailableFolderLessonCard(
 @Composable
 private fun FolderLessonCard(
     lesson: LessonCatalogueEntry,
+    unlockedLessonIds: Set<String>,
     enabled: Boolean,
     canRemove: Boolean,
     onView: () -> Unit,
@@ -625,13 +627,22 @@ private fun FolderLessonCard(
             modifier = Modifier.padding(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            RemoteLessonThumbnail(
-                url = lesson.firstThumbnailUrl,
-                modifier = Modifier
-                    .size(100.dp)
-                    .aspectRatio(1f)
-                    .clickable(enabled = enabled, onClick = onView)
-            )
+            Box {
+                RemoteLessonThumbnail(
+                    url = lesson.firstThumbnailUrl,
+                    modifier = Modifier
+                        .size(100.dp)
+                        .aspectRatio(1f)
+                        .clickable(enabled = enabled, onClick = onView)
+                )
+                if (shouldShowLessonLockIcon(lesson, unlockedLessonIds)) {
+                    Text(
+                        text = "🔒",
+                        fontSize = 18.sp,
+                        modifier = Modifier.align(Alignment.TopEnd)
+                    )
+                }
+            }
             Column(
                 modifier = Modifier
                     .weight(1f)

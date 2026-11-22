@@ -66,18 +66,19 @@ internal class BrowseArrangementRepository(
     private val storage: BrowseArrangementStorage,
     private val seedProvider: () -> Long = { java.security.SecureRandom().nextLong() }
 ) {
+    @Synchronized
     fun arrange(
         entries: List<LessonCatalogueEntry>,
         nowMillis: Long = System.currentTimeMillis(),
-        refreshIfDue: Boolean = true
+        refreshIfDue: Boolean = true,
+        rearrangeForNewLessons: Boolean = false
     ): List<LessonCatalogueEntry> {
         if (entries.isEmpty()) return emptyList()
 
+        val uniqueEntries = entries.distinctBy(LessonCatalogueEntry::id)
         val previous = storage.load()
-        val hasNewLessons = previous != null &&
-            entries.any { it.id !in previous.orderedLessonIds }
         val shouldRefresh = previous == null ||
-            hasNewLessons ||
+            rearrangeForNewLessons ||
             (refreshIfDue && browseArrangementIsDue(previous.arrangedAtMillis, nowMillis))
         if (shouldRefresh) {
             val generatedSeed = seedProvider()
@@ -86,7 +87,7 @@ internal class BrowseArrangementRepository(
             } else {
                 generatedSeed
             }
-            val ordered = balancedBrowseArrangement(entries, seed)
+            val ordered = balancedBrowseArrangement(uniqueEntries, seed)
             storage.save(
                 BrowseArrangementSnapshot(
                     seed = seed,
@@ -98,11 +99,11 @@ internal class BrowseArrangementRepository(
         }
 
         val snapshot = checkNotNull(previous)
-        val orderedIds = reconcileOrderedIds(snapshot, entries)
+        val orderedIds = reconcileOrderedIds(snapshot, uniqueEntries)
         if (orderedIds != snapshot.orderedLessonIds) {
             storage.save(snapshot.copy(orderedLessonIds = orderedIds))
         }
-        return entriesInOrder(entries, orderedIds)
+        return entriesInOrder(uniqueEntries, orderedIds)
     }
 }
 
@@ -111,6 +112,11 @@ internal const val BROWSE_ARRANGEMENT_REFRESH_MILLIS = 5 * 60 * 60 * 1000L
 internal fun browseArrangementIsDue(arrangedAtMillis: Long, nowMillis: Long): Boolean =
     nowMillis >= arrangedAtMillis &&
         nowMillis - arrangedAtMillis >= BROWSE_ARRANGEMENT_REFRESH_MILLIS
+
+internal fun hasNewCatalogueLessonIds(
+    existingIds: Set<String>,
+    refreshedEntries: List<LessonCatalogueEntry>
+): Boolean = refreshedEntries.any { it.id !in existingIds }
 
 internal enum class BrowseLessonAccessFilter {
     ALL,
@@ -145,17 +151,18 @@ internal fun balancedBrowseArrangement(
     entries: List<LessonCatalogueEntry>,
     seed: Long
 ): List<LessonCatalogueEntry> {
-    if (entries.size < 2) return entries
+    val uniqueEntries = entries.distinctBy(LessonCatalogueEntry::id)
+    if (uniqueEntries.size < 2) return uniqueEntries
 
-    val grouped = entries.groupBy(::browseCategory)
+    val grouped = uniqueEntries.groupBy(::browseCategory)
     val remaining = grouped.mapValues { (category, lessons) ->
         lessons.shuffled(Random(seed xor category.hashCode().toLong())).toMutableList()
     }
     val categoryCounts = grouped.mapValues { it.value.size }
     val selectedCounts = mutableMapOf<BrowseCategory, Int>()
-    val arranged = ArrayList<LessonCatalogueEntry>(entries.size)
+    val arranged = ArrayList<LessonCatalogueEntry>(uniqueEntries.size)
 
-    while (arranged.size < entries.size) {
+    while (arranged.size < uniqueEntries.size) {
         var bestCategory: BrowseCategory? = null
         var bestEntryIndex = -1
         var bestScore = Double.NEGATIVE_INFINITY
@@ -163,7 +170,8 @@ internal fun balancedBrowseArrangement(
         for ((category, candidates) in remaining) {
             if (candidates.isEmpty()) continue
             val expectedCount =
-                (arranged.size + 1) * categoryCounts.getValue(category).toDouble() / entries.size
+                (arranged.size + 1) * categoryCounts.getValue(category).toDouble() /
+                    uniqueEntries.size
             val deficit = expectedCount - selectedCounts.getOrDefault(category, 0)
             for (index in candidates.indices) {
                 val candidate = candidates[index]
@@ -232,83 +240,21 @@ private fun reconcileOrderedIds(
     snapshot: BrowseArrangementSnapshot,
     entries: List<LessonCatalogueEntry>
 ): List<String> {
-    val availableById = entries.groupBy(LessonCatalogueEntry::id)
-        .mapValues { (_, lessons) -> lessons.toMutableList() }
-    val existing = snapshot.orderedLessonIds.mapNotNull { id ->
-        availableById[id]?.takeIf { it.isNotEmpty() }?.removeAt(0)
-    }.toMutableList()
-    val alreadyIncluded = snapshot.orderedLessonIds.groupingBy { it }.eachCount().toMutableMap()
-    val added = entries.filter { lesson ->
-        val count = alreadyIncluded.getOrDefault(lesson.id, 0)
-        if (count > 0) {
-            alreadyIncluded[lesson.id] = count - 1
-            false
-        } else {
-            true
-        }
-    }
-
-    val additions = balancedBrowseArrangement(added, snapshot.seed xor NEW_LESSON_SEED)
-    additions.forEachIndexed { index, lesson ->
-        var bestPosition = 0
-        var bestScore = Double.POSITIVE_INFINITY
-        for (position in 0..existing.size) {
-            val score = insertionSpacingPenalty(lesson, existing, position) +
-                stableTieNoise(snapshot.seed, lesson, index) / 100.0
-            if (score < bestScore) {
-                bestPosition = position
-                bestScore = score
-            }
-        }
-        existing.add(bestPosition, lesson)
-    }
-    return existing.map(LessonCatalogueEntry::id)
-}
-
-private fun insertionSpacingPenalty(
-    candidate: LessonCatalogueEntry,
-    arranged: List<LessonCatalogueEntry>,
-    insertionIndex: Int
-): Double {
-    var penalty = 0.0
-    arranged.forEachIndexed { index, existing ->
-        val distance = if (index < insertionIndex) {
-            insertionIndex - index
-        } else {
-            index - insertionIndex + 1
-        }
-        if (distance > 4) return@forEachIndexed
-        val distanceWeight = when (distance) {
-            1 -> 1.0
-            2 -> 0.55
-            3 -> 0.25
-            else -> 0.1
-        }
-        if (browseCategory(candidate) == browseCategory(existing)) {
-            penalty += 3.2 * distanceWeight
-        }
-        if (candidate.normalizedDifficulty == existing.normalizedDifficulty) {
-            penalty += 1.7 * distanceWeight
-        }
-        if (candidate.normalizedType == existing.normalizedType) {
-            penalty += 1.7 * distanceWeight
-        }
-        if (candidate.isFree == existing.isFree) {
-            penalty += 1.2 * distanceWeight
-        }
-    }
-    return penalty
+    val availableIds = entries.mapTo(mutableSetOf(), LessonCatalogueEntry::id)
+    val existingIds = snapshot.orderedLessonIds
+        .distinct()
+        .filter { it in availableIds }
+    val includedIds = existingIds.toHashSet()
+    return existingIds + entries.asSequence()
+        .map(LessonCatalogueEntry::id)
+        .filter(includedIds::add)
+        .toList()
 }
 
 private fun entriesInOrder(
     entries: List<LessonCatalogueEntry>,
     orderedIds: List<String>
 ): List<LessonCatalogueEntry> {
-    val availableById = entries.groupBy(LessonCatalogueEntry::id)
-        .mapValues { (_, lessons) -> lessons.toMutableList() }
-    return orderedIds.mapNotNull { id ->
-        availableById[id]?.takeIf { it.isNotEmpty() }?.removeAt(0)
-    }
+    val availableById = entries.associateBy(LessonCatalogueEntry::id)
+    return orderedIds.distinct().mapNotNull(availableById::get)
 }
-
-private const val NEW_LESSON_SEED = 0x5EED5EEDL

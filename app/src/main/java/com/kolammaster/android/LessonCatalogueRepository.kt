@@ -3,6 +3,8 @@ package com.kolammaster.android
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import java.io.IOException
@@ -27,15 +29,17 @@ internal class LessonCatalogueRepository(context: Context) {
     }
 
     suspend fun refresh(): List<LessonCatalogueEntry> = withContext(Dispatchers.IO) {
-        val response = fetchCatalogue()
-        val refreshedEntries = parseCatalogueJson(response)
-        if (refreshedEntries.isEmpty()) {
-            throw IOException("The R2 catalogue contained no valid lessons")
-        }
+        refreshMutex.withLock {
+            val response = fetchCatalogue()
+            val refreshedEntries = parseCatalogueJson(response)
+            if (refreshedEntries.isEmpty()) {
+                throw IOException("The R2 catalogue contained no valid lessons")
+            }
 
-        val mergedEntries = mergeCatalogueEntries(loadCached(), refreshedEntries)
-        preferences.edit().putString(CACHE_KEY, catalogueCacheJson(mergedEntries)).apply()
-        mergedEntries
+            val mergedEntries = mergeCatalogueEntries(loadCached(), refreshedEntries)
+            preferences.edit().putString(CACHE_KEY, catalogueCacheJson(mergedEntries)).apply()
+            mergedEntries
+        }
     }
 
     private fun fetchCatalogue(): String {
@@ -60,6 +64,7 @@ internal class LessonCatalogueRepository(context: Context) {
     }
 
     private companion object {
+        val refreshMutex = Mutex()
         const val PREFERENCES_NAME = "kolam_master_preferences"
         const val CACHE_KEY = "kolam-master-lesson-catalogue"
         const val CATALOGUE_URL =
@@ -76,9 +81,14 @@ internal fun mergeCatalogueEntries(
 ): List<LessonCatalogueEntry> {
     val refreshedById = refreshedEntries.associateByTo(linkedMapOf(), LessonCatalogueEntry::id)
     return buildList {
+        val includedIds = mutableSetOf<String>()
         existingEntries.forEach { existing ->
-            add(refreshedById.remove(existing.id) ?: existing)
+            if (includedIds.add(existing.id)) {
+                add(refreshedById.remove(existing.id) ?: existing)
+            }
         }
-        addAll(refreshedById.values)
+        refreshedById.values.forEach { refreshed ->
+            if (includedIds.add(refreshed.id)) add(refreshed)
+        }
     }
 }

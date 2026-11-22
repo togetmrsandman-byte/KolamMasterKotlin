@@ -67,8 +67,11 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.os.LocaleListCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import org.json.JSONException
 import java.io.File
@@ -169,6 +172,7 @@ internal class OnboardingPermissionFlow(
 }
 
 class MainActivity : ComponentActivity() {
+    private val catalogueRefreshMutex = Mutex()
     private var screenState by mutableStateOf<AppScreen>(AppScreen.ChooseLanguage)
     private var activeLanguage by mutableStateOf(DEFAULT_LANGUAGE_IDENTIFIER)
     private var catalogueState by mutableStateOf(LessonCatalogueUiState())
@@ -833,7 +837,9 @@ class MainActivity : ComponentActivity() {
                         val entries = catalogueRepository.refresh()
                         catalogueState = LessonCatalogueUiState(
                             entries = entries,
-                            isInitialLoading = false
+                            isInitialLoading = false,
+                            arrangementRefreshGeneration =
+                                catalogueState.arrangementRefreshGeneration
                         )
                         entries
                     },
@@ -1177,51 +1183,59 @@ class MainActivity : ComponentActivity() {
     private fun refreshLessonCatalogue() {
         val repository = LessonCatalogueRepository(this)
         lifecycleScope.launch {
-            val cachedEntries = repository.loadCached()
-            catalogueState = LessonCatalogueUiState(
-                entries = cachedEntries,
-                isInitialLoading = cachedEntries.isEmpty(),
-                isRefreshing = true
-            )
-            try {
-                val freshEntries = repository.refresh()
+            catalogueRefreshMutex.withLock {
+                val cachedEntries = repository.loadCached()
                 catalogueState = LessonCatalogueUiState(
-                    entries = freshEntries,
-                    isInitialLoading = false,
-                    isRefreshing = false
+                    entries = cachedEntries,
+                    isInitialLoading = cachedEntries.isEmpty(),
+                    isRefreshing = true,
+                    arrangementRefreshGeneration =
+                        catalogueState.arrangementRefreshGeneration
                 )
-            } catch (exception: IOException) {
-                Log.w("LessonCatalogue", "Could not refresh public lesson catalogue", exception)
-                catalogueState = catalogueState.copy(
-                    isInitialLoading = false,
-                    isRefreshing = false,
-                    refreshFailed = true,
-                    refreshNetworkFailed = NetworkErrors.isNetworkFailure(exception)
-                )
-            } catch (exception: JSONException) {
-                Log.w("LessonCatalogue", "R2 returned invalid lesson catalogue JSON", exception)
-                catalogueState = catalogueState.copy(
-                    isInitialLoading = false,
-                    isRefreshing = false,
-                    refreshFailed = true,
-                    refreshNetworkFailed = false
-                )
-            } catch (exception: CancellationException) {
-                catalogueState = catalogueState.copy(isInitialLoading = false, isRefreshing = false)
-                throw exception
-            } catch (exception: Exception) {
-                Log.e("LessonCatalogue", "Unexpected catalogue refresh failure", exception)
-                catalogueState = catalogueState.copy(
-                    isInitialLoading = false,
-                    isRefreshing = false,
-                    refreshFailed = true,
-                    refreshNetworkFailed = false
-                )
+                try {
+                    val freshEntries = repository.refresh()
+                    catalogueState = LessonCatalogueUiState(
+                        entries = freshEntries,
+                        isInitialLoading = false,
+                        isRefreshing = false,
+                        arrangementRefreshGeneration =
+                            catalogueState.arrangementRefreshGeneration
+                    )
+                } catch (exception: IOException) {
+                    Log.w("LessonCatalogue", "Could not refresh public lesson catalogue", exception)
+                    catalogueState = catalogueState.copy(
+                        isInitialLoading = false,
+                        isRefreshing = false,
+                        refreshFailed = true,
+                        refreshNetworkFailed = NetworkErrors.isNetworkFailure(exception)
+                    )
+                } catch (exception: JSONException) {
+                    Log.w("LessonCatalogue", "R2 returned invalid lesson catalogue JSON", exception)
+                    catalogueState = catalogueState.copy(
+                        isInitialLoading = false,
+                        isRefreshing = false,
+                        refreshFailed = true,
+                        refreshNetworkFailed = false
+                    )
+                } catch (exception: CancellationException) {
+                    catalogueState = catalogueState.copy(isInitialLoading = false, isRefreshing = false)
+                    throw exception
+                } catch (exception: Exception) {
+                    Log.e("LessonCatalogue", "Unexpected catalogue refresh failure", exception)
+                    catalogueState = catalogueState.copy(
+                        isInitialLoading = false,
+                        isRefreshing = false,
+                        refreshFailed = true,
+                        refreshNetworkFailed = false
+                    )
+                }
             }
         }
     }
 
-    private suspend fun checkLessonCatalogueUpdates(): List<LessonCatalogueEntry> {
+    private suspend fun checkLessonCatalogueUpdates(
+        previouslyKnownIds: Set<String>
+    ): List<LessonCatalogueEntry> = catalogueRefreshMutex.withLock {
         catalogueState = catalogueState.copy(
             isRefreshing = true,
             refreshFailed = false,
@@ -1229,11 +1243,14 @@ class MainActivity : ComponentActivity() {
         )
         try {
             val freshEntries = LessonCatalogueRepository(this).refresh()
+            val hasNewLessons = hasNewCatalogueLessonIds(previouslyKnownIds, freshEntries)
             catalogueState = LessonCatalogueUiState(
                 entries = freshEntries,
-                isInitialLoading = false
+                isInitialLoading = false,
+                arrangementRefreshGeneration =
+                    catalogueState.arrangementRefreshGeneration + if (hasNewLessons) 1 else 0
             )
-            return freshEntries
+            freshEntries
         } catch (exception: CancellationException) {
             catalogueState = catalogueState.copy(isInitialLoading = false, isRefreshing = false)
             throw exception
@@ -1504,7 +1521,7 @@ private fun KolamMasterApp(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend (Set<String>) -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,
@@ -1529,7 +1546,8 @@ private fun KolamMasterApp(
         mutableStateOf(emptyList<LessonCatalogueEntry>())
     }
     var wasBrowseVisible by remember { mutableStateOf(isBrowseSessionRestored) }
-    LaunchedEffect(screen, catalogue.entries) {
+    var handledArrangementRefreshGeneration by remember { mutableIntStateOf(0) }
+    LaunchedEffect(screen, catalogue.entries, catalogue.arrangementRefreshGeneration) {
         if (screen != AppScreen.Browse) {
             val isLessonRoute = screen == AppScreen.LessonDownloading ||
                 screen == AppScreen.Loading ||
@@ -1541,13 +1559,20 @@ private fun KolamMasterApp(
         }
         if (catalogue.entries.isEmpty()) return@LaunchedEffect
         val refreshIfDue = !wasBrowseVisible
-        val arrangedEntries = withContext(Dispatchers.IO) {
+        val manualRefreshFoundNewLessons =
+            catalogue.arrangementRefreshGeneration > handledArrangementRefreshGeneration
+        if (manualRefreshFoundNewLessons) {
+            handledArrangementRefreshGeneration = catalogue.arrangementRefreshGeneration
+        }
+        val arrangedEntries = withContext(Dispatchers.IO + NonCancellable) {
             browseArrangementRepository.arrange(
                 entries = catalogue.entries,
-                refreshIfDue = refreshIfDue
+                refreshIfDue = refreshIfDue,
+                rearrangeForNewLessons = manualRefreshFoundNewLessons
             )
         }
         browseCatalogueEntries = arrangedEntries
+        handledArrangementRefreshGeneration = catalogue.arrangementRefreshGeneration
         wasBrowseVisible = true
     }
     val contactAccountId = account?.takeUnless { it.isGuest }?.id
@@ -2527,7 +2552,7 @@ private fun AppScreenContent(
     onLanguageBack: () -> Unit,
     onLoadLesson: (LessonCatalogueEntry) -> Unit,
     onLoadCommunityLesson: (LessonCatalogueEntry) -> Unit,
-    onCheckMoreLessons: suspend () -> List<LessonCatalogueEntry>,
+    onCheckMoreLessons: suspend (Set<String>) -> List<LessonCatalogueEntry>,
     communityLessonOpenError: String?,
     onDismissCommunityLessonOpenError: () -> Unit,
     onCommunityLessonMissing: () -> Unit,

@@ -40,6 +40,30 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
+    fun browseLockVisibilityUsesFreeStatusAndCurrentUnlockRecords() {
+        val free = lesson("free", difficulty = "Easy", type = "Sikku", isFree = true)
+        val locked = lesson("locked", difficulty = "Easy", type = "Sikku", isFree = false)
+
+        assertFalse(shouldShowLessonLockIcon(free, emptySet()))
+        assertTrue(shouldShowLessonLockIcon(locked, emptySet()))
+        assertFalse(shouldShowLessonLockIcon(locked, setOf("locked")))
+        assertEquals(CatalogueAccess.LOCKED, lessonWithCatalogueAccess(locked).access)
+        assertFalse(lessonWithCatalogueAccess(locked).isFree)
+    }
+
+    @Test
+    fun folderLockVisibilityTracksUnlocksWithoutChangingFolderReferences() {
+        val free = lesson("free", difficulty = "Easy", type = "Sikku", isFree = true)
+        val locked = lesson("saved-locked", difficulty = "Easy", type = "Sikku", isFree = false)
+        val customFolder = Folder("custom", "Saved Kolams", listOf(locked.id, free.id))
+
+        assertFalse(shouldShowLessonLockIcon(free, emptySet()))
+        assertTrue(shouldShowLessonLockIcon(locked, emptySet()))
+        assertFalse(shouldShowLessonLockIcon(locked, setOf(locked.id)))
+        assertEquals(listOf(locked.id, free.id), customFolder.lessons)
+    }
+
+    @Test
     fun arrangementBalancesAllNineGroupsAndKeepsUnevenExpertGroupsIntact() {
         val groupCounts = mapOf(
             "Easy" to 2,
@@ -140,6 +164,97 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
+    fun automaticRefreshAppendsNewIdsAndPreservesSavedOrderSeedAndTimestamp() {
+        val originalEntries = lessonsForNineGroups(
+            mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val repository = BrowseArrangementRepository(storage) { 17L }
+        val initial = repository.arrange(originalEntries, nowMillis = 12_345L)
+        val initialSnapshot = storage.snapshot
+        val additions = listOf(
+            lesson("new-one", difficulty = "Easy", type = "Pulli", isFree = true),
+            lesson("new-two", difficulty = "Expert", type = "Rangoli", isFree = false)
+        )
+
+        val afterAutomaticRefresh = repository.arrange(
+            originalEntries + additions,
+            nowMillis = 12_345L + BROWSE_ARRANGEMENT_REFRESH_MILLIS * 2,
+            refreshIfDue = false
+        )
+
+        assertEquals(
+            initial.map { it.id } + additions.map { it.id },
+            afterAutomaticRefresh.map { it.id }
+        )
+        assertEquals(
+            initialSnapshot?.orderedLessonIds,
+            storage.snapshot?.orderedLessonIds?.take(initial.size)
+        )
+        assertEquals(initialSnapshot?.seed, storage.snapshot?.seed)
+        assertEquals(initialSnapshot?.arrangedAtMillis, storage.snapshot?.arrangedAtMillis)
+    }
+
+    @Test
+    fun manualRefreshWithNewIdsGeneratesOneNewArrangement() {
+        val originalEntries = lessonsForNineGroups(
+            mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val seeds = mutableListOf(17L, 42L)
+        var seedCalls = 0
+        val repository = BrowseArrangementRepository(storage) {
+            seedCalls++
+            seeds.removeAt(0)
+        }
+        repository.arrange(originalEntries, nowMillis = 12_345L)
+        val additions = listOf(
+            lesson("manual-new", difficulty = "Easy", type = "Pulli", isFree = true)
+        )
+        val refreshedEntries = originalEntries + additions
+
+        val arranged = repository.arrange(
+            refreshedEntries,
+            nowMillis = 22_345L,
+            refreshIfDue = false,
+            rearrangeForNewLessons = hasNewCatalogueLessonIds(
+                originalEntries.mapTo(mutableSetOf(), LessonCatalogueEntry::id),
+                refreshedEntries
+            )
+        )
+
+        assertEquals(2, seedCalls)
+        assertEquals(42L, storage.snapshot?.seed)
+        assertEquals(22_345L, storage.snapshot?.arrangedAtMillis)
+        assertEquals(refreshedEntries.size, arranged.size)
+        assertEquals(refreshedEntries.map { it.id }.toSet(), arranged.map { it.id }.toSet())
+    }
+
+    @Test
+    fun manualRefreshWithoutNewIdsPreservesOrderSeedAndTimestamp() {
+        val entries = lessonsForNineGroups(
+            mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val repository = BrowseArrangementRepository(storage) { 17L }
+        val initial = repository.arrange(entries, nowMillis = 12_345L)
+        val initialSnapshot = storage.snapshot
+        val metadataUpdates = entries.map { it.copy(lessonName = "${it.lessonName} revised") }
+        val refreshed = mergeCatalogueEntries(entries, metadataUpdates)
+
+        assertFalse(hasNewCatalogueLessonIds(entries.mapTo(mutableSetOf()) { it.id }, refreshed))
+        val afterManualRefresh = repository.arrange(
+            refreshed,
+            nowMillis = 99_999L,
+            refreshIfDue = false,
+            rearrangeForNewLessons = false
+        )
+
+        assertEquals(initial.map { it.id }, afterManualRefresh.map { it.id })
+        assertEquals(initialSnapshot, storage.snapshot)
+    }
+
+    @Test
     fun unlockingLessonChangesAccessFilterButNotItsBrowsePosition() {
         val entries = lessonsForNineGroups(
             mapOf("Easy" to 3, "Intermediate" to 3, "Expert" to 3)
@@ -185,6 +300,7 @@ class BrowseCatalogueSectionsTest {
         val initial = repository.arrange(entries, nowMillis = 12_345L)
         val snapshot = storage.snapshot
         val metadataUpdates = entries.map { it.copy(lessonName = "${it.lessonName} updated") }
+            .asReversed()
         val refreshed = mergeCatalogueEntries(entries, metadataUpdates)
 
         val arranged = repository.arrange(
@@ -200,7 +316,7 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
-    fun newCatalogueBatchTriggersFreshArrangementAndPreservesExistingLessonsAndUnlocks() {
+    fun manuallyDiscoveredCatalogueBatchTriggersFreshArrangementAndPreservesUnlocks() {
         val existingEntries = lessonsForNineGroups(
             mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
         )
@@ -217,7 +333,8 @@ class BrowseCatalogueSectionsTest {
         val arranged = repository.arrange(
             refreshedEntries,
             nowMillis = 22_345L,
-            refreshIfDue = false
+            refreshIfDue = false,
+            rearrangeForNewLessons = true
         )
 
         assertEquals(42L, storage.snapshot?.seed)
@@ -230,6 +347,26 @@ class BrowseCatalogueSectionsTest {
             balancedBrowseArrangement(refreshedEntries, 42L).map { it.id },
             arranged.map { it.id }
         )
+    }
+
+    @Test
+    fun duplicateLessonIdsDoNotCreateDuplicateArrangementEntries() {
+        val first = lesson("duplicate", difficulty = "Easy", type = "Sikku", isFree = true)
+        val duplicate = lesson("duplicate", difficulty = "Expert", type = "Rangoli", isFree = false)
+        val another = lesson("another", difficulty = "Intermediate", type = "Pulli", isFree = false)
+        val storage = InMemoryBrowseArrangementStorage()
+        val repository = BrowseArrangementRepository(storage) { 19L }
+
+        val arranged = repository.arrange(
+            listOf(first, duplicate, another),
+            nowMillis = 1_000L
+        )
+
+        assertEquals(2, arranged.size)
+        assertEquals(setOf("duplicate", "another"), arranged.map { it.id }.toSet())
+        assertEquals(2, arranged.map { it.id }.distinct().size)
+        assertEquals(2, storage.snapshot?.orderedLessonIds?.distinct()?.size)
+        assertEquals(1, mergeCatalogueEntries(listOf(first, duplicate), listOf(duplicate)).size)
     }
 
     @Test
