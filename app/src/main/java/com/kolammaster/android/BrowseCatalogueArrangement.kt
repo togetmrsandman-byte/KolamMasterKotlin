@@ -2,14 +2,11 @@ package com.kolammaster.android
 
 import android.content.Context
 import android.util.Log
-import org.json.JSONArray
-import org.json.JSONException
 import kotlin.random.Random
 
 internal data class BrowseArrangementSnapshot(
     val seed: Long,
-    val arrangedAtMillis: Long,
-    val orderedLessonIds: List<String>
+    val arrangedAtMillis: Long
 )
 
 internal interface BrowseArrangementStorage {
@@ -24,19 +21,11 @@ internal class BrowseArrangementPreferencesStorage(context: Context) : BrowseArr
     )
 
     override fun load(): BrowseArrangementSnapshot? {
-        val orderedIds = preferences.getString(ORDER_KEY, null) ?: return null
         return try {
-            val array = JSONArray(orderedIds)
             BrowseArrangementSnapshot(
                 seed = preferences.getLong(SEED_KEY, return null),
-                arrangedAtMillis = preferences.getLong(ARRANGED_AT_KEY, return null),
-                orderedLessonIds = List(array.length()) { index ->
-                    array.getString(index)
-                }
+                arrangedAtMillis = preferences.getLong(ARRANGED_AT_KEY, return null)
             )
-        } catch (exception: JSONException) {
-            Log.w(TAG, "Ignoring invalid saved Browse arrangement.", exception)
-            null
         } catch (exception: ClassCastException) {
             Log.w(TAG, "Ignoring invalid saved Browse arrangement values.", exception)
             null
@@ -48,7 +37,6 @@ internal class BrowseArrangementPreferencesStorage(context: Context) : BrowseArr
             preferences.edit()
                 .putLong(SEED_KEY, snapshot.seed)
                 .putLong(ARRANGED_AT_KEY, snapshot.arrangedAtMillis)
-                .putString(ORDER_KEY, JSONArray(snapshot.orderedLessonIds).toString())
                 .commit()
         ) { "Could not persist the Browse arrangement." }
     }
@@ -57,7 +45,6 @@ internal class BrowseArrangementPreferencesStorage(context: Context) : BrowseArr
         const val PREFERENCES_NAME = "kolam_master_browse_arrangement"
         const val SEED_KEY = "seed"
         const val ARRANGED_AT_KEY = "arranged-at"
-        const val ORDER_KEY = "ordered-lesson-ids"
         const val TAG = "BrowseArrangement"
     }
 }
@@ -77,33 +64,32 @@ internal class BrowseArrangementRepository(
 
         val uniqueEntries = entries.distinctBy(LessonCatalogueEntry::id)
         val previous = storage.load()
+        val expiryDue = previous?.let {
+            browseArrangementIsDue(it.arrangedAtMillis, nowMillis)
+        } ?: false
         val shouldRefresh = previous == null ||
             rearrangeForNewLessons ||
-            (refreshIfDue && browseArrangementIsDue(previous.arrangedAtMillis, nowMillis))
-        if (shouldRefresh) {
+            (refreshIfDue && expiryDue)
+        val seed = if (shouldRefresh) {
             val generatedSeed = seedProvider()
-            val seed = if (previous != null && previous.seed == generatedSeed) {
+            if (previous != null && previous.seed == generatedSeed) {
                 generatedSeed + 1
             } else {
                 generatedSeed
             }
-            val ordered = balancedBrowseArrangement(uniqueEntries, seed)
+        } else {
+            checkNotNull(previous).seed
+        }
+        if (shouldRefresh) {
             storage.save(
                 BrowseArrangementSnapshot(
                     seed = seed,
-                    arrangedAtMillis = nowMillis,
-                    orderedLessonIds = ordered.map(LessonCatalogueEntry::id)
+                    arrangedAtMillis = nowMillis
                 )
             )
-            return ordered
         }
 
-        val snapshot = checkNotNull(previous)
-        val orderedIds = reconcileOrderedIds(snapshot, uniqueEntries)
-        if (orderedIds != snapshot.orderedLessonIds) {
-            storage.save(snapshot.copy(orderedLessonIds = orderedIds))
-        }
-        return entriesInOrder(uniqueEntries, orderedIds)
+        return deterministicBrowseArrangement(uniqueEntries, seed)
     }
 }
 
@@ -117,6 +103,12 @@ internal fun hasNewCatalogueLessonIds(
     existingIds: Set<String>,
     refreshedEntries: List<LessonCatalogueEntry>
 ): Boolean = refreshedEntries.any { it.id !in existingIds }
+
+internal fun deterministicBrowseArrangement(
+    entries: List<LessonCatalogueEntry>,
+    seed: Long
+): List<LessonCatalogueEntry> =
+    balancedBrowseArrangement(entries.distinctBy(LessonCatalogueEntry::id).sortedBy { it.id }, seed)
 
 internal enum class BrowseLessonAccessFilter {
     ALL,
@@ -235,26 +227,3 @@ private fun arrangementSpacingPenalty(
 private fun stableTieNoise(seed: Long, lesson: LessonCatalogueEntry, position: Int): Double =
     Random(seed xor lesson.id.hashCode().toLong() xor (position.toLong() * 0x9E3779B9L))
         .nextDouble() * 0.8
-
-private fun reconcileOrderedIds(
-    snapshot: BrowseArrangementSnapshot,
-    entries: List<LessonCatalogueEntry>
-): List<String> {
-    val availableIds = entries.mapTo(mutableSetOf(), LessonCatalogueEntry::id)
-    val existingIds = snapshot.orderedLessonIds
-        .distinct()
-        .filter { it in availableIds }
-    val includedIds = existingIds.toHashSet()
-    return existingIds + entries.asSequence()
-        .map(LessonCatalogueEntry::id)
-        .filter(includedIds::add)
-        .toList()
-}
-
-private fun entriesInOrder(
-    entries: List<LessonCatalogueEntry>,
-    orderedIds: List<String>
-): List<LessonCatalogueEntry> {
-    val availableById = entries.associateBy(LessonCatalogueEntry::id)
-    return orderedIds.distinct().mapNotNull(availableById::get)
-}

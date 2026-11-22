@@ -111,6 +111,30 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
+    fun sameSeedAndCatalogueProduceTheSameArrangementRegardlessOfInputOrder() {
+        val entries = lessonsForNineGroups(
+            mapOf("Easy" to 3, "Intermediate" to 3, "Expert" to 3)
+        )
+
+        assertEquals(
+            deterministicBrowseArrangement(entries, seed = 41L).map { it.id },
+            deterministicBrowseArrangement(entries.reversed(), seed = 41L).map { it.id }
+        )
+    }
+
+    @Test
+    fun differentSeedsProduceDifferentArrangements() {
+        val entries = lessonsForNineGroups(
+            mapOf("Easy" to 5, "Intermediate" to 5, "Expert" to 5)
+        )
+
+        assertNotEquals(
+            deterministicBrowseArrangement(entries, seed = 41L).map { it.id },
+            deterministicBrowseArrangement(entries, seed = 42L).map { it.id }
+        )
+    }
+
+    @Test
     fun arrangementStaysPersistedUntilFiveHoursThenCreatesANewSeededOrder() {
         val entries = lessonsForNineGroups(mapOf("Easy" to 3, "Intermediate" to 3, "Expert" to 3))
         val storage = InMemoryBrowseArrangementStorage()
@@ -137,7 +161,10 @@ class BrowseCatalogueSectionsTest {
         )
         assertEquals(222L, storage.snapshot?.seed)
         assertEquals(1_000L + BROWSE_ARRANGEMENT_REFRESH_MILLIS, storage.snapshot?.arrangedAtMillis)
-        assertEquals(balancedBrowseArrangement(entries, 222L).map { it.id }, refreshed.map { it.id })
+        assertEquals(
+            deterministicBrowseArrangement(entries, 222L).map { it.id },
+            refreshed.map { it.id }
+        )
         assertNotEquals(initial.map { it.id }, refreshed.map { it.id })
     }
 
@@ -164,7 +191,7 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
-    fun automaticRefreshAppendsNewIdsAndPreservesSavedOrderSeedAndTimestamp() {
+    fun incompleteCatalogueRefreshDoesNotDiscardSavedLessonsOrChangeArrangement() {
         val originalEntries = lessonsForNineGroups(
             mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
         )
@@ -172,25 +199,17 @@ class BrowseCatalogueSectionsTest {
         val repository = BrowseArrangementRepository(storage) { 17L }
         val initial = repository.arrange(originalEntries, nowMillis = 12_345L)
         val initialSnapshot = storage.snapshot
-        val additions = listOf(
-            lesson("new-one", difficulty = "Easy", type = "Pulli", isFree = true),
-            lesson("new-two", difficulty = "Expert", type = "Rangoli", isFree = false)
-        )
+        val incompleteRefresh = originalEntries.drop(3)
+        val mergedEntries = mergeCatalogueEntries(originalEntries, incompleteRefresh)
 
-        val afterAutomaticRefresh = repository.arrange(
-            originalEntries + additions,
+        val afterIncompleteRefresh = repository.arrange(
+            mergedEntries,
             nowMillis = 12_345L + BROWSE_ARRANGEMENT_REFRESH_MILLIS * 2,
             refreshIfDue = false
         )
 
-        assertEquals(
-            initial.map { it.id } + additions.map { it.id },
-            afterAutomaticRefresh.map { it.id }
-        )
-        assertEquals(
-            initialSnapshot?.orderedLessonIds,
-            storage.snapshot?.orderedLessonIds?.take(initial.size)
-        )
+        assertEquals(originalEntries.map { it.id }.toSet(), mergedEntries.map { it.id }.toSet())
+        assertEquals(initial.map { it.id }, afterIncompleteRefresh.map { it.id })
         assertEquals(initialSnapshot?.seed, storage.snapshot?.seed)
         assertEquals(initialSnapshot?.arrangedAtMillis, storage.snapshot?.arrangedAtMillis)
     }
@@ -365,7 +384,7 @@ class BrowseCatalogueSectionsTest {
         assertEquals(2, arranged.size)
         assertEquals(setOf("duplicate", "another"), arranged.map { it.id }.toSet())
         assertEquals(2, arranged.map { it.id }.distinct().size)
-        assertEquals(2, storage.snapshot?.orderedLessonIds?.distinct()?.size)
+        assertEquals(19L, storage.snapshot?.seed)
         assertEquals(1, mergeCatalogueEntries(listOf(first, duplicate), listOf(duplicate)).size)
     }
 

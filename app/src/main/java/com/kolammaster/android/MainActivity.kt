@@ -367,8 +367,6 @@ class MainActivity : ComponentActivity() {
                 LocalizedAppResources(activeLanguage) {
                     KolamMasterApp(
                     screen = screenState,
-                    isBrowseSessionRestored =
-                        savedInstanceState?.getString(SCREEN_STATE_KEY) == "Browse",
                     onScreenChange = { screenState = it },
                     activeLanguage = activeLanguage,
                     catalogue = catalogueState,
@@ -1487,7 +1485,6 @@ private fun Intent.toAnnouncementNotification(): AnnouncementNotification? {
 @Composable
 private fun KolamMasterApp(
     screen: AppScreen,
-    isBrowseSessionRestored: Boolean,
     onScreenChange: (AppScreen) -> Unit,
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
@@ -1545,18 +1542,24 @@ private fun KolamMasterApp(
     var browseCatalogueEntries by remember {
         mutableStateOf(emptyList<LessonCatalogueEntry>())
     }
-    var wasBrowseVisible by remember { mutableStateOf(isBrowseSessionRestored) }
+    var wasBrowseVisible by remember { mutableStateOf(false) }
     var handledArrangementRefreshGeneration by remember { mutableIntStateOf(0) }
-    LaunchedEffect(screen, catalogue.entries, catalogue.arrangementRefreshGeneration) {
+    LaunchedEffect(
+        screen,
+        catalogue.entries,
+        catalogue.isRefreshing,
+        catalogue.arrangementRefreshGeneration
+    ) {
+        val isLessonRoute = screen == AppScreen.LessonDownloading ||
+            screen == AppScreen.Loading ||
+            screen is AppScreen.SikkuReady ||
+            screen is AppScreen.RangoliReady ||
+            screen is AppScreen.Failed
         if (screen != AppScreen.Browse) {
-            val isLessonRoute = screen == AppScreen.LessonDownloading ||
-                screen == AppScreen.Loading ||
-                screen is AppScreen.SikkuReady ||
-                screen is AppScreen.RangoliReady ||
-                screen is AppScreen.Failed
             if (!isLessonRoute) wasBrowseVisible = false
             return@LaunchedEffect
         }
+        if (catalogue.isRefreshing) return@LaunchedEffect
         if (catalogue.entries.isEmpty()) return@LaunchedEffect
         val refreshIfDue = !wasBrowseVisible
         val manualRefreshFoundNewLessons =
