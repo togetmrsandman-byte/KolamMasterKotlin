@@ -74,7 +74,10 @@ internal class BrowseArrangementRepository(
         if (entries.isEmpty()) return emptyList()
 
         val previous = storage.load()
+        val hasNewLessons = previous != null &&
+            entries.any { it.id !in previous.orderedLessonIds }
         val shouldRefresh = previous == null ||
+            hasNewLessons ||
             (refreshIfDue && browseArrangementIsDue(previous.arrangedAtMillis, nowMillis))
         if (shouldRefresh) {
             val generatedSeed = seedProvider()
@@ -112,7 +115,8 @@ internal fun browseArrangementIsDue(arrangedAtMillis: Long, nowMillis: Long): Bo
 internal enum class BrowseLessonAccessFilter {
     ALL,
     FREE,
-    LOCKED
+    LOCKED,
+    UNLOCKED
 }
 
 internal fun filterBrowseCatalogue(
@@ -120,7 +124,8 @@ internal fun filterBrowseCatalogue(
     query: String,
     difficulties: Set<String>,
     types: Set<String>,
-    accessFilter: BrowseLessonAccessFilter
+    accessFilter: BrowseLessonAccessFilter,
+    unlockedLessonIds: Set<String> = emptySet()
 ): List<LessonCatalogueEntry> = entries.filter { lesson ->
     val matchesSearch = query.isBlank() ||
         lesson.searchableText().contains(query.trim(), ignoreCase = true)
@@ -130,7 +135,8 @@ internal fun filterBrowseCatalogue(
     val matchesAccess = when (accessFilter) {
         BrowseLessonAccessFilter.ALL -> true
         BrowseLessonAccessFilter.FREE -> lesson.isFree
-        BrowseLessonAccessFilter.LOCKED -> !lesson.isFree
+        BrowseLessonAccessFilter.LOCKED -> !lesson.isFree && lesson.id !in unlockedLessonIds
+        BrowseLessonAccessFilter.UNLOCKED -> !lesson.isFree && lesson.id in unlockedLessonIds
     }
     matchesSearch && matchesDifficulty && matchesType && matchesAccess
 }

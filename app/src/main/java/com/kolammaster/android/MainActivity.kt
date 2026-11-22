@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.background
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.getValue
@@ -362,6 +363,8 @@ class MainActivity : ComponentActivity() {
                 LocalizedAppResources(activeLanguage) {
                     KolamMasterApp(
                     screen = screenState,
+                    isBrowseSessionRestored =
+                        savedInstanceState?.getString(SCREEN_STATE_KEY) == "Browse",
                     onScreenChange = { screenState = it },
                     activeLanguage = activeLanguage,
                     catalogue = catalogueState,
@@ -1008,6 +1011,7 @@ class MainActivity : ComponentActivity() {
             }
             unlockedCatalogueLessonIds = mergedUnlocks
             visibleLessonCount = mergedVisibleCount
+            syncUnlockedLessonsFolder(account, mergedUnlocks)
             if (mergedUnlocks != remoteData.unlockedLessonIds ||
                 mergedVisibleCount != remoteData.visibleLessonCount
             ) {
@@ -1059,6 +1063,7 @@ class MainActivity : ComponentActivity() {
                 unlockedCatalogueLessonIds
             try {
                 lessonUnlockRepository.saveLocal(account.id, localUnlocks)
+                syncUnlockedLessonsFolder(account, localUnlocks)
             } catch (exception: Exception) {
                 Log.e("LessonUnlocks", "Could not persist lesson unlock locally.", exception)
             }
@@ -1078,12 +1083,31 @@ class MainActivity : ComponentActivity() {
                 val localUnlocks = lessonUnlockRepository.loadLocal(resolvedAccount.id) + lessonId
                 lessonUnlockRepository.saveLocal(resolvedAccount.id, localUnlocks)
                 unlockedCatalogueLessonIds = localUnlocks
+                syncUnlockedLessonsFolder(resolvedAccount, localUnlocks)
                 syncLessonUnlocks(resolvedAccount, localUnlocks, notifyNetworkFailure = true)
             } catch (exception: CancellationException) {
                 throw exception
             } catch (exception: Exception) {
                 Log.e("LessonUnlocks", "Could not persist lesson unlock locally.", exception)
                 if (NetworkErrors.isNetworkFailure(exception)) showNetworkIssue()
+            }
+        }
+    }
+
+    private fun syncUnlockedLessonsFolder(
+        account: SupabaseAccount,
+        unlockedLessonIds: Set<String>
+    ) {
+        if (account.isGuest) return
+        lifecycleScope.launch {
+            try {
+                if (SupabaseGuestAuth.currentAccount()?.id == account.id) {
+                    FolderRepository().syncUnlockedLessonsFolder(unlockedLessonIds)
+                }
+            } catch (exception: CancellationException) {
+                throw exception
+            } catch (exception: Exception) {
+                Log.e("Folders", "Could not synchronize Unlocked Lessons (Default).", exception)
             }
         }
     }
@@ -1446,6 +1470,7 @@ private fun Intent.toAnnouncementNotification(): AnnouncementNotification? {
 @Composable
 private fun KolamMasterApp(
     screen: AppScreen,
+    isBrowseSessionRestored: Boolean,
     onScreenChange: (AppScreen) -> Unit,
     activeLanguage: String,
     catalogue: LessonCatalogueUiState,
@@ -1493,17 +1518,25 @@ private fun KolamMasterApp(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val localizedContext = context.withSelectedAppLanguage()
-    val browseCatalogueState = remember { BrowseCatalogueState() }
+    val browseGridState = rememberLazyGridState()
+    val browseCatalogueState = remember(browseGridState) {
+        BrowseCatalogueState(browseGridState)
+    }
     val browseArrangementRepository = remember(context) {
         BrowseArrangementRepository(BrowseArrangementPreferencesStorage(context))
     }
     var browseCatalogueEntries by remember {
         mutableStateOf(emptyList<LessonCatalogueEntry>())
     }
-    var wasBrowseVisible by remember { mutableStateOf(false) }
+    var wasBrowseVisible by remember { mutableStateOf(isBrowseSessionRestored) }
     LaunchedEffect(screen, catalogue.entries) {
         if (screen != AppScreen.Browse) {
-            wasBrowseVisible = false
+            val isLessonRoute = screen == AppScreen.LessonDownloading ||
+                screen == AppScreen.Loading ||
+                screen is AppScreen.SikkuReady ||
+                screen is AppScreen.RangoliReady ||
+                screen is AppScreen.Failed
+            if (!isLessonRoute) wasBrowseVisible = false
             return@LaunchedEffect
         }
         if (catalogue.entries.isEmpty()) return@LaunchedEffect
@@ -2597,6 +2630,7 @@ private fun AppScreenContent(
         AppScreen.MyKolams -> MyFoldersDestination(
             accountId = account?.takeUnless { it.isGuest }?.id,
             catalogueEntries = catalogue.entries,
+            unlockedLessonIds = unlockedCatalogueLessonIds,
             onSignIn = onGoogleSignIn,
             onCancel = onGoBack,
             isSignInProcessing = isAuthProcessing,

@@ -8,8 +8,12 @@ import java.util.UUID
 internal data class Folder(
     val id: String,
     val name: String,
-    val lessons: List<String>
+    val lessons: List<String>,
+    val isSystem: Boolean = false
 )
+
+internal const val UNLOCKED_LESSONS_FOLDER_ID = "system-unlocked-lessons"
+internal const val UNLOCKED_LESSONS_FOLDER_NAME = "Unlocked Lessons (Default)"
 
 internal class FolderDataException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
@@ -63,7 +67,15 @@ internal object FolderJson {
                         add(lessonId)
                     }
                 }
-                add(Folder(id, name, lessons.distinct()))
+                add(
+                    Folder(
+                        id = id,
+                        name = name,
+                        lessons = lessons.distinct(),
+                        isSystem = item.optBoolean("isSystem") ||
+                            id == UNLOCKED_LESSONS_FOLDER_ID
+                    )
+                )
             }
         }
     }
@@ -75,6 +87,7 @@ internal object FolderJson {
                     .put("id", folder.id)
                     .put("name", folder.name)
                     .put("lessons", JSONArray(folder.lessons))
+                    .apply { if (folder.isSystem) put("isSystem", true) }
             )
         }
     }.toString()
@@ -94,7 +107,7 @@ internal object FolderCollection {
     fun rename(folders: List<Folder>, folderId: String, name: String): List<Folder> {
         require(folderId.isNotBlank()) { "Folder ID must not be empty." }
         require(name.isNotBlank()) { "Folder name must not be empty." }
-        requireFolder(folders, folderId)
+        requireOrdinaryFolder(folders, folderId)
         return folders.map { folder ->
             if (folder.id == folderId) folder.copy(name = name) else folder
         }
@@ -102,6 +115,7 @@ internal object FolderCollection {
 
     fun delete(folders: List<Folder>, folderId: String): List<Folder> {
         require(folderId.isNotBlank()) { "Folder ID must not be empty." }
+        requireNotSystemFolder(folders, folderId)
         return folders.filterNot { it.id == folderId }
     }
 
@@ -112,7 +126,7 @@ internal object FolderCollection {
     ): List<Folder> {
         require(folderId.isNotBlank()) { "Folder ID must not be empty." }
         require(lessonId.isNotBlank()) { "Lesson ID must not be empty." }
-        requireFolder(folders, folderId)
+        requireOrdinaryFolder(folders, folderId)
         return folders.map { folder ->
             if (folder.id == folderId && lessonId !in folder.lessons) {
                 folder.copy(lessons = folder.lessons + lessonId)
@@ -129,13 +143,48 @@ internal object FolderCollection {
     ): List<Folder> {
         require(folderId.isNotBlank()) { "Folder ID must not be empty." }
         require(lessonId.isNotBlank()) { "Lesson ID must not be empty." }
-        requireFolder(folders, folderId)
+        requireOrdinaryFolder(folders, folderId)
         return folders.map { folder ->
             if (folder.id == folderId) {
                 folder.copy(lessons = folder.lessons.filterNot { it == lessonId })
             } else {
                 folder
             }
+        }
+    }
+
+    fun syncUnlockedLessons(
+        folders: List<Folder>,
+        unlockedLessonIds: Set<String>
+    ): Pair<List<Folder>, Folder> {
+        val current = folders.firstOrNull { it.id == UNLOCKED_LESSONS_FOLDER_ID }
+        val systemFolder = Folder(
+            id = UNLOCKED_LESSONS_FOLDER_ID,
+            name = UNLOCKED_LESSONS_FOLDER_NAME,
+            lessons = unlockedLessonIds.sorted(),
+            isSystem = true
+        )
+        val updated = if (current == null) {
+            folders + systemFolder
+        } else {
+            folders.map { folder ->
+                if (folder.id == UNLOCKED_LESSONS_FOLDER_ID) systemFolder else folder
+            }
+        }
+        return updated to systemFolder
+    }
+
+    fun isSystemFolder(folder: Folder): Boolean =
+        folder.isSystem || folder.id == UNLOCKED_LESSONS_FOLDER_ID
+
+    private fun requireOrdinaryFolder(folders: List<Folder>, folderId: String) {
+        requireFolder(folders, folderId)
+        requireNotSystemFolder(folders, folderId)
+    }
+
+    private fun requireNotSystemFolder(folders: List<Folder>, folderId: String) {
+        require(folders.none { it.id == folderId && isSystemFolder(it) }) {
+            "System folders cannot be modified by ordinary folder operations."
         }
     }
 

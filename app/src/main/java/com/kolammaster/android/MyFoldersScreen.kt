@@ -61,6 +61,7 @@ internal fun MyFoldersDestination(
     onSignIn: () -> Unit,
     onCancel: () -> Unit,
     isSignInProcessing: Boolean,
+    unlockedLessonIds: Set<String> = emptySet(),
     onRequestLesson: (String) -> Unit = {},
     selectedFolderIdState: MutableState<String?> = remember(accountId) {
         mutableStateOf(null)
@@ -82,7 +83,7 @@ internal fun MyFoldersDestination(
     val folderUpdateFailed = currentAppString("folder_update_failed")
     val folderUnavailable = currentAppString("folder_no_longer_available")
 
-    LaunchedEffect(accountId, refreshKey) {
+    LaunchedEffect(accountId, refreshKey, unlockedLessonIds) {
         if (accountId == null) {
             isLoading = false
             return@LaunchedEffect
@@ -90,7 +91,7 @@ internal fun MyFoldersDestination(
         isLoading = true
         loadError = null
         try {
-            val loaded = folderRepository.loadFolders()
+            val loaded = folderRepository.syncUnlockedLessonsFolder(unlockedLessonIds)
             if (latestAccountId == accountId) folders = loaded
         } catch (exception: CancellationException) {
             throw exception
@@ -297,8 +298,10 @@ internal fun MyFoldersDestination(
                                 ) {
                                     items(folder.lessons, key = { it }) { lessonId ->
                                         val lesson = lessonsById[lessonId]
+                                        val canRemoveLesson =
+                                            !FolderCollection.isSystemFolder(folder)
                                         val onRemove = {
-                                            if (!isProcessing) {
+                                            if (!isProcessing && canRemoveLesson) {
                                                 runFolderAction {
                                                     val updated = folderRepository.removeLesson(
                                                         folder.id,
@@ -314,12 +317,14 @@ internal fun MyFoldersDestination(
                                             UnavailableFolderLessonCard(
                                                 lessonId = lessonId,
                                                 enabled = !isProcessing,
+                                                canRemove = canRemoveLesson,
                                                 onRemove = onRemove
                                             )
                                         } else {
                                             FolderLessonCard(
                                                 lesson = lesson,
                                                 enabled = !isProcessing,
+                                                canRemove = canRemoveLesson,
                                                 onView = { onRequestLesson(lesson.id) },
                                                 onRemove = onRemove
                                             )
@@ -505,26 +510,28 @@ private fun FolderListItem(
                     enabled = enabled,
                     onClick = onOpen
                 )
-                Button(
-                    enabled = enabled,
-                    onClick = onRename,
-                    modifier = Modifier.height(32.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = 8.dp,
-                        vertical = 0.dp
-                    ),
-                    colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                ) { Text(currentAppString("rename"), fontSize = 12.sp) }
-                Button(
-                    enabled = enabled,
-                    onClick = onDelete,
-                    modifier = Modifier.height(32.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        horizontal = 8.dp,
-                        vertical = 0.dp
-                    ),
-                    colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
-                ) { Text(currentAppString("delete"), fontSize = 12.sp) }
+                if (!FolderCollection.isSystemFolder(folder)) {
+                    Button(
+                        enabled = enabled,
+                        onClick = onRename,
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 8.dp,
+                            vertical = 0.dp
+                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
+                    ) { Text(currentAppString("rename"), fontSize = 12.sp) }
+                    Button(
+                        enabled = enabled,
+                        onClick = onDelete,
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 8.dp,
+                            vertical = 0.dp
+                        ),
+                        colors = ButtonDefaults.buttonColors(containerColor = FolderGold)
+                    ) { Text(currentAppString("delete"), fontSize = 12.sp) }
+                }
             }
         }
     }
@@ -554,6 +561,7 @@ private fun CompactFolderActionButton(
 private fun UnavailableFolderLessonCard(
     lessonId: String,
     enabled: Boolean,
+    canRemove: Boolean,
     onRemove: () -> Unit
 ) {
     Card(
@@ -591,7 +599,7 @@ private fun UnavailableFolderLessonCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                RemoveLessonButton(enabled, onRemove)
+                if (canRemove) RemoveLessonButton(enabled, onRemove)
             }
         }
     }
@@ -601,6 +609,7 @@ private fun UnavailableFolderLessonCard(
 private fun FolderLessonCard(
     lesson: LessonCatalogueEntry,
     enabled: Boolean,
+    canRemove: Boolean,
     onView: () -> Unit,
     onRemove: () -> Unit
 ) {
@@ -656,7 +665,7 @@ private fun FolderLessonCard(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     ViewLessonButton(enabled, onView)
-                    RemoveLessonButton(enabled, onRemove)
+                    if (canRemove) RemoveLessonButton(enabled, onRemove)
                 }
             }
         }
@@ -779,7 +788,9 @@ internal fun SaveToMyFoldersDialog(
         error = null
         try {
             val loaded = folderRepository.loadFolders()
-            if (latestAccountId == accountId) folders = loaded
+            if (latestAccountId == accountId) {
+                folders = loaded.filterNot(FolderCollection::isSystemFolder)
+            }
         } catch (exception: CancellationException) {
             throw exception
         } catch (exception: Exception) {

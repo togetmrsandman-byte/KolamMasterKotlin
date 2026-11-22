@@ -112,8 +112,9 @@ internal data class LessonCatalogueUiState(
     val refreshNetworkFailed: Boolean = false
 )
 
-internal class BrowseCatalogueState {
-    val gridState = LazyGridState()
+internal class BrowseCatalogueState(
+    val gridState: LazyGridState = LazyGridState()
+) {
     var query by mutableStateOf("")
     var difficulties by mutableStateOf<Set<String>>(emptySet())
     var types by mutableStateOf<Set<String>>(emptySet())
@@ -329,14 +330,16 @@ internal fun BrowseLessonScreen(
         browseState.query,
         browseState.difficulties,
         browseState.types,
-        browseState.accessFilter
+        browseState.accessFilter,
+        unlockedLessonIds
     ) {
         filterBrowseCatalogue(
             entries = browseEntries.map(::lessonWithCatalogueAccess),
             query = browseState.query,
             difficulties = browseState.difficulties,
             types = browseState.types,
-            accessFilter = browseState.accessFilter
+            accessFilter = browseState.accessFilter,
+            unlockedLessonIds = unlockedLessonIds
         )
     }
     val visibleEntries = filteredEntries
@@ -598,17 +601,20 @@ internal fun BrowseLessonScreen(
                     options = listOf(
                         BrowseFilterOption("", "all", isAll = true),
                         BrowseFilterOption("free", "free"),
-                        BrowseFilterOption("locked", "locked")
+                        BrowseFilterOption("locked", "locked"),
+                        BrowseFilterOption("unlocked", "unlocked")
                     ),
                     selected = when (browseState.accessFilter) {
                         BrowseLessonAccessFilter.ALL -> emptySet()
                         BrowseLessonAccessFilter.FREE -> setOf("free")
                         BrowseLessonAccessFilter.LOCKED -> setOf("locked")
+                        BrowseLessonAccessFilter.UNLOCKED -> setOf("unlocked")
                     },
                     onSelected = { option ->
                         browseState.accessFilter = when (option) {
                             "free" -> BrowseLessonAccessFilter.FREE
                             "locked" -> BrowseLessonAccessFilter.LOCKED
+                            "unlocked" -> BrowseLessonAccessFilter.UNLOCKED
                             else -> BrowseLessonAccessFilter.ALL
                         }
                         resetGridPosition()

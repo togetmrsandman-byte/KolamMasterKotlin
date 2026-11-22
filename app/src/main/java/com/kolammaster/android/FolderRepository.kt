@@ -18,6 +18,8 @@ internal class FolderSignInRequiredException :
 
 internal interface FolderDataSource {
     suspend fun loadFolders(): List<Folder>
+    suspend fun syncUnlockedLessonsFolder(unlockedLessonIds: Set<String>): List<Folder> =
+        loadFolders()
     suspend fun createFolder(name: String): Folder
     suspend fun renameFolder(folderId: String, name: String): Folder
     suspend fun deleteFolder(folderId: String)
@@ -59,6 +61,13 @@ internal class FolderRepository : FolderDataSource {
         mutateFolders<Folder> { folders ->
             val updated = FolderCollection.removeLesson(folders, folderId, lessonId)
             updated to updated.single { it.id == folderId }
+        }
+
+    override suspend fun syncUnlockedLessonsFolder(
+        unlockedLessonIds: Set<String>
+    ): List<Folder> = mutateFolders { folders ->
+            val (updated, _) = FolderCollection.syncUnlockedLessons(folders, unlockedLessonIds)
+            updated to updated
         }
 
     private suspend fun <T> mutateFolders(

@@ -5,6 +5,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import androidx.compose.foundation.lazy.grid.LazyGridState
 
 class BrowseCatalogueSectionsTest {
     @Test
@@ -117,7 +118,7 @@ class BrowseCatalogueSectionsTest {
     }
 
     @Test
-    fun catalogueRefreshAddsLessonsWithoutReorderingExistingEntriesOrChangingUnlocks() {
+    fun returningFromALessonKeepsArrangementAndDoesNotRestartTheFiveHourTimer() {
         val originalEntries = lessonsForNineGroups(
             mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
         )
@@ -126,34 +127,123 @@ class BrowseCatalogueSectionsTest {
         val initial = repository.arrange(originalEntries, nowMillis = 12_345L)
         val initialSnapshot = storage.snapshot
         val unlockedIds = setOf("Expert-Sikku-1")
-        val refreshedEntries = originalEntries + lesson(
-            "new-lesson",
-            difficulty = "Easy",
-            type = "Pulli",
-            isFree = false
+
+        val afterLessonReturn = repository.arrange(
+            originalEntries,
+            nowMillis = 12_345L + BROWSE_ARRANGEMENT_REFRESH_MILLIS,
+            refreshIfDue = false
         )
 
-        val refreshed = repository.arrange(
-            refreshedEntries,
+        assertEquals(initial.map { it.id }, afterLessonReturn.map { it.id })
+        assertEquals(initialSnapshot, storage.snapshot)
+        assertTrue(canOpenLesson(afterLessonReturn.single { it.id in unlockedIds }, unlockedIds))
+    }
+
+    @Test
+    fun unlockingLessonChangesAccessFilterButNotItsBrowsePosition() {
+        val entries = lessonsForNineGroups(
+            mapOf("Easy" to 3, "Intermediate" to 3, "Expert" to 3)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val repository = BrowseArrangementRepository(storage) { 29L }
+        val arrangedBeforeUnlock = repository.arrange(entries, nowMillis = 50_000L)
+        val unlockedIds = setOf("Intermediate-Pulli-1")
+
+        val unlockedFilter = filterBrowseCatalogue(
+            entries = arrangedBeforeUnlock,
+            query = "",
+            difficulties = emptySet(),
+            types = emptySet(),
+            accessFilter = BrowseLessonAccessFilter.UNLOCKED,
+            unlockedLessonIds = unlockedIds
+        )
+        val arrangedAfterUnlock = repository.arrange(
+            entries,
+            nowMillis = 50_001L,
+            refreshIfDue = false
+        )
+
+        assertEquals(listOf("Intermediate-Pulli-1"), unlockedFilter.map { it.id })
+        assertEquals(
+            arrangedBeforeUnlock.map { it.id },
+            arrangedAfterUnlock.map { it.id }
+        )
+        assertEquals(
+            arrangedBeforeUnlock.indexOfFirst { it.id in unlockedIds },
+            arrangedAfterUnlock.indexOfFirst { it.id in unlockedIds }
+        )
+    }
+
+    @Test
+    fun catalogueRefreshWithoutNewIdsDoesNotRearrangeOrRestartTimer() {
+        val entries = lessonsForNineGroups(
+            mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val seeds = mutableListOf(17L)
+        val repository = BrowseArrangementRepository(storage) { seeds.removeAt(0) }
+        val initial = repository.arrange(entries, nowMillis = 12_345L)
+        val snapshot = storage.snapshot
+        val metadataUpdates = entries.map { it.copy(lessonName = "${it.lessonName} updated") }
+        val refreshed = mergeCatalogueEntries(entries, metadataUpdates)
+
+        val arranged = repository.arrange(
+            refreshed,
             nowMillis = 12_346L,
             refreshIfDue = false
         )
 
-        assertEquals(refreshedEntries.map { it.id }.toSet(), refreshed.map { it.id }.toSet())
-        assertEquals(refreshedEntries.size, refreshed.size)
-        assertEquals(
-            initial.map { it.id },
-            refreshed.map { it.id }.filter { it in originalEntries.map(LessonCatalogueEntry::id).toSet() }
-        )
-        assertEquals(initialSnapshot?.arrangedAtMillis, storage.snapshot?.arrangedAtMillis)
-        val previouslyUnlocked = refreshed.single { it.id in unlockedIds }
-        assertEquals(CatalogueAccess.LOCKED, lessonWithCatalogueAccess(previouslyUnlocked).access)
-        assertFalse(previouslyUnlocked.isFree)
-        assertTrue(canOpenLesson(previouslyUnlocked, unlockedIds))
+        assertEquals(initial.map { it.id }, arranged.map { it.id })
+        assertTrue(arranged.all { it.lessonName.endsWith(" updated") })
+        assertEquals(snapshot, storage.snapshot)
+        assertEquals(17L, storage.snapshot?.seed)
     }
 
     @Test
-    fun textDifficultyTypeAndAccessFiltersCombineAndLockedIncludesUnlockedLessons() {
+    fun newCatalogueBatchTriggersFreshArrangementAndPreservesExistingLessonsAndUnlocks() {
+        val existingEntries = lessonsForNineGroups(
+            mapOf("Easy" to 2, "Intermediate" to 2, "Expert" to 2)
+        )
+        val storage = InMemoryBrowseArrangementStorage()
+        val seeds = mutableListOf(17L, 42L)
+        val repository = BrowseArrangementRepository(storage) { seeds.removeAt(0) }
+        repository.arrange(existingEntries, nowMillis = 12_345L)
+        val unlockedIds = setOf("Expert-Sikku-1")
+        val newBatch = (0 until 20).map { index ->
+            lesson("new-$index", difficulty = "Easy", type = "Pulli", isFree = index % 2 == 0)
+        }
+        val refreshedEntries = mergeCatalogueEntries(existingEntries, newBatch)
+
+        val arranged = repository.arrange(
+            refreshedEntries,
+            nowMillis = 22_345L,
+            refreshIfDue = false
+        )
+
+        assertEquals(42L, storage.snapshot?.seed)
+        assertEquals(22_345L, storage.snapshot?.arrangedAtMillis)
+        assertEquals(refreshedEntries.map { it.id }.toSet(), arranged.map { it.id }.toSet())
+        assertEquals(refreshedEntries.size, arranged.size)
+        assertTrue(arranged.map { it.id }.toSet().containsAll(existingEntries.map { it.id }))
+        assertTrue(canOpenLesson(arranged.single { it.id in unlockedIds }, unlockedIds))
+        assertEquals(
+            balancedBrowseArrangement(refreshedEntries, 42L).map { it.id },
+            arranged.map { it.id }
+        )
+    }
+
+    @Test
+    fun browseCatalogueStateRetainsTheSavedGridPosition() {
+        val state = LazyGridState(firstVisibleItemIndex = 37, firstVisibleItemScrollOffset = 83)
+        val browseState = BrowseCatalogueState(state)
+
+        assertTrue(state === browseState.gridState)
+        assertEquals(37, browseState.gridState.firstVisibleItemIndex)
+        assertEquals(83, browseState.gridState.firstVisibleItemScrollOffset)
+    }
+
+    @Test
+    fun allFourAccessFiltersCombineWithTextDifficultyAndType() {
         val entries = listOf(
             lesson("free-lotus", "Lotus easy", "Easy", "Sikku", true),
             lesson("locked-lotus", "Lotus locked", "Easy", "Sikku", false),
@@ -167,7 +257,8 @@ class BrowseCatalogueSectionsTest {
             query = "lotus",
             difficulties = setOf("Easy"),
             types = setOf("Sikku"),
-            accessFilter = BrowseLessonAccessFilter.FREE
+            accessFilter = BrowseLessonAccessFilter.FREE,
+            unlockedLessonIds = setOf("locked-lotus")
         )
         assertEquals(listOf("free-lotus"), freeResult.map { it.id })
 
@@ -176,21 +267,31 @@ class BrowseCatalogueSectionsTest {
             query = "lotus",
             difficulties = setOf("Easy"),
             types = setOf("Sikku"),
-            accessFilter = BrowseLessonAccessFilter.LOCKED
+            accessFilter = BrowseLessonAccessFilter.LOCKED,
+            unlockedLessonIds = setOf("locked-lotus")
         )
-        assertEquals(listOf("locked-lotus"), lockedResult.map { it.id })
-        assertEquals(
-            CatalogueAccess.LOCKED,
-            lessonWithCatalogueAccess(lockedResult.single()).access
+        assertTrue(lockedResult.isEmpty())
+
+        val unlockedResult = filterBrowseCatalogue(
+            entries = entries,
+            query = "lotus",
+            difficulties = setOf("Easy"),
+            types = setOf("Sikku"),
+            accessFilter = BrowseLessonAccessFilter.UNLOCKED,
+            unlockedLessonIds = setOf("locked-lotus")
         )
-        assertTrue(canOpenLesson(lockedResult.single(), setOf("locked-lotus")))
+        assertEquals(listOf("locked-lotus"), unlockedResult.map { it.id })
+        assertFalse(unlockedResult.single().isFree)
+        assertEquals(CatalogueAccess.LOCKED, lessonWithCatalogueAccess(unlockedResult.single()).access)
+        assertTrue(canOpenLesson(unlockedResult.single(), setOf("locked-lotus")))
 
         val allAccess = filterBrowseCatalogue(
             entries,
             query = "",
             difficulties = emptySet(),
             types = emptySet(),
-            accessFilter = BrowseLessonAccessFilter.ALL
+            accessFilter = BrowseLessonAccessFilter.ALL,
+            unlockedLessonIds = setOf("locked-lotus")
         )
         assertEquals(entries.map { it.id }, allAccess.map { it.id })
     }

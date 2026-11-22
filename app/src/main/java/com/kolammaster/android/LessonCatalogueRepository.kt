@@ -28,10 +28,14 @@ internal class LessonCatalogueRepository(context: Context) {
 
     suspend fun refresh(): List<LessonCatalogueEntry> = withContext(Dispatchers.IO) {
         val response = fetchCatalogue()
-        val entries = parseCatalogueJson(response)
-        if (entries.isEmpty()) throw IOException("The R2 catalogue contained no valid lessons")
-        preferences.edit().putString(CACHE_KEY, catalogueCacheJson(entries)).apply()
-        entries
+        val refreshedEntries = parseCatalogueJson(response)
+        if (refreshedEntries.isEmpty()) {
+            throw IOException("The R2 catalogue contained no valid lessons")
+        }
+
+        val mergedEntries = mergeCatalogueEntries(loadCached(), refreshedEntries)
+        preferences.edit().putString(CACHE_KEY, catalogueCacheJson(mergedEntries)).apply()
+        mergedEntries
     }
 
     private fun fetchCatalogue(): String {
@@ -63,5 +67,18 @@ internal class LessonCatalogueRepository(context: Context) {
         const val CONNECT_TIMEOUT_MILLIS = 15_000
         const val READ_TIMEOUT_MILLIS = 20_000
         const val TAG = "LessonCatalogue"
+    }
+}
+
+internal fun mergeCatalogueEntries(
+    existingEntries: List<LessonCatalogueEntry>,
+    refreshedEntries: List<LessonCatalogueEntry>
+): List<LessonCatalogueEntry> {
+    val refreshedById = refreshedEntries.associateByTo(linkedMapOf(), LessonCatalogueEntry::id)
+    return buildList {
+        existingEntries.forEach { existing ->
+            add(refreshedById.remove(existing.id) ?: existing)
+        }
+        addAll(refreshedById.values)
     }
 }

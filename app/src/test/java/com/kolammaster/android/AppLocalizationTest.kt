@@ -17,14 +17,14 @@ class AppLocalizationTest {
             supportedLanguageIdentifiers.map(::localeTagForLanguage).toSet().size
         )
         assertEquals("zh-CN", localeTagForLanguage("Chinese (Simplified)"))
-        assertEquals(333, TranslationDictionary.stringKeys(DEFAULT_LANGUAGE_IDENTIFIER).size)
+        assertEquals(334, TranslationDictionary.stringKeys(DEFAULT_LANGUAGE_IDENTIFIER).size)
         assertEquals(setOf("app_name"), TranslationDictionary.stringKeys(DEFAULT_LANGUAGE_IDENTIFIER) -
             TranslationDictionary.stringKeys("Tamil"))
 
         val expectedTranslatedKeys =
             TranslationDictionary.stringKeys(DEFAULT_LANGUAGE_IDENTIFIER) - "app_name"
         supportedLanguageIdentifiers.forEach { language ->
-            val expectedStringCount = if (language == DEFAULT_LANGUAGE_IDENTIFIER) 333 else 332
+            val expectedStringCount = if (language == DEFAULT_LANGUAGE_IDENTIFIER) 334 else 333
             assertEquals(expectedStringCount, TranslationDictionary.stringKeys(language).size)
             if (language != DEFAULT_LANGUAGE_IDENTIFIER) {
                 assertEquals(expectedTranslatedKeys, TranslationDictionary.stringKeys(language))
@@ -34,7 +34,7 @@ class AppLocalizationTest {
                 TranslationDictionary.pluralKeys(language)
             )
         }
-        assertEquals(3_985, supportedLanguageIdentifiers.sumOf {
+        assertEquals(3_997, supportedLanguageIdentifiers.sumOf {
             TranslationDictionary.stringKeys(it).size
         })
         assertEquals(36, supportedLanguageIdentifiers.sumOf {
