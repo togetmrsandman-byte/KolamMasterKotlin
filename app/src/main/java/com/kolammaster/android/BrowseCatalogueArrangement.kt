@@ -23,8 +23,8 @@ internal class BrowseArrangementPreferencesStorage(context: Context) : BrowseArr
     override fun load(): BrowseArrangementSnapshot? {
         return try {
             BrowseArrangementSnapshot(
-                seed = preferences.getLong(SEED_KEY, return null),
-                arrangedAtMillis = preferences.getLong(ARRANGED_AT_KEY, return null)
+                seed = preferences.getLong(SEED_KEY, 0L),
+                arrangedAtMillis = preferences.getLong(ARRANGED_AT_KEY, 0L)
             )
         } catch (exception: ClassCastException) {
             Log.w(TAG, "Ignoring invalid saved Browse arrangement values.", exception)
